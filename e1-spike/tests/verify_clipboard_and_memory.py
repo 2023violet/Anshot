@@ -8,19 +8,23 @@ OUT=Path("/tmp/e1-web-browser");OUT.mkdir(exist_ok=True)
 class H(http.server.SimpleHTTPRequestHandler):
  def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
  def log_message(self,*a):pass
+ def end_headers(self):
+  if "deny_clipboard=1" in self.path:
+   self.send_header("Permissions-Policy","clipboard-write=(), clipboard-read=()")
+  super().end_headers()
 server=http.server.ThreadingHTTPServer(("127.0.0.1",0),H)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 trials=[]
 with sync_playwright() as pw:
  browser=pw.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox","--enable-precise-memory-info"])
  try:
-  for mode in ["default_browser_permissions","grant_clipboard_read_write"]:
+  for mode in ["default_browser_permissions","grant_clipboard_read_write","permissions_policy_denied"]:
    ctx=browser.new_context(accept_downloads=True)
    if mode.startswith("grant"):
     try:ctx.grant_permissions(["clipboard-read","clipboard-write"],origin=f"http://127.0.0.1:{server.server_port}")
     except Exception as e:print("GRANT_UNAVAILABLE",str(e))
    p=ctx.new_page()
-   p.goto(f"http://127.0.0.1:{server.server_port}/e1-spike/web/index.html")
+   p.goto(f"http://127.0.0.1:{server.server_port}/e1-spike/web/index.html"+("?deny_clipboard=1" if mode=="permissions_policy_denied" else ""))
    p.wait_for_function("window.e1Debug?.ready === true")
    p.locator("#profile").select_option("T04_EDGES")
    p.locator("#file").set_input_files(str(ROOT/"docs/research/fixtures/T04_EDGES.png"))
@@ -30,6 +34,8 @@ with sync_playwright() as pw:
    p.wait_for_function("window.e1Debug?.copiedStatus !== 'not_attempted'",timeout=15000)
    state=p.evaluate("window.e1Debug")
    assert state["copiedStatus"] in ("write_and_readback_exact","write_succeeded_readback_unverified","denied_or_unavailable")
+   if mode=="permissions_policy_denied":
+    assert state["copiedStatus"]=="denied_or_unavailable",("EXPECTED_REAL_BROWSER_PERMISSIONS_POLICY_WRITE_DENIAL",state)
    if state["copiedStatus"]=="denied_or_unavailable":
     assert "Download PNG instead" in p.locator("#status").inner_text()
    with p.expect_download() as ev:p.locator("#download").click()
@@ -44,5 +50,5 @@ with sync_playwright() as pw:
   browser.close()
   server.shutdown()
 (OUT/"clipboard_memory_evidence.json").write_text(json.dumps({"trials":trials,"limitations":"headless Chrome, measured and denial cases as observed; not a cross-browser certification"},indent=2)+"\n")
-assert len(trials)==2
+assert len(trials)==3
 print("E1_CLIPBOARD_ALLOW_DENY_AND_DOWNLOAD_FALLBACK_ACTUAL_CONDITION_RECORDED")
