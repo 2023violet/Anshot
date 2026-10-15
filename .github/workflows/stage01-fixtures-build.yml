@@ -1,0 +1,82 @@
+name: S02 generate and validate fictional screenshot fixtures
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-fixtures-build.yml
+
+permissions:
+  contents: write
+
+jobs:
+  synthetic-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout research branch for fixture-only push
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          ref: docs/stage01-direction-skill-gates
+
+      - name: Create isolated Python research environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/shareready-research-env
+          /tmp/shareready-research-env/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0
+          /tmp/shareready-research-env/bin/python -c "from PIL import Image; print('Pillow:',Image.__version__)"
+
+      - name: Generate synthetic images and verify ground-truth manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/shareready-research-env/bin/python docs/research/fixtures/generate.py
+          /tmp/shareready-research-env/bin/python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          from PIL import Image
+          base=Path("docs/research/fixtures")
+          manifest=json.loads((base/"manifest.json").read_text(encoding="utf-8"))
+          assert manifest["schema"]==1 and len(manifest["fixtures"])==5
+          assert len({f["id"] for f in manifest["fixtures"]})==5
+          assert [f["id"] for f in manifest["fixtures"]]==["T01_CHAT","T02_ORDER","T03_SUPPORT","T04_EDGES","T05_JPEG_EXIF"]
+          for f in manifest["fixtures"]:
+              image=base/f["file"]
+              assert image.is_file() and hashlib.sha256(image.read_bytes()).hexdigest()==f["sha256"]
+              with Image.open(image) as im:
+                  assert im.format==f["format"] and im.size==(f["width"],f["height"])
+                  assert len(f["sensitive_regions"])>=2
+                  assert len(f["must_preserve_regions"])>=1
+                  for region in f["sensitive_regions"]+f["must_preserve_regions"]:
+                      a,b,c,d=region["rect_px"]
+                      assert 0<=a<c<=im.width and 0<=b<d<=im.height
+                  if f["id"]=="T05_JPEG_EXIF":
+                      assert 315 in im.getexif() and im.getexif().get_ifd(34853), "Synthetic EXIF/GPS fields missing"
+              print("FIXTURE_PASS",f["id"],image.name,f["sha256"])
+          print("S02_SYNTHETIC_FIXTURES_GENERATED_AND_STRUCTURALLY_VALID; NO_PRODUCT_CODE")
+          PY
+
+      - name: Stage allowlisted evidence files only and commit to research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- docs/research/fixtures/T01_CHAT.png docs/research/fixtures/T02_ORDER.png docs/research/fixtures/T03_SUPPORT.png docs/research/fixtures/T04_EDGES.png docs/research/fixtures/T05_JPEG_EXIF.jpg docs/research/fixtures/manifest.json
+          /tmp/shareready-research-env/bin/python - <<'PY'
+          import subprocess
+          allowed={
+            "docs/research/fixtures/T01_CHAT.png","docs/research/fixtures/T02_ORDER.png",
+            "docs/research/fixtures/T03_SUPPORT.png","docs/research/fixtures/T04_EDGES.png",
+            "docs/research/fixtures/T05_JPEG_EXIF.jpg","docs/research/fixtures/manifest.json"}
+          changed=set(subprocess.check_output(["git","diff","--cached","--name-only"],text=True).splitlines())
+          assert changed==allowed, (sorted(allowed-changed),sorted(changed-allowed))
+          assert all(p.startswith("docs/research/fixtures/") for p in changed)
+          print("EXACT_SIX_RESEARCH_OUTPUTS_ONLY; NO_PRODUCT_SOURCE_OR_RELEASE_CHANGES")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "research: generate five synthetic screenshot fixtures and machine truth"
+          git push origin HEAD:refs/heads/docs/stage01-direction-skill-gates
+          echo "RESEARCH_FIXTURES_PUSHED_TO_ISOLATED_BRANCH; MAIN_UNTOUCHED"
