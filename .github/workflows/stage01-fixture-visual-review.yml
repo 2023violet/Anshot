@@ -74,6 +74,29 @@ jobs:
           print("QA_IMAGE_BASE64_BEGIN")
           for start in range(0,len(payload),1000):print(payload[start:start+1000])
           print("QA_IMAGE_BASE64_END")
+          # Targeted native-resolution check for T04 corner text and mask coverage.
+          with Image.open(path/"T04_EDGES.png") as source:
+              edge=source.convert("RGB")
+              crops=[
+                ((0,0,1050,170),(15,12,950,90)),
+                ((1350,0,2400,170),(1550,12,2394,90)),
+                ((0,1430,1050,1600),(8,1497,905,1595)),
+                ((1350,1430,2400,1600),(1490,1497,2398,1595))
+              ]
+              view=Image.new("RGB",(2100,380),"white")
+              for i,(bounds,rect) in enumerate(crops):
+                  cut=edge.crop(bounds)
+                  cd=ImageDraw.Draw(cut)
+                  cd.rectangle((rect[0]-bounds[0],rect[1]-bounds[1],rect[2]-bounds[0]-1,rect[3]-bounds[1]-1),
+                      outline="#ed4a38",width=3)
+                  view.paste(cut,((i%2)*1050,(i//2)*190))
+              view.thumbnail((1500,290))
+              crop_bytes=io.BytesIO()
+              view.save(crop_bytes,format="JPEG",quality=65,optimize=True)
+              crop_payload=base64.b64encode(crop_bytes.getvalue()).decode("ascii")
+              print("QA_EDGES_CROP_BASE64_BEGIN")
+              for start in range(0,len(crop_payload),1000):print(crop_payload[start:start+1000])
+              print("QA_EDGES_CROP_BASE64_END")
           with open("docs/research/COMPETITOR_EVIDENCE_MATRIX.csv",newline="",encoding="utf8") as inp:
               rows=list(csv.DictReader(inp))
           assert len(rows)>=4
