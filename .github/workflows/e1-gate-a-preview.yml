@@ -54,7 +54,7 @@ jobs:
           candidate=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text(encoding="utf-8"))
           candidate["schema"]=initialized["schema"]
           candidate["gates"]={}
-          candidate["last_event"]=initialized.get("last_event")
+          candidate["last_event"]=sum(1 for _ in Path(".decision/events.jsonl").open(encoding="utf-8"))
           assert len(candidate["steps"])==6
           assert candidate["risk"]=="high"
           assert all(s["status"]=="todo" for s in candidate["steps"])
@@ -79,7 +79,9 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          response=json.loads(Path("/tmp/e1-gate-a-preview.json").read_text(encoding="utf-8"))
+          raw=Path("/tmp/e1-gate-a-preview.json").read_text(encoding="utf-8")
+          response=json.loads(raw[raw.index("{"):])
+          Path("/tmp/e1-gate-a-preview.json").write_text(json.dumps(response,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
           assert response.get("needs_confirmation") is True,response
           assert len(response.get("token",""))>=8,response
           assert response.get("preview"),response
