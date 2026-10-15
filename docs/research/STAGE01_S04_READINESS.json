@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "as_of": "2026-10-15",
+  "project": "ShareReady",
+  "stage": "S04",
+  "document_review": "SAME_AGENT_COMPLETE",
+  "external_human_review": "PENDING",
+  "recruitment_authorized": false,
+  "recruitment_status": "BLOCKED_BY_RECRUITMENT",
+  "blockers": [
+    "RESEARCH_CONTROLLER_UNSET",
+    "PRIVATE_CONTACT_CHANNEL_UNSET",
+    "JURISDICTION_AND_LAWFUL_BASIS_UNSET",
+    "STORAGE_ACCESS_AND_DELETION_OWNER_UNSET",
+    "INCENTIVE_APPROVAL_UNSET",
+    "PLATFORM_ACCESS_NOT_VERIFIED",
+    "EXTERNAL_ETHICS_REVIEW_PENDING"
+  ],
+  "metrics": {
+    "contacted": 0,
+    "screened": 0,
+    "recruited": 0,
+    "consented": 0,
+    "real_sessions": 0,
+    "paid": 0
+  },
+  "slots": {
+    "count": 10,
+    "AB": 5,
+    "BA": 5,
+    "assigned": 0,
+    "method": "secure-random unused-slot allocation only after real opt-in; none assigned"
+  },
+  "hypotheses": {
+    "A1": "OPEN"
+  },
+  "prohibited": [
+    "RUST_PRODUCT_CODE",
+    "PR_MERGE",
+    "RELEASE",
+    "DEPLOYMENT",
+    "REAL_PERSON_DATA_IN_GITHUB"
+  ]
+}
