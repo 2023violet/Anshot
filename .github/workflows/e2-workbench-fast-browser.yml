@@ -1,4 +1,4 @@
-name: E2 quick UI browser test using verified E1 WASM binary
+name: E2 source-matched Chromium smoke (no reused WASM)
 
 on:
   push:
@@ -6,45 +6,44 @@ on:
     paths:
       - .github/workflows/e2-workbench-fast-browser.yml
       - e2-workbench/**
+      - e1-spike/src/lib.rs
+      - e1-spike/Cargo.toml
+      - e1-spike/Cargo.lock
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
-  preflight-ui-browser:
+  source-matched-browser-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 14
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout exact commit without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Verify reviewed E1 code has not changed
+      - name: Verify scope and source identity
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git hash-object e1-spike/src/lib.rs)" = ab4871a663b210076fe70711adcee1451dd33cbf
-          test "$(git hash-object e1-spike/Cargo.lock)" = 4923b847fd0deeb924b33dea6abac9e88a5a7ce7
+          test "$(git branch --show-current)" = feature/e2-workbench-integration
+          test -s e1-spike/Cargo.lock
           node --check e2-workbench/app.js
-          python3 -m py_compile e2-workbench/tests/verify_e2_browser.py
-          echo "E1_CORE_BINARY_COMPATIBILITY_PIN_PASS"
-      - name: Reuse genuine E1 post-fix WASM artifact for accelerated UI validation
+          python3 -m py_compile e2-workbench/tests/verify_e2_browser.py e2-workbench/tests/verify_e2_precision_browser.py
+          sha256sum e1-spike/src/lib.rs e1-spike/Cargo.lock e2-workbench/app.js
+      - name: Build matching Rust WASM instead of restoring old artifact
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/e2-verified-e1-wasm
-          gh run download 38758308909 --repo 2023violet/ShareReady --name e1-real-wasm-browser-and-clipboard-evidence --dir /tmp/e2-verified-e1-wasm
-          WASM="$(find /tmp/e2-verified-e1-wasm -type f -name shareready_e1_bg.wasm -print -quit)"
-          GLUE="$(find /tmp/e2-verified-e1-wasm -type f -name shareready_e1.js -print -quit)"
-          test -s "$WASM"
-          test -s "$GLUE"
+          rustup target add wasm32-unknown-unknown
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
           mkdir -p e1-spike/web/pkg
-          cp "$WASM" e1-spike/web/pkg/shareready_e1_bg.wasm
-          cp "$GLUE" e1-spike/web/pkg/shareready_e1.js
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir e1-spike/web/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+          test -s e1-spike/web/pkg/shareready_e1_bg.wasm
           sha256sum e1-spike/web/pkg/shareready_e1_bg.wasm
-      - name: Real Chrome pointer workflow and synthetic PNG pixel verification
+      - name: Real Chromium synthetic smoke
         shell: bash
         run: |
           set -euo pipefail
@@ -52,12 +51,14 @@ jobs:
           /tmp/e2-quick/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
           /tmp/e2-quick/bin/python e2-workbench/tests/verify_e2_browser.py
           /tmp/e2-quick/bin/python e2-workbench/tests/verify_e2_precision_browser.py
-          echo "E2_ACCELERATED_BROWSER_VALIDATION_PASS"
-      - name: Preserve real synthetic output and QA screenshots
+          echo "E2_SOURCE_MATCHED_BROWSER_SMOKE_PASS"
+      - name: Preserve real synthetic PNG and WASM evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: e2-accelerated-chromium-pointer-validation
-          path: /tmp/e2-browser-evidence/
+          name: e2-source-matched-chromium-smoke-evidence
+          path: |
+            /tmp/e2-browser-evidence/
+            e1-spike/web/pkg/
           retention-days: 30
           if-no-files-found: warn
