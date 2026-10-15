@@ -77,6 +77,35 @@ with sync_playwright() as pw:
             assert page.locator("#check").is_enabled()
             assert page.locator("#keyboardHelp").count() == 1
 
+            # Actually drive pointer geometry while Chromium's real visual
+            # viewport is scaled; keyboard-only paths cannot prove pointer math.
+            page.locator("#maskTool").click()
+            frame = page.locator("#frame")
+            frame.scroll_into_view_if_needed()
+            bounds = frame.bounding_box()
+            assert bounds
+            image_w, image_h = page.evaluate("window.e2Debug.sourceSize")
+            sx, sy = bounds["width"] / image_w, bounds["height"] / image_h
+            x0, y0, x1, y1 = 28, 35, 56, 65
+            page.mouse.move(bounds["x"] + (x0 + 0.25) * sx,
+                            bounds["y"] + (y0 + 0.25) * sy)
+            page.mouse.down()
+            page.mouse.move(bounds["x"] + (x1 - 0.25) * sx,
+                            bounds["y"] + (y1 - 0.25) * sy, steps=7)
+            page.mouse.up()
+            scaled = page.evaluate("window.e2Debug.regions")
+            assert len(scaled) == 3, (width, scaled)
+            pointer_region = scaled[-1]
+            for actual, expected in zip(
+                (pointer_region["x0"], pointer_region["y0"],
+                 pointer_region["x1"], pointer_region["y1"]),
+                (x0, y0, x1, y1),
+            ):
+                assert abs(actual - expected) < 1.5, (
+                    "native visual viewport pointer mapping", width,
+                    actual_scale, pointer_region
+                )
+
             page.locator("#check").click()
             page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
             assert page.evaluate("document.activeElement?.id") == "back"
@@ -104,7 +133,7 @@ with sync_playwright() as pw:
             page.screenshot(path=str(OUT / f"e2_3_keyboard_{width}.png"))
             observations.append({"viewport": [width, height], "dpr": 2,
                                  "chromium_visual_viewport_scale": actual_scale,
-                                 "keyboard_created": 2, "focus_restored": True,
+                                 "keyboard_created": 2, "pointer_created": 1, "focus_restored": True,
                                  "png_sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
                                  "no_remote_requests": True})
             ctx.close()
