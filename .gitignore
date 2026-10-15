@@ -1,0 +1,9 @@
+# E1 temporary Rust/WASM build output only
+e1-spike/target/
+# Pinned Skill machine workspace is published as GitHub Actions artifact, not tracked
+.decision/
+.de-workspace/
+# wasm-bindgen generated JS/wasm binaries are temporary CI outputs
+e1-spike/web/pkg/
+__pycache__/
+*.pyc
