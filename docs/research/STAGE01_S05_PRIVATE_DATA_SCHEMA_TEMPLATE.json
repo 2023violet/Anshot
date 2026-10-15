@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "explanation": "Public template ONLY; never fill real names or identities in this file.",
+  "participant_records": [],
+  "allowed_participant_row_schema": {
+    "participant_code": "opaque randomized code managed privately; do not record real identity in public repository",
+    "consent_ok": "boolean recorded privately with appropriate evidence before testing",
+    "consent_audio": "independent optional boolean, default false",
+    "consent_video": "independent optional boolean, default false",
+    "task_id": "T01_CHAT or T02_ORDER",
+    "tool": "Redacted or Redaction Tools",
+    "order_index": "1 or 2",
+    "completed": "true or false; failures retained",
+    "duration_s": "non-negative elapsed real human time",
+    "action_count": "includes click and drag per frozen codebook",
+    "missed_regions": "truth-verified count",
+    "over_redacted_regions": "preserved-target damaged count",
+    "hint_used": "true or false",
+    "evidence_location": "PRIVATE_ONLY; no personal info on public GitHub"
+  },
+  "counts": {
+    "outreach": 0,
+    "consented": 0,
+    "sessions": 0,
+    "withdrawals": 0
+  },
+  "allowed_in_public_repo": "only non-identifying aggregation after reidentification risk review",
+  "state": "NOT_COLLECTING"
+}
