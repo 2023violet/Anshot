@@ -1,0 +1,28 @@
+name: S03 T02 headful virtual desktop input countercheck
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-headful-countercheck.yml]
+permissions:
+  contents: read
+jobs:
+  xvfb-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Run actual visible Chrome window in virtual X display
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v xvfb-run
+          python3 -m venv /tmp/sr-headful
+          /tmp/sr-headful/bin/python -m pip install --disable-pip-version-check playwright==1.55.0
+          xvfb-run -a -s "-screen 0 1600x1200x24" /tmp/sr-headful/bin/python docs/research/s03_t02_headful.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s03-headful-t02-results
+          path: /tmp/s03-t02-xvfb-headful/
+          if-no-files-found: error
+          retention-days: 30
