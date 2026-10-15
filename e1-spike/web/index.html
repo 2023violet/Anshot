@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>E1 Rust/WASM feasibility — synthetic fixtures only</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#1e293b;background:#e9edf2}
+main{max-width:980px;margin:26px auto;background:white;border-radius:16px;padding:24px;box-shadow:0 9px 35px #17284914}
+h1{margin:0 0 5px;font-size:25px}.sub{font-size:13px;color:#64748b}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:18px 0}
+button,select,input{font:inherit}button{padding:9px 16px;border-radius:9px;border:1px solid #bdc9e0;background:#fff;cursor:pointer}
+button:disabled{opacity:.46;cursor:not-allowed}#generate{color:#fff;background:#345cc7;border-color:#345cc7}
+#preview{width:100%;height:auto;max-height:65vh;object-fit:contain;background:#e9edf2;border:1px solid #dce3eb}
+#status{border-radius:8px;padding:10px 12px;margin:15px 0;background:#eef3ff;min-height:20px;overflow-wrap:anywhere}
+.notice{border-left:3px solid #c33d45;padding:10px;background:#fcf2f1;font-size:13px}
+</style></head><body><main>
+<h1>ShareReady E1 · technical proof</h1><p class="sub">An isolated Rust/WASM experiment; only synthetic fixture uploads are allowed during automated review.</p>
+<div class="controls">
+<label>Fixture <select id="profile"><option value="T01_CHAT">T01 chat</option><option value="T02_ORDER">T02 order</option><option value="T04_EDGES">T04 edges</option><option value="T05_JPEG_EXIF">T05 JPEG EXIF</option></select></label>
+<label>Local synthetic file <input id="file" type="file" accept="image/png,image/jpeg"></label>
+<button id="generate" disabled>Generate new PNG in Rust/WASM</button>
+<button id="download" disabled>Download generated PNG</button>
+<button id="copy" disabled>Copy output PNG</button>
+</div>
+<div id="status" role="status" aria-live="polite">Loading Rust/WASM…</div>
+<img id="preview" alt="Real decoded output PNG, not a CSS rectangle overlay">
+<p class="notice">SPIKE ONLY — no privacy certification; no automatic detection; no telemetry; no source-image upload. Do not provide real personal images.</p>
+</main>
+<script type="module">
+import init,{redact_web} from "./pkg/shareready_e1.js";
+const $=id=>document.getElementById(id);
+const masks={
+ T01_CHAT:[84,154,166,237,184,154,387,197,184,205,379,249,858,148,1119,262],
+ T02_ORDER:[105,469,568,518,105,536,508,586,105,604,679,654],
+ T04_EDGES:[15,12,950,90,1550,12,2394,90,8,1497,905,1595,1490,1497,2398,1595],
+ T05_JPEG_EXIF:[78,539,627,588,78,612,675,664]
+};
+let bytes=null,blob=null,sourceRevision=0,outputRevision=-1,activeURL=null;
+window.e1Debug={ready:false,renderMs:null,outputBytes:0,masks:0,copiedStatus:"not_attempted"};
+function status(t){$("status").textContent=t}
+function invalidate(){
+ sourceRevision++;outputRevision=-1;blob=null;bytes=null;
+ $("download").disabled=true;$("copy").disabled=true;
+ if(activeURL){URL.revokeObjectURL(activeURL);activeURL=null}
+ $("preview").removeAttribute("src");
+ status("Input changed. Previous output invalidated; regenerate.");
+}
+$("file").addEventListener("change",invalidate);
+$("profile").addEventListener("change",invalidate);
+await init();
+window.e1Debug.ready=true;$("generate").disabled=false;
+status("Ready. Select a synthetic fixture file, then generate an actual PNG from Rust/WASM.");
+$("generate").addEventListener("click",async()=>{
+ const f=$("file").files?.[0];
+ if(!f){status("Select a local synthetic fixture first.");return}
+ $("generate").disabled=true;$("copy").disabled=true;$("download").disabled=true;
+ const v=sourceRevision;
+ try{
+  const input=new Uint8Array(await f.arrayBuffer());
+  const t=performance.now();
+  const result=redact_web(input,new Int32Array(masks[$("profile").value]));
+  if(v!==sourceRevision)throw Error("input changed during processing");
+  bytes=result;
+  blob=new Blob([bytes],{type:"image/png"});
+  if(activeURL)URL.revokeObjectURL(activeURL);
+  activeURL=URL.createObjectURL(blob);
+  // Decode the newly produced PNG as a separate final-output object.
+  const check=new Image();
+  await new Promise((resolve,reject)=>{check.onload=resolve;check.onerror=reject;check.src=activeURL});
+  if(v!==sourceRevision)throw Error("input changed during output readback");
+  $("preview").src=activeURL;
+  outputRevision=v;
+  $("download").disabled=false;$("copy").disabled=false;
+  window.e1Debug.renderMs=performance.now()-t;
+  window.e1Debug.outputBytes=bytes.byteLength;
+  window.e1Debug.masks=masks[$("profile").value].length/4;
+  status("Rust/WASM new PNG generated and decoded from output bytes ("+bytes.byteLength+" bytes). Review before sharing.");
+ }catch(e){
+  outputRevision=-1;blob=null;bytes=null;$("copy").disabled=true;$("download").disabled=true;
+  status("Fail closed: "+String(e?.message||e));
+ }finally{$("generate").disabled=false}
+});
+$("download").addEventListener("click",()=>{
+ if(outputRevision!==sourceRevision||!blob){status("Stale or missing output; regenerate.");return}
+ const a=document.createElement("a");a.download="shareready_e1_"+$("profile").value+".png";
+ a.href=activeURL;a.click();status("Browser download requested for actual PNG output bytes.");
+});
+$("copy").addEventListener("click",async()=>{
+ if(outputRevision!==sourceRevision||!blob){status("Stale or missing output; regenerate.");return}
+ try {
+  if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error("PNG Clipboard API unavailable");
+  await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+  window.e1Debug.copiedStatus="write_succeeded_readback_unverified";
+  if(navigator.clipboard.read) {
+   try {
+    const items=await navigator.clipboard.read();
+    const entry=items.find(i=>i.types.includes("image/png"));
+    if(entry) {
+     const read=new Uint8Array(await (await entry.getType("image/png")).arrayBuffer());
+     const hash=async b=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",b))).map(x=>x.toString(16).padStart(2,"0")).join("");
+     if(await hash(bytes)===await hash(read)){
+      window.e1Debug.copiedStatus="write_and_readback_exact";
+     }else {
+      window.e1Debug.copiedStatus="write_but_readback_mismatch";throw Error("Clipboard PNG readback mismatch");
+     }
+    }
+   }catch(e){ if(window.e1Debug.copiedStatus!=="write_but_readback_mismatch")window.e1Debug.readbackError=String(e?.message||e) }
+  }
+  status(window.e1Debug.copiedStatus==="write_and_readback_exact"?"Copied and verified PNG readback.":"Clipboard write succeeded; paste-back remains unverified.");
+ }catch(e){window.e1Debug.copiedStatus="denied_or_unavailable";status("Clipboard not available/allowed: "+String(e?.message||e)+". Download PNG instead.")}
+});
+</script></body></html>
