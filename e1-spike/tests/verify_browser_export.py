@@ -15,7 +15,7 @@ server=http.server.ThreadingHTTPServer(("127.0.0.1",0),Handler)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 results=[]
 with sync_playwright() as pw:
- browser=pw.chromium.launch(headless=True,args=["--no-sandbox"])
+ browser=pw.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox"])
  try:
   for name in ["T01_CHAT","T02_ORDER","T04_EDGES","T05_JPEG_EXIF"]:
    spec=manifest[name]
