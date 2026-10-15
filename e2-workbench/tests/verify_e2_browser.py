@@ -91,6 +91,33 @@ with sync_playwright() as pw:
    assert len(page.evaluate("window.e2Debug.regions"))==count-1
    page.keyboard.press("Control+Shift+z")
    assert len(page.evaluate("window.e2Debug.regions"))==count
+   # Move a selected mask through the real pointer handlers and undo the move.
+   pre_edit=page.evaluate("window.e2Debug.regions")
+   page.locator("#regionList .region").first.click()
+   chosen=page.locator(".mask.selected").bounding_box()
+   assert chosen and chosen["width"]>10 and chosen["height"]>10
+   mx=chosen["x"]+chosen["width"]*.5;my=chosen["y"]+chosen["height"]*.5
+   page.mouse.move(mx,my);page.mouse.down()
+   page.mouse.move(mx+9,my+9,steps=5);page.mouse.up()
+   assert page.evaluate("window.e2Debug.regions")!=pre_edit,("mask move did not modify geometry",name)
+   page.keyboard.press("Control+z")
+   assert page.evaluate("window.e2Debug.regions")==pre_edit,("mask move undo failed",name)
+   # Use an actual bottom-right handle for resizing, then undo.
+   page.locator("#regionList .region").first.click()
+   grip=page.locator(".mask.selected .handle").bounding_box()
+   assert grip
+   gx=grip["x"]+grip["width"]*.5;gy=grip["y"]+grip["height"]*.5
+   page.mouse.move(gx,gy);page.mouse.down()
+   page.mouse.move(gx+8,gy+7,steps=5);page.mouse.up()
+   assert page.evaluate("window.e2Debug.regions")!=pre_edit,("mask resize did not modify geometry",name)
+   page.keyboard.press("Control+z")
+   assert page.evaluate("window.e2Debug.regions")==pre_edit,("mask resize undo failed",name)
+   z_before=page.evaluate("window.e2Debug.zoom")
+   page.locator("#zoomIn").click()
+   assert page.evaluate("window.e2Debug.zoom")>z_before
+   page.locator("#zoomFit").click()
+   assert abs(page.evaluate("window.e2Debug.zoom")-z_before)<.00001
+   page.locator("#maskTool").click()
    page.locator("#check").click()
    page.wait_for_function("window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0")
    assert page.locator("#outputImage").evaluate("(img)=>img.complete && img.naturalWidth>0")
