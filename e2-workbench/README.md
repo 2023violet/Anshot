@@ -30,6 +30,8 @@ After building the WASM module above:
 
     python3 -m pip install Pillow==12.3.0 playwright==1.55.0
     python3 e2-workbench/tests/verify_e2_browser.py
+    python3 e2-workbench/tests/verify_e2_precision_browser.py
+    python3 e2-workbench/tests/verify_e2_3_browser.py
 
 The test loads all four frozen synthetic images in Chromium, draws source-pixel masks through real mouse events, moves and resizes a region, restores geometry with Undo, tests zoom/fit, reencodes via actual Rust WASM, redownloads and decodes all four PNGs, verifies target pixel rectangles and keep regions, tests unknown-image rejection, old export invalidation, local-only network requests and real clipboard-denied fallback.
 
@@ -38,6 +40,7 @@ The CI workflow e2-workbench-integration.yml regenerates the WASM module and rer
 ## Do not overclaim
 
 - This version does not scan a private image to find PII or guarantee that the user selected enough regions.
-- Copying may succeed without an independently verified clipboard readback; its on-screen wording is deliberately limited.
-- E1e independent security and license review is pending, as are keyboard-only mask movement/resizing, real-user feedback, multi-browser accessibility and performance benchmarks.
+- Clipboard write is revision-guarded: if the current output changes during an asynchronous write, the UI refuses to report current-output copy success. A browser may still have written the old bytes; always regenerate and copy again. The UI does not claim paste-back verification.
+- E2.3 adds a visible **N** keyboard-create action (180 × 64 source pixels, centered in the visible image and clamped to bounds), focus recovery on mask redraw, accessible region announcements and review-dialog focus isolation. The new Chromium test uses native CDP visual-viewport scaling (not browser-menu Ctrl+Plus zoom), delayed Clipboard write race injection and real trusted Ctrl+V PNG paste readback; no cross-browser guarantee.
+- E1e independent security and license review is pending, as are real-user feedback, full assistive technology coverage, native browser-menu zoom and performance benchmarks.
 - No public website, release, product merge or permission to handle personal images has been granted.
