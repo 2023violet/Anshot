@@ -1,5 +1,8 @@
 # SR-RES-007｜S03 连续手动遮挡的操作顺序与事件诊断
 
+> **2026-10-15 RESOLVED TEST HARNESS:** The T02 second gesture described below was successfully recovered in both tested orders by clicking blank page space between masking operations. Real T01/T02 PNG recheck and the authentic Skill state are recorded in [SR-RES-008](STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md) and [run 38689148605](https://github.com/2023violet/ShareReady/actions/runs/38689148605). Earlier per-run observations remain valid, but their historical “S03 still in progress” assessment has been superseded. This is not a third-party product bug claim or a real human study.
+
+
 > **2026-10-15 · THIRD-PARTY LIVE BROWSER EVIDENCE / SAME-AGENT ANALYSIS / S03 NOT ACCEPTED**  
 > 本文补充 [S03 首轮报告](STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md)。全部输入来自完全虚构的 T01/T02 截图。结果来自 Chromium 自动化与实际第三方导出 PNG，不是普通用户操作，也不能据此认定竞争产品存在漏洞。
 

@@ -15,9 +15,9 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## Current stage / 当前阶段
 
-`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01,S02 DONE / S03 IN_PROGRESS / A1 NOT_VERIFIED`.
+`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S03 DONE / S04 IN_PROGRESS / A1 NOT_VERIFIED`.
 
-**No Rust application code, benchmark results, user interviews, deployment or release is claimed.**
+**No Rust application code, human usability benchmarks, user interviews, deployment or release is claimed.** We do have scripted third-party browser results, which are not human performance claims.
 
 | Document | Purpose |
 | --- | --- |
@@ -30,7 +30,11 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [S02 fixture visual QA](docs/research/STAGE01_S02_VISUAL_AND_MATRIX_QA.md) | Real generated image review, benchmark fixture constraints |
 | [S03 actual-browser pilot](docs/research/STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md) | Real third-party exported files, pixel comparisons and known automation limitations |
 | [S03 scripted observations CSV](docs/research/STAGE01_S03_SCRIPTED_TRIALS.csv) | Oracle-assisted Chrome trials, not human UX statistics |
-| [S03 repeated-mask event diagnostics](docs/research/STAGE01_S03_POINTER_ORDER_DIAGNOSTIC.md) | Real PNGs, operation-order comparison and unresolved T02 pointer lifecycle |
+| [S03 repeated-mask event diagnostics](docs/research/STAGE01_S03_POINTER_ORDER_DIAGNOSTIC.md) | Historical automated drag failures, now resolved for tested tasks |
+| [S03 authoritative matched export baseline](docs/research/STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md) | Two real tools, four downloaded PNGs and independent export inspection |
+| [S04 ethics and recruitment protocol](docs/research/STAGE01_S04_RESEARCH_PROTOCOL.md) | Draft consent, balanced research design and stop conditions |
+| [S04 screening and consent](docs/research/STAGE01_S04_CONSENT_AND_SCREENERS.md) | Not yet circulated; zero consenting participants |
+| [S04 allocation slots](docs/research/STAGE01_S04_ALLOCATION_SLOTS.csv) | Ten UNASSIGNED balanced slots; not real people |
 | [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
 | [A1 problem evidence & counterevidence](docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md) | External user discussions, promotion bias, and falsification plan |
 | [Stage 01 independent readiness review](docs/reviews/STAGE01_READINESS_REVIEW_2026-10-14.md) | Verifiable exit status, blockers and quality corrections |

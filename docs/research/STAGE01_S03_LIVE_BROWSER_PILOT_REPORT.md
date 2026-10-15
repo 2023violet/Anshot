@@ -1,5 +1,8 @@
 # ShareReady｜S03 真实竞品浏览器试验 · 首轮结果
 
+> **2026-10-15 CURRENT S03 RESULT:** After isolating scripted pointer cancellation, an inter-mask blank-space click allowed both tools to complete all T01/T02 synthetic mask targets in real Chrome, with actual exported PNGs. See the authoritative [SR-RES-008](STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md), [export run 38688552378](https://github.com/2023violet/ShareReady/actions/runs/38688552378), and [independent process recheck 38688790908](https://github.com/2023violet/ShareReady/actions/runs/38688790908). Older 2/4 and 2/3 results below reflect **script harness failures**, not measured vendor miss rates. Authentic Skill S03 is now DONE, S04 IN_PROGRESS; user sessions remain zero.
+
+
 > **2026-10-15 更新 / 以补充诊断为准：** 后续真实 Chrome 检查发现 Redaction Tools 的手动遮挡效果与操作顺序有关：T01 采用“姓名→头像→通知”顺序导出的实际 PNG，四个预设目标区域中心均已遮挡且保留文本未改动；T02 的连续遮挡仍因当前自动化事件兼容性问题未完成。详见 [SR-RES-007 操作顺序与事件诊断](STAGE01_S03_POINTER_ORDER_DIAGNOSTIC.md)。首轮 2/4 与 2/3 数字仅描述**初始自动化输出**，绝非竞品的固有漏检率。\n\n
 > **SR-RES-006 · 2026-10-14（PDT）/ 2026-10-15（UTC）**  
 > **阶段：S03 IN_PROGRESS / 真实自动化试验已取得 / 公平对比尚未完成。**  
