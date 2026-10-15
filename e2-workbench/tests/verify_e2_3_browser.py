@@ -50,7 +50,7 @@ with sync_playwright() as pw:
             # Real Chromium visual viewport scaling (CDP PageScaleFactor), not CSS zoom.
             cdp.send("Emulation.setPageScaleFactor", {"pageScaleFactor": page_scale})
             page.wait_for_function("(scale)=>Math.abs(window.visualViewport.scale-scale)<0.05",
-                                   page_scale)
+                                   arg=page_scale)
             actual_scale = page.evaluate("window.visualViewport.scale")
 
             page.locator("#createMask").focus()
