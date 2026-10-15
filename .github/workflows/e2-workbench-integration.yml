@@ -1,0 +1,77 @@
+name: E2 Workbench Rust WASM actual browser integration
+
+on:
+  push:
+    branches: [feature/e2-workbench-integration]
+    paths:
+      - .github/workflows/e2-workbench-integration.yml
+      - e2-workbench/**
+      - e1-spike/src/lib.rs
+      - e1-spike/Cargo.toml
+      - e1-spike/Cargo.lock
+
+permissions:
+  contents: read
+
+jobs:
+  e2-chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout isolated branch without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify scope and pinned E1 Skill plan unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = feature/e2-workbench-integration
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc
+          node --check e2-workbench/app.js
+          python3 -m py_compile e2-workbench/tests/verify_e2_browser.py
+          test -s e2-workbench/index.html
+          ! grep -Eq '<script[^>]*src="https?://' e2-workbench/index.html
+          git diff --exit-code
+          git diff --cached --exit-code
+          echo "E2_SCOPE_AND_JS_PYTHON_STATIC_CHECK_PASS"
+      - name: Run E1 Rust core safety regression on E2 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline --test codec_security
+          echo "E2_REUSABLE_E1_RUST_CORE_NEGATIVE_AND_POSITIVE_TESTS_PASS"
+      - name: Build real wasm32 Rust backend and web module
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
+          mkdir -p e1-spike/web/pkg
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir e1-spike/web/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+          test -s e1-spike/web/pkg/shareready_e1_bg.wasm
+          sha256sum e1-spike/web/pkg/shareready_e1_bg.wasm e2-workbench/app.js
+      - name: Real Chrome workbench tests with frozen synthetic data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/e2-env
+          /tmp/e2-env/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
+          google-chrome --version
+          /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_browser.py
+          test -s /tmp/e2-browser-evidence/e2-results.json
+          echo "E2_REAL_CHROMIUM_ALL_ACCEPTANCE_CHECKS_PASS"
+      - name: Preserve exact binary and Chromium output evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2-workbench-synthetic-real-wasm-ci-evidence
+          path: |
+            /tmp/e2-browser-evidence/
+            e1-spike/web/pkg/
+          if-no-files-found: warn
+          retention-days: 30
