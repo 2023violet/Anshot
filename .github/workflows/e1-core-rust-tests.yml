@@ -53,6 +53,7 @@ jobs:
           cargo generate-lockfile --manifest-path e1-spike/Cargo.toml
           cargo fetch --manifest-path e1-spike/Cargo.toml --locked
           test -s e1-spike/Cargo.lock
+          git check-ignore -q e1-spike/target/ || { echo 'MISSING_RUST_TARGET_GITIGNORE'; exit 1; }
           echo E1_LOCK_BASE64_BEGIN
           base64 -w0 e1-spike/Cargo.lock
           echo
