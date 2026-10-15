@@ -41,3 +41,14 @@ The remote draft PR documents the approach; it **does not** bypass script or hum
 - [Executable checkout and gate runbook](STAGE01_GATE_RUNBOOK.md)
 
 These are authored research/planning drafts, **not executed user research** or passed gates.
+
+## Current execution update — 2026-10-14 PDT
+
+The initial local DNS blocker was resolved using an isolated GitHub Actions runner. **This section supersedes all earlier pending/blocked states in this historical adoption record.**
+
+- Real Gate A confirmation: [run #38676305998](https://github.com/2023violet/ShareReady/actions/runs/38676305998), owner-approved token matched, `status.gates.A=valid`.
+- Real Gate B confirmation: [run #38676996877](https://github.com/2023violet/ShareReady/actions/runs/38676996877), owner-approved token matched, `status.gates.B=valid`.
+- S01 assessment finished and S02 started through real Skill transitions: [run #38678816777](https://github.com/2023violet/ShareReady/actions/runs/38678816777), latest machine-state [artifact](https://github.com/2023violet/ShareReady/actions/runs/38678816777/artifacts/11947187397).
+- Five synthetic screenshots and ground truth actually generated, not just specified: [fixture manifest](../research/fixtures/manifest.json), [CI run](https://github.com/2023violet/ShareReady/actions/runs/38679131718).
+- Product evidence: `A1=NOT_VERIFIED`, `recruited=0`, `competitor_hands_on=0`. Fixture visual inspection, original OS/version competitor task runs, user interviews and the final independent reviewer remain outstanding.
+- **No Rust product code, merge, deploy or release is approved.** PR remains Draft. The earlier text is preserved as a historical account, not current gate state.
