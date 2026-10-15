@@ -1,0 +1,53 @@
+name: Stage 01 S03 two-tool matched synthetic browser exports
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-matched-exports.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  matched-exports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - name: Checkout pinned synthetic fixture manifest
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Prepare isolated Chrome test environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          google-chrome --version
+          python3 -m venv /tmp/sr-s03-neutral
+          /tmp/sr-s03-neutral/bin/python -m pip install --disable-pip-version-check playwright==1.55.0 Pillow==12.3.0
+      - name: Re-run Redacted and Redaction Tools T01 T02 end-to-end with actual PNG downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/sr-s03-neutral/bin/python docs/research/s03_neutral_reset_matched.py
+          /tmp/sr-s03-neutral/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("/tmp/shareready-s03-neutral-reset-runs")
+          entries=json.loads((root/"results.json").read_text(encoding="utf8"))["results"]
+          assert len(entries)==4,"wrong case count"
+          assert all(x["status"]=="REAL_UI_DOWNLOAD_COMPLETE_NEEDS_OUTPUT_REVIEW" for x in entries),[(x["tool"],x["task_id"],x["status"],x.get("error")) for x in entries]
+          for entry in entries:
+              assert all(x["changed_some_pixels"] for x in entry["region_analysis"]),entry
+              assert all(x["unchanged"] for x in entry["preservation_analysis"]),entry
+              if entry["tool"]=="Redaction Tools":
+                  assert entry["neutral_reset_clicks"]==len(entry["manual_drag_targets"])-1
+                  assert entry["mask_addition_trace"][-1]["manual_overlays"]==len(entry["manual_drag_targets"])
+          print("S03_FOUR_ACTUAL_COMPETITOR_EXPORTS_PASS_WITH_NEUTRAL_RESET; AUTOMATION_NOT_HUMAN_STUDY")
+          PY
+      - name: Upload four real competitor-produced binaries and fresh QA trace
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s03-matched-real-exports-with-neutral-reset
+          path: /tmp/shareready-s03-neutral-reset-runs/
+          retention-days: 30
+          if-no-files-found: error
