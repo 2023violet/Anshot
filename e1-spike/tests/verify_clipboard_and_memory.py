@@ -46,6 +46,27 @@ with sync_playwright() as pw:
                   "downloaded_png_bytes":(OUT/(mode+".png")).stat().st_size})
    print("E1_ACTUAL_CLIPBOARD_CONDITION",json.dumps(trials[-1]))
    ctx.close()
+  # Deterministic delayed Clipboard promise: changing fixture during write
+  # must never report the previous output as a confirmed new copy.
+  ctx=browser.new_context(accept_downloads=True)
+  p=ctx.new_page()
+  p.goto(f"http://127.0.0.1:{server.server_port}/e1-spike/web/index.html")
+  p.wait_for_function("window.e1Debug?.ready === true")
+  p.locator("#file").set_input_files(str(ROOT/"docs/research/fixtures/T04_EDGES.png"))
+  p.locator("#profile").select_option("T04_EDGES")
+  p.locator("#generate").click()
+  p.wait_for_function("!document.getElementById('copy').disabled")
+  p.evaluate("""() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+    write:()=>new Promise(resolve=>window.__finishDelayedCopy=resolve)
+  }})""")
+  p.locator("#copy").click()
+  p.wait_for_function("typeof window.__finishDelayedCopy==='function'")
+  p.locator("#profile").select_option("T01_CHAT")
+  p.evaluate("window.__finishDelayedCopy()")
+  p.wait_for_function("window.e1Debug.copiedStatus==='stale_during_copy'")
+  assert "changed" in p.locator("#status").inner_text().lower()
+  print("E1_BROWSER_CLIPBOARD_STALE_REVISION_NEGATIVE_PASS")
+  ctx.close()
  finally:
   browser.close()
   server.shutdown()
