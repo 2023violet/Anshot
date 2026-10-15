@@ -52,3 +52,11 @@ The initial local DNS blocker was resolved using an isolated GitHub Actions runn
 - Five synthetic screenshots and ground truth actually generated, not just specified: [fixture manifest](../research/fixtures/manifest.json), [CI run](https://github.com/2023violet/ShareReady/actions/runs/38679131718).
 - Product evidence: `A1=NOT_VERIFIED`, `recruited=0`, `competitor_hands_on=0`. Fixture visual inspection, original OS/version competitor task runs, user interviews and the final independent reviewer remain outstanding.
 - **No Rust product code, merge, deploy or release is approved.** PR remains Draft. The earlier text is preserved as a historical account, not current gate state.
+
+## Latest machine state and research limitations — 2026-10-14 PDT
+
+Real Skill [CI 38680774786](https://github.com/2023violet/ShareReady/actions/runs/38680774786) confirmed `A=valid/B=valid; S01 DONE; S02 DONE; S03 IN_PROGRESS`. Its machine-state [artifact 11948115660](https://github.com/2023violet/ShareReady/actions/runs/38680774786/artifacts/11948115660) has an expiration date, so future runs must verify the exact archive and underlying Git hashes. Later research-only commits have not altered the approved decision card or machine plan.
+
+Real online Chromium navigation and synthetic file import were proven in [CI 38680949676](https://github.com/2023violet/ShareReady/actions/runs/38680949676) and [CI 38681111604](https://github.com/2023violet/ShareReady/actions/runs/38681111604). Four real competitor PNG exports and scripted mask observations were saved by [CI 38681392251](https://github.com/2023violet/ShareReady/actions/runs/38681392251), with recheck in [CI 38681695615](https://github.com/2023violet/ShareReady/actions/runs/38681695615). [S03 report](../research/STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md) distinguishes actual file measurements, headless automation artifacts and unresolved manual-gesture behavior. **S03 remains IN_PROGRESS; no measured human usability or valid cross-product superiority claim.**
+
+Real participant interviews = 0; A1 remains OPEN. Rust product code, merging and release remain forbidden.
