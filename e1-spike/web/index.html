@@ -33,6 +33,13 @@ const masks={
  T04_EDGES:[15,12,950,90,1550,12,2394,90,8,1497,905,1595,1490,1497,2398,1595],
  T05_JPEG_EXIF:[78,539,627,588,78,612,675,664]
 };
+const expectedFixtureSha256={
+ T01_CHAT:"32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+ T02_ORDER:"2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+ T04_EDGES:"b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+ T05_JPEG_EXIF:"97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95"
+};
+const sha256=async input=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",input))).map(x=>x.toString(16).padStart(2,"0")).join("");
 let bytes=null,blob=null,sourceRevision=0,outputRevision=-1,activeURL=null;
 window.e1Debug={ready:false,renderMs:null,outputBytes:0,masks:0,copiedStatus:"not_attempted"};
 function status(t){$("status").textContent=t}
@@ -55,6 +62,9 @@ $("generate").addEventListener("click",async()=>{
  const v=sourceRevision;
  try{
   const input=new Uint8Array(await f.arrayBuffer());
+  if(await sha256(input)!==expectedFixtureSha256[$("profile").value]){
+   throw Error("This E1 test accepts only the exact approved synthetic fixture for the chosen scenario.");
+  }
   const t=performance.now();
   const result=redact_web(input,new Int32Array(masks[$("profile").value]));
   if(v!==sourceRevision)throw Error("input changed during processing");
