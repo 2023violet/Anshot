@@ -81,7 +81,7 @@ jobs:
           from pathlib import Path
           raw=Path("/tmp/e1-gate-a-preview.json").read_text(encoding="utf-8")
           response=json.loads(raw[raw.index("{"):])
-          Path("/tmp/e1-gate-a-preview.json").write_text(json.dumps(response,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+          Path("/tmp/e1-gate-a-preview.json").write_text(json.dumps(response,ensure_ascii=False,indent=2)+chr(10),encoding="utf-8")
           assert response.get("needs_confirmation") is True,response
           assert len(response.get("token",""))>=8,response
           assert response.get("preview"),response
