@@ -51,6 +51,7 @@ jobs:
           python3 -m venv /tmp/e2-quick
           /tmp/e2-quick/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
           /tmp/e2-quick/bin/python e2-workbench/tests/verify_e2_browser.py
+          /tmp/e2-quick/bin/python e2-workbench/tests/verify_e2_precision_browser.py
           echo "E2_ACCELERATED_BROWSER_VALIDATION_PASS"
       - name: Preserve real synthetic output and QA screenshots
         if: always()

@@ -57,13 +57,16 @@ function render(){
   const li=document.createElement("li");
   const button=document.createElement("button");
   button.type="button";button.className="region"+(r.id===selected?" active":"");
-  button.setAttribute("aria-label","选择区域 "+r.id);
+  button.setAttribute("aria-label","选择区域 "+r.id+"；方向键移动，Shift+方向键调整尺寸");
+  button.setAttribute("aria-keyshortcuts","ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown");
+  button.dataset.id=String(r.id);
   const sq=document.createElement("span");sq.className="square";
   const name=document.createElement("span");name.className="region-name";name.textContent="区域 "+String(r.id).padStart(2,"0");
   const size=document.createElement("span");size.className="region-size";
   size.textContent=Math.ceil(Math.abs(r.x1-r.x0))+" × "+Math.ceil(Math.abs(r.y1-r.y0));
   button.append(sq,name,size);
-  button.onclick=()=>{selected=r.id;setMode("select");render()};
+  button.onclick=()=>{selected=r.id;setMode("select");render();
+   document.querySelector('.region.active')?.focus({preventScroll:true});};
   li.append(button);$("regionList").append(li);
  }
  const layer=$("maskLayer");layer.replaceChildren();
@@ -71,6 +74,9 @@ function render(){
   const item=document.createElement("div");
   item.className="mask"+(r.id===selected?" selected":"");
   item.dataset.id=String(r.id);
+  item.tabIndex=0;
+  item.setAttribute("role","button");
+  item.setAttribute("aria-label","遮挡区域 "+r.id+"；方向键移动，Shift+方向键调整尺寸");
   const x=Math.min(r.x0,r.x1),y=Math.min(r.y0,r.y1);
   Object.assign(item.style,{
    left:x*zoom+"px",top:y*zoom+"px",
@@ -146,8 +152,11 @@ async function loadFile(file){
 const frame=$("frame"),viewport=$("viewport");
 function coordinates(e){
  const box=frame.getBoundingClientRect();
- return {x:Math.max(0,Math.min(sourceW,(e.clientX-box.left)/zoom)),
-         y:Math.max(0,Math.min(sourceH,(e.clientY-box.top)/zoom))};
+ // Use the actual rendered pixel scale, not merely app zoom: browser
+ // page zoom, DPR and ancestor CSS transforms may scale the frame too.
+ const sx=box.width/sourceW,sy=box.height/sourceH;
+ return {x:Math.max(0,Math.min(sourceW,(e.clientX-box.left)/sx)),
+         y:Math.max(0,Math.min(sourceH,(e.clientY-box.top)/sy))};
 }
 frame.addEventListener("pointerdown",e=>{
  if(stage!=="edit"||e.button!==0)return;
@@ -203,6 +212,36 @@ frame.addEventListener("pointercancel",()=>{
  if(pointer?.before)regions=JSON.parse(pointer.before);
  pointer=null;render();
 });
+function nudgeSelected(key,resize){
+ if(stage!=="edit"||selected===null)return false;
+ const r=regions.find(x=>x.id===selected);
+ if(!r)return false;
+ const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[key];
+ if(!delta)return false;
+ const [dx,dy]=delta,before=snapshot();
+ let left=Math.floor(Math.min(r.x0,r.x1)),top=Math.floor(Math.min(r.y0,r.y1));
+ let right=Math.ceil(Math.max(r.x0,r.x1)),bottom=Math.ceil(Math.max(r.y0,r.y1));
+ if(resize){
+  right=Math.max(left+1,Math.min(sourceW,right+dx));
+  bottom=Math.max(top+1,Math.min(sourceH,bottom+dy));
+ }else{
+  const w=right-left,h=bottom-top;
+  left=Math.max(0,Math.min(sourceW-w,left+dx));
+  top=Math.max(0,Math.min(sourceH-h,top+dy));
+  right=left+w;bottom=top+h;
+ }
+ r.x0=left;r.y0=top;r.x1=right;r.y1=bottom;
+ saveAction(before);
+ // Render creates fresh DOM nodes; keep keyboard focus on this region.
+ const activeID=selected;
+ queueMicrotask(()=>{
+  const focusNode=document.querySelector('.region[data-id="'+activeID+'"]')
+              ||document.querySelector('.mask[data-id="'+activeID+'"]');
+  focusNode?.focus({preventScroll:true});
+ });
+ status(resize?"已使用键盘调整遮挡尺寸":"已使用键盘移动遮挡区域");
+ return true;
+}
 function deleteSelected(){
  if(stage!=="edit"||selected===null)return;
  const before=snapshot();regions=regions.filter(r=>r.id!==selected);selected=null;saveAction(before);
@@ -297,6 +336,13 @@ document.addEventListener("keydown",e=>{
  if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();if(e.shiftKey)redoAction();else undoAction();return}
  if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redoAction();return}
  if(stage!=="edit")return;
+ const regionTarget=e.target.closest("#regionList .region, #maskLayer .mask");
+ if(regionTarget&&e.key.startsWith("Arrow")&&!e.ctrlKey&&!e.metaKey){
+  selected=Number(regionTarget.dataset.id);
+  e.preventDefault();
+  nudgeSelected(e.key,e.shiftKey);
+  return;
+ }
  if(k==="r")setMode("mask");
  if(k==="v")setMode("select");
  if(k==="h")setMode("pan");

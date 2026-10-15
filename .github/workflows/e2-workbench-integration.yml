@@ -63,6 +63,7 @@ jobs:
           /tmp/e2-env/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
           google-chrome --version
           /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_browser.py
+          /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_precision_browser.py
           test -s /tmp/e2-browser-evidence/e2-results.json
           echo "E2_REAL_CHROMIUM_ALL_ACCEPTANCE_CHECKS_PASS"
       - name: Preserve exact binary and Chromium output evidence
