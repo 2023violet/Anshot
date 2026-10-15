@@ -60,3 +60,41 @@ fn exif_gps_and_jpeg_to_new_png_without_private_metadata() {
         assert_eq!(*img.get_pixel(x,y),COVER);
     }
 }
+
+#[test]
+fn rejects_empty_or_ineffective_masks_without_exporting_source() {
+    let source = fixture("T01_CHAT.png");
+    // Every one of these used to return an apparently successful new PNG of the source.
+    let invalid: &[(&str, &[Region])] = &[
+        ("empty region list", &[]),
+        ("outside positive bounds", &[Region::new(1500, 1600, 2000, 2100)]),
+        ("outside negative bounds", &[Region::new(-2000, -1200, -1, -1)]),
+        ("zero horizontal extent", &[Region::new(200, 100, 200, 180)]),
+        ("zero vertical extent", &[Region::new(200, 100, 250, 100)]),
+        ("two outside masks", &[Region::new(1500, 1500, 1600, 1600),
+                                 Region::new(-10, -10, -1, -1)]),
+        ("overlap boundary only", &[Region::new(-10, -10, 0, 0)]),
+        ("extreme signed bounds outside", &[Region::new(i64::MAX, i64::MAX, i64::MAX - 1, i64::MAX - 1)]),
+    ];
+    for &(scenario, regions) in invalid {
+        let failure = redact(&source, regions).expect_err(scenario);
+        assert!(failure.contains("effective redaction"), "{scenario}: {failure}");
+    }
+}
+
+#[test]
+fn valid_pixel_amid_invalid_regions_still_masks_and_preserves_others() {
+    let source = fixture("T01_CHAT.png");
+    let original = decode_source(&source).unwrap();
+    let output = redact(&source, &[
+        Region::new(1500, 1500, 1550, 1580),
+        Region::new(14, 16, 13, 15), // reverse direction, exactly one pixel
+        Region::new(70, 70, 70, 90), // zero area must not count
+    ]).expect("a single truly effective pixel should be sufficient");
+    let result = image::load_from_memory_with_format(&output, ImageFormat::Png)
+        .unwrap().to_rgba8();
+    assert_eq!(*result.get_pixel(13, 15), COVER);
+    for &(x, y) in &[(12, 15), (14, 15), (13, 14), (13, 16), (320, 350)] {
+        assert_eq!(result.get_pixel(x, y), original.get_pixel(x, y), "unexpected mask at {x},{y}");
+    }
+}

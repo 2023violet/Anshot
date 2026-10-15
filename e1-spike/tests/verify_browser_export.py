@@ -35,6 +35,29 @@ with sync_playwright() as pw:
    with page.expect_download(timeout=20000) as ev:page.locator("#download").click()
    file=OUT/(name+"_wasm.png")
    ev.value.save_as(file)
+   if name=="T01_CHAT":
+    # Independent real WASM API check: never allow a zero-effective-area export.
+    no_effective=page.evaluate("""async () => {
+      const mod=await import('/e1-spike/web/pkg/shareready_e1.js');
+      const fixture=new Uint8Array(await document.getElementById('file').files[0].arrayBuffer());
+      const cases=[
+        {name:'empty',rects:[]},
+        {name:'far_outside',rects:[1400,1800,1900,2200]},
+        {name:'zero_width',rects:[180,150,180,210]},
+        {name:'zero_height',rects:[180,150,240,150]},
+        {name:'outside_negative',rects:[-500,-500,-1,-1]},
+      ];
+      return cases.map(({name,rects})=>{
+        try {
+          const output=mod.redact_web(fixture,new Int32Array(rects));
+          return {name,rejected:false,bytes:output?.byteLength??-1};
+        } catch (error) {
+          return {name,rejected:true,error:String(error)};
+        }
+      });
+    }""")
+    assert len(no_effective)==5 and all(x["rejected"] and "effective redaction" in x["error"] for x in no_effective),no_effective
+    print("E1_REAL_WASM_ZERO_EFFECTIVE_MASK_REJECTIONS_PASS",json.dumps(no_effective))
    assert not errors,errors
    with Image.open(file) as result, Image.open(FIX/spec["file"]) as original:
     assert result.format=="PNG"

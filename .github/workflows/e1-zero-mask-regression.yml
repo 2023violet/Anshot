@@ -1,0 +1,68 @@
+name: E1 fail-closed zero effective region regression
+
+on:
+  push:
+    branches: [spike/e1-rust-wasm-feasibility]
+    paths:
+      - .github/workflows/e1-zero-mask-regression.yml
+      - e1-spike/src/lib.rs
+      - e1-spike/tests/codec_security.rs
+      - e1-spike/tests/verify_browser_export.py
+
+permissions:
+  contents: read
+
+jobs:
+  core-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run pinned lockfile Rust core + negative regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = spike/e1-rust-wasm-feasibility
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          rustc --version
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline --test codec_security
+          echo "E1_NATIVE_FAIL_CLOSED_NEGATIVE_TESTS_PASS"
+
+  real-wasm-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build actual Rust WASM from current E1 head
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
+          mkdir -p e1-spike/web/pkg
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir e1-spike/web/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+      - name: Real Chromium positive exports plus five negative WASM API probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/e1-neg-venv
+          /tmp/e1-neg-venv/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
+          /tmp/e1-neg-venv/bin/python e1-spike/tests/verify_browser_export.py
+          /tmp/e1-neg-venv/bin/python e1-spike/tests/verify_clipboard_and_memory.py
+          echo "E1_REAL_WASM_AND_CLIPBOARD_REGRESSIONS_PASS"
+      - name: Preserve actual browser exports and rejection trace
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-zero-effective-mask-regression-browser-evidence
+          path: /tmp/e1-web-browser/
+          if-no-files-found: warn
+          retention-days: 30
