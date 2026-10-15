@@ -30,6 +30,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [S02 fixture visual QA](docs/research/STAGE01_S02_VISUAL_AND_MATRIX_QA.md) | Real generated image review, benchmark fixture constraints |
 | [S03 actual-browser pilot](docs/research/STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md) | Real third-party exported files, pixel comparisons and known automation limitations |
 | [S03 scripted observations CSV](docs/research/STAGE01_S03_SCRIPTED_TRIALS.csv) | Oracle-assisted Chrome trials, not human UX statistics |
+| [S03 repeated-mask event diagnostics](docs/research/STAGE01_S03_POINTER_ORDER_DIAGNOSTIC.md) | Real PNGs, operation-order comparison and unresolved T02 pointer lifecycle |
 | [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
 | [A1 problem evidence & counterevidence](docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md) | External user discussions, promotion bias, and falsification plan |
 | [Stage 01 independent readiness review](docs/reviews/STAGE01_READINESS_REVIEW_2026-10-14.md) | Verifiable exit status, blockers and quality corrections |
