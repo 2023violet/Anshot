@@ -1,0 +1,95 @@
+name: E1 real Rust WASM export and Clipboard experiments
+on:
+  push:
+    branches: [spike/e1-rust-wasm-feasibility]
+    paths: [.github/workflows/e1-wasm-real-browser.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-wasm-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Restore authentic E1 original Skill after core PASS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = spike/e1-rust-wasm-feasibility
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/skill
+          git -C /tmp/skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          mkdir /tmp/e1-core-state
+          gh run download 38751296127 --repo 2023violet/ShareReady --name e1-rust-core-tests-machine-proof --dir /tmp/e1-core-state
+          echo "ad0c7327d2b93b9503d323f729abd50c3e7d60b15a709773e0c23aef60073a4a  /tmp/e1-core-state/e1-core-after-skill.tgz" | sha256sum -c
+          tar -xzf /tmp/e1-core-state/e1-core-after-skill.tgz
+          cmp .decision/decision-card.md docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path(".decision/plan.json").read_text())
+          b=json.loads(Path("docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text())
+          assert [x["status"] for x in a["steps"]]==["done","done","done","todo","todo","todo"]
+          assert a["gates"]["A"] and a["gates"]["B"]
+          for x,y in zip(a["steps"],b["steps"]):
+              for k in ("id","title","verify_cmd","depends_on","done_when","tests_assumption"):
+                  assert x[k]==y[k],(x["id"],k)
+          print("REAL_E1_CORE_STATE_RESTORED_3_OF_6_DONE")
+          PY
+      - name: Build genuine Rust WASM with pinned wasm-bindgen CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustc -V
+          cargo -V
+          rustup target add wasm32-unknown-unknown
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
+          mkdir -p e1-spike/web/pkg
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir e1-spike/web/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+          test -s e1-spike/web/pkg/shareready_e1_bg.wasm
+          test -s e1-spike/web/pkg/shareready_e1.js
+          sha256sum e1-spike/web/pkg/shareready_e1_bg.wasm
+      - name: Install browser fixture verifier and run approved E1c E1d
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/e1-python
+          /tmp/e1-python/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
+          source /tmp/e1-python/bin/activate
+          google-chrome --version
+          python3 e1-spike/tests/verify_browser_export.py
+          python3 e1-spike/tests/verify_clipboard_and_memory.py
+          DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" step 4 --status in_progress --note "Actual Rust compiled to wasm32 and real local-Chrome synthetic PNG export"
+          python3 "$DE" step 4 --status done --timeout 240 --note "Four real browser PNG downloads independently checked against full RGBA frozen truth"
+          python3 "$DE" step 5 --status in_progress --note "Real headless Chrome Clipboard API allow/deny status and download fallback recorded"
+          python3 "$DE" step 5 --status done --timeout 240 --note "Clipboard readback/denial evidence and memory measurements preserved; unknown browsers remain caveated"
+          python3 "$DE" status
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path(".decision/plan.json").read_text())
+          assert [x["status"] for x in a["steps"]]==["done"]*5+["todo"]
+          assert all(s["evidence"] and s["evidence"][-1]["kind"]=="command" for s in a["steps"][:5])
+          print("REAL_SKILL_E1C_E1D_DONE_IN_BROWSER_E1E_TODO")
+          PY
+          tar -czf /tmp/e1-through-browser.tgz .decision
+          sha256sum /tmp/e1-through-browser.tgz
+      - name: Preserve WASM binary and measured synthetic evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-real-wasm-browser-and-clipboard-evidence
+          path: |
+            /tmp/e1-web-browser/
+            /tmp/e1-through-browser.tgz
+            e1-spike/web/pkg/
+          retention-days: 30
+          if-no-files-found: error
