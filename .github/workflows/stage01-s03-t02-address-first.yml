@@ -1,0 +1,85 @@
+name: S03 T02 reversed gesture order validation
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-t02-address-first.yml]
+permissions:
+  contents: read
+jobs:
+  t02-address-first:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Test actual browser UI with only fictional image
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/sr-t02
+          /tmp/sr-t02/bin/python -m pip install --disable-pip-version-check playwright==1.55.0 Pillow==12.3.0
+          /tmp/sr-t02/bin/python - <<'PY'
+          import json,re,time,hashlib
+          from pathlib import Path
+          from PIL import Image,ImageChops
+          from playwright.sync_api import sync_playwright
+          fixture=Path("docs/research/fixtures/T02_ORDER.png").resolve()
+          item=next(x for x in json.loads(Path("docs/research/fixtures/manifest.json").read_text())["fixtures"] if x["id"]=="T02_ORDER")
+          root=Path("/tmp/s03-t02-address-first")
+          root.mkdir(parents=True,exist_ok=True)
+          with sync_playwright() as p:
+              browser=p.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox","--disable-dev-shm-usage"])
+              context=browser.new_context(viewport={"width":1280,"height":900},locale="en-US",accept_downloads=True)
+              page=context.new_page()
+              page.goto("https://redactiontools.com/redact-screenshot",wait_until="domcontentloaded",timeout=45000)
+              page.locator("input[type=file]").first.set_input_files(str(fixture))
+              page.wait_for_timeout(4500)
+              canvas=page.locator("canvas").first
+              logs=[]
+              for target in ("address","recipient"):
+                  canvas.scroll_into_view_if_needed()
+                  bounds=canvas.bounding_box()
+                  assert bounds is not None
+                  region=next(r for r in item["sensitive_regions"] if r["id"]==target)
+                  x1,y1,x2,y2=region["rect_px"]
+                  sx=bounds["x"]+(x1+4)*bounds["width"]/item["width"]
+                  sy=bounds["y"]+(y1+4)*bounds["height"]/item["height"]
+                  ex=bounds["x"]+(x2-4)*bounds["width"]/item["width"]
+                  ey=bounds["y"]+(y2-4)*bounds["height"]/item["height"]
+                  page.mouse.move(sx,sy);page.mouse.down();page.mouse.move(ex,ey,steps=20);page.mouse.up()
+                  page.wait_for_timeout(800)
+                  body=page.locator("body").inner_text()
+                  count=re.search(r"\\b(\\d+) hidden\\b",body)
+                  logs.append({"target":target,"hidden_count":int(count.group(1)) if count else None,"bounds":bounds})
+              page.screenshot(path=str(root/"editor.jpg"),type="jpeg",quality=55)
+              with page.expect_download(timeout=15000) as ev:
+                  page.get_by_role("button",name="Download PNG",exact=True).click()
+              ev.value.save_as(root/"export.png")
+              browser_version=browser.version
+              context.close();browser.close()
+          with Image.open(fixture) as orig,Image.open(root/"export.png") as final:
+              src=orig.convert("RGB");dest=final.convert("RGB")
+              assert src.size==dest.size
+              sensitive=[]
+              for r in item["sensitive_regions"]:
+                  a,b,c,d=r["rect_px"];xy=((a+c)//2,(b+d)//2)
+                  sensitive.append({"id":r["id"],"center_changed":src.getpixel(xy)!=dest.getpixel(xy),"rgb":dest.getpixel(xy)})
+              keep=[]
+              for r in item["must_preserve_regions"]:
+                  a,b,c,d=r["rect_px"]
+                  keep.append({"id":r["id"],"unchanged":ImageChops.difference(src.crop((a,b,c,d)),dest.crop((a,b,c,d))).getbbox() is None})
+              record={"browser_version":browser_version,"input_sha256":hashlib.sha256(fixture.read_bytes()).hexdigest(),
+                      "output_sha256":hashlib.sha256((root/"export.png").read_bytes()).hexdigest(),
+                      "sequence":logs,"sensitive":sensitive,"preserved":keep,
+                      "all_target_centers_changed":all(x["center_changed"] for x in sensitive),
+                      "all_preserve_unchanged":all(x["unchanged"] for x in keep),
+                      "status":"COMPLETED_SCRIPTED_EXPORT_OR_INCOMPLETE_MASKS"}
+              print("S03_T02_REVERSED_ORDER_RESULT",json.dumps(record))
+              (root/"result.json").write_text(json.dumps(record,indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s03-t02-address-first-real-output
+          path: /tmp/s03-t02-address-first/
+          if-no-files-found: error
+          retention-days: 30
