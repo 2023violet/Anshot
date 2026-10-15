@@ -311,13 +311,17 @@ async function enterReview(){
   $("copy").disabled=false;$("download").disabled=false;
   $("review").classList.add("visible");
   stage="review";status("当前图片是 Rust 新编码的 PNG，已完成独立解码复核。");
+  document.querySelector(".app").inert=true;
+  $("back").focus({preventScroll:true});
  }catch(e){
   stage="edit";status("生成失败，拒绝导出原图："+String(e?.message||e));
  }finally{render()}
 }
 function back(){
  if(stage!=="review")return;
- $("review").classList.remove("visible");stage="edit";render();
+ $("review").classList.remove("visible");stage="edit";
+ document.querySelector(".app").inert=false;
+ render();$("check").focus({preventScroll:true});
 }
 function download(){
  if(stage!=="review"||!output||output.revision!==revision){
@@ -331,12 +335,30 @@ async function copy(){
  if(stage!=="review"||!output||output.revision!==revision){
   status("输出已过期，请重新检查");return;
  }
+ const source=output,atRevision=revision,atLoad=loadTicket;
+ const stale=()=>stage!=="review"||output!==source||revision!==atRevision||
+                  loadTicket!==atLoad||source.revision!==revision;
+ $("copy").disabled=true;
  try{
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error("不支持 PNG Clipboard API");
-  await navigator.clipboard.write([new ClipboardItem({"image/png":output.blob})]);
-  status("PNG 已写入剪贴板；实际粘贴回读尚未验证。");
+  await navigator.clipboard.write([new ClipboardItem({"image/png":source.blob})]);
+  if(stale()){
+   copyState="stale_during_copy";
+   status("复制过程中图片或复核状态已变化；旧复制结果不可作为当前成品。请重新生成。");
+   return;
+  }
+  copyState="write_succeeded_readback_unverified";
+  status("PNG 写入剪贴板成功；尚未验证实际粘贴回读。");
  }catch(e){
+  if(stale()){
+   copyState="stale_during_copy";
+   status("复制过程中图片或复核状态已变化；请重新生成，不可使用旧复制结果。");
+   return;
+  }
+  copyState="denied_or_unavailable";
   status("复制失败："+String(e?.message||e)+"。请下载 PNG。");
+ }finally{
+  if(!stale())$("copy").disabled=false;
  }
 }
 for(const b of document.querySelectorAll("[data-tool]"))b.onclick=()=>setMode(b.dataset.tool);
