@@ -143,7 +143,17 @@ pub fn decode_source(input: &[u8]) -> Result<RgbaImage, String> {
 }
 
 pub fn redact(input: &[u8], regions: &[Region]) -> Result<Vec<u8>, String> {
+    // The export boundary must never produce a valid-looking PNG of an unmasked
+    // source. Reject zero effective coverage even if a caller supplied rectangles
+    // that normalize to zero area or lie completely outside the decoded image.
+    if regions.is_empty() {
+        return Err("no effective redaction region; refusing unmasked PNG export".into());
+    }
     let mut img = decode_source(input)?;
+    let (width, height) = img.dimensions();
+    if !regions.iter().any(|region| region.clipped(width, height).is_some()) {
+        return Err("no effective redaction region; refusing unmasked PNG export".into());
+    }
     paint_rgba(&mut img, regions);
     let dimensions = img.dimensions();
     let mut out = Cursor::new(Vec::<u8>::new());
