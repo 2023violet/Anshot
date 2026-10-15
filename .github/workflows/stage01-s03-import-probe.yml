@@ -1,0 +1,40 @@
+name: Stage 01 S03 actual competitor screenshot import reconnaissance
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-import-probe.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  import-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Checkout only synthetic research fixtures
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Use isolated Playwright and installed Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          google-chrome --version
+          python3 -m venv /tmp/sr-s03-import
+          /tmp/sr-s03-import/bin/python -m pip install --disable-pip-version-check playwright==1.55.0
+      - name: Provide synthetic T01 and T02 to real competitor interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/sr-s03-import/bin/python docs/research/s03_import_probe.py
+          test -s /tmp/share-ready-s03-import/import_probe_results.json
+      - name: Save actual browser UI snapshots and traceable results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s03-actual-import-ui-probe
+          path: /tmp/share-ready-s03-import/
+          if-no-files-found: error
+          retention-days: 30
