@@ -64,6 +64,7 @@ jobs:
           set -euo pipefail
           cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
           cargo test --manifest-path e1-spike/Cargo.toml --locked --offline --test codec_security
+          # Recheck T05 preserve-region pixels with the exact same Rust JPEG decoder.
           cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release
           test -x e1-spike/target/release/shareready-e1
           python3 - <<'PY'
