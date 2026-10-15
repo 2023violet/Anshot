@@ -2,7 +2,11 @@ name: E1 real Rust WASM export and Clipboard experiments
 on:
   push:
     branches: [spike/e1-rust-wasm-feasibility]
-    paths: [.github/workflows/e1-wasm-real-browser.yml]
+    paths:
+      - .github/workflows/e1-wasm-real-browser.yml
+      - e1-spike/src/lib.rs
+      - e1-spike/tests/verify_browser_export.py
+      - e1-spike/tests/verify_clipboard_and_memory.py
 permissions:
   contents: read
   actions: read
@@ -26,10 +30,10 @@ jobs:
           git -C /tmp/skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
           test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
           mkdir /tmp/e1-core-state
-          gh run download 38753092482 --repo 2023violet/ShareReady --name e1-rust-core-tests-machine-proof --dir /tmp/e1-core-state
+          gh run download 38758066676 --repo 2023violet/ShareReady --name e1-rust-core-tests-machine-proof --dir /tmp/e1-core-state
           STATE="$(find /tmp/e1-core-state -type f -name e1-core-after-skill.tgz -print -quit)"
           test -n "$STATE"
-          echo "f43de154495e4f498a102ea887797c0bcb48a62f605151690632375aa79931e0  $STATE" | sha256sum -c
+          echo "35ac253a6922e186adc6ed79aebcba6990c132582da5196a7b12a61378a30da6  $STATE" | sha256sum -c
           tar -xzf "$STATE"
           cmp .decision/decision-card.md docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md
           python3 - <<'PY'
