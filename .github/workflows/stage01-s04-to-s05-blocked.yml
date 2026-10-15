@@ -65,7 +65,7 @@ jobs:
           test -s docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md
           test -s docs/research/STAGE01_S04_REVIEW_AND_RECRUITMENT_FEASIBILITY_2026-10-15.md
 
-      - name: Use original state machine: S04 document task DONE, S05a recruitment BLOCKED
+      - name: Use original state machine to accept S04 and block S05
         shell: bash
         run: |
           set -euo pipefail
