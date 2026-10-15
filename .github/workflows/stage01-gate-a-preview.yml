@@ -1,0 +1,70 @@
+name: Stage 01 Gate A preview (no confirmation)
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-gate-a-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-a-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout ShareReady without persistence of credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Obtain owner-authored pinned skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-pinned-skill
+          git -C /tmp/shareready-pinned-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-pinned-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          git rev-parse HEAD
+          python3 --version
+
+      - name: Initialize ephemeral workspace and check approved candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          test -f "$SKILL"
+          test -f docs/decisions/STAGE01_GATE_A_CARD_READY.md
+          python3 "$SKILL" init --name shareready-stage01 --risk standard
+          cp docs/decisions/STAGE01_GATE_A_CARD_READY.md .decision/decision-card.md
+          python3 "$SKILL" check card
+          python3 "$SKILL" status
+
+      - name: Show actual Gate A preview; NEVER confirm
+        shell: bash
+        run: |
+          set -uo pipefail
+          SKILL=/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$SKILL" gate A
+          result=$?
+          set -e
+          echo "GATE_A_PREVIEW_EXIT_CODE=$result"
+          if [ "$result" -eq 3 ]; then
+            echo "Gate A preview requires independent user approval. No confirmation performed."
+            exit 0
+          fi
+          echo "Unexpected exit code; inspect above output. No confirmation performed."
+          exit 1
+
+      - name: Confirm no tracked code modifications
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          git diff --cached --exit-code
+          echo "No tracked files changed by the ephemeral gate preview."
