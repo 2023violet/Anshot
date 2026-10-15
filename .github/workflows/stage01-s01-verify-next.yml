@@ -1,0 +1,133 @@
+name: Stage 01 S01 research assessment verification
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-s01-verify-next.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  s01-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout approved research branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Lock decision, plan and skill, restore real Gate B state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-skill
+          git -C /tmp/shareready-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          mkdir -p /tmp/previous-stage
+          gh run download 38676996877 --repo 2023violet/ShareReady --name shareready-stage01-gate-b-pass-s01-in-progress --dir /tmp/previous-stage
+          ARCHIVE="$(find /tmp/previous-stage -maxdepth 1 -name '*.tgz' -type f)"
+          test -n "$ARCHIVE"
+          echo "73a87105151ffdd49ab22fe6cb7075d8c4584c1a354047a61f94939ce41de232  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C .
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          approval=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf8"))
+          assert len(plan["steps"])==9
+          for field in ["name","risk","schema","milestones","first_step","if_then","early_signals"]:
+              assert plan[field]==approval[field], "APPROVED_PLAN_DRIFT "+field
+          for live,baseline in zip(plan["steps"],approval["steps"]):
+              for field in ["id","title","done_when","verify","verify_cmd","depends_on","covers","tests_assumption","irreversible","estimate_h"]:
+                  assert live[field]==baseline[field], "STEP_STRUCTURE_DRIFT "+str(live["id"])+field
+          assert plan["gates"].get("A") and plan["gates"].get("B")
+          assert plan["steps"][0]["status"]=="in_progress"
+          assert all(x["status"]=="todo" for x in plan["steps"][1:])
+          print("PREVIOUS_REAL_MACHINE_STATE_RESTORED; GATES_VALID_BY_STRUCTURE; PLAN_UNCHANGED")
+          PY
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" check card
+          python3 "$SKILL" check plan
+          python3 "$SKILL" status
+
+      - name: Check S01 source trace and recruitment readiness classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("docs/research/STAGE01_S01_EVIDENCE_RECORD_2026-10-14.md")
+          doc=p.read_text(encoding="utf8")
+          for must in [
+              "reddit.com/r/Compliance/comments/1vllp2y",
+              "reddit.com/r/software/comments/1uvxk82",
+              "reddit.com/r/postcrossing/comments/1wgcjuo",
+              "reddit.com/r/software/comments/1vjz8xx",
+              "reddit.com/r/SideProject/comments/1vmc8wz",
+              "https://www.prolific.com/how-it-works",
+              "https://www.userinterviews.com/recruit",
+              "RECRUITMENT_PATH_CONDITIONAL",
+              "recruited=0; consented=0; user_sessions=0",
+              "A1=OPEN",
+              "原执行 Agent 自审"
+          ]:
+              assert must in doc, "MISSING_AUDIT_FIELD: "+must
+          print("S01_AUDIT_STRUCTURE_PASS: source attribution, promotion exclusions, recruitment-channel caveats, missingness")
+          print("S01_SUBSTANTIVE_LIMIT: citations are externally reviewed; file checks are not real participant interviews.")
+          PY
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" preflight
+
+      - name: Finish S01 evidence-assessment task only; open dependent S02
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" step 1 --status done --note "Completed desktop-source/recruitment-feasibility assessment; two dated independently authored problem expressions, promotion excluded; recruitment operationally conditional, n=0, A1 remains OPEN"
+          python3 "$SKILL" status
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert plan["steps"][0]["status"]=="done"
+          assert any(e["kind"]=="command" for e in plan["steps"][0]["evidence"])
+          assert all(s["status"]=="todo" for s in plan["steps"][1:])
+          print("S01_MINIMUM_ASSESSMENT_DONE; NO_HUMAN_STUDY_MEASURED")
+          PY
+          python3 "$SKILL" step 2 --status in_progress --note "S02 synthetic fixtures and competitor matrix only, no product app implementation, no user claims"
+          python3 "$SKILL" status
+          python3 "$SKILL" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert plan["steps"][0]["status"]=="done" and plan["steps"][1]["status"]=="in_progress"
+          assert all(s["status"]=="todo" for s in plan["steps"][2:])
+          print("GATES_A_B_VALID; S01_DONE_S02_IN_PROGRESS; N_USERS=0; A1_OPEN; NO_RUST_PRODUCT_CODE")
+          PY
+          git diff --exit-code && git diff --cached --exit-code
+
+      - name: Archive actual Skill state after S01
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/shareready-stage01-s01-done-s02-in-progress.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-s01-done-s02-in-progress.tgz
+
+      - name: Upload auditable machine-state archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-s01-done-s02-in-progress
+          path: /tmp/shareready-stage01-s01-done-s02-in-progress.tgz
+          if-no-files-found: error
+          retention-days: 30
