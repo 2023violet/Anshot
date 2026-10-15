@@ -1,0 +1,143 @@
+name: Stage 01 Gate B approved confirmation and S01 research start
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-gate-b-confirm-s01.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  gate-b-and-s01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated research branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Lock card plan and Skill provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-skill
+          git -C /tmp/shareready-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          echo "PINNED_SKILL_AND_GIT_BLOBS_MATCH"
+
+      - name: Resume actual machine-state artifact from previous Gate A confirmation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/shareready-prior
+          gh run download 38676305998 --repo 2023violet/ShareReady --name shareready-stage01-gate-a-confirmed-b-preview --dir /tmp/shareready-prior
+          test "$(find /tmp/shareready-prior -name '*.tgz' -type f | wc -l)" = 1
+          ARCHIVE="$(find /tmp/shareready-prior -name '*.tgz' -type f)"
+          printf '%s  %s\n' "dcc64a9e83f3ef9e06acbc00947bd0b23ba19a88382ed601135a562b01896e5d" "$ARCHIVE" | sha256sum --check
+          tar -tzf "$ARCHIVE"
+          tar -xzf "$ARCHIVE" -C .
+          test -s .decision/decision-card.md
+          test -s .decision/plan.json
+          echo "ACTUAL_PRIOR_GATE_A_STATE_RESTORED_AND_ARCHIVE_SHA256_VERIFIED"
+
+      - name: Verify unchanged plan and actual Gate B preview prior to authorized confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" check card
+          python3 "$SKILL" check plan
+          python3 "$SKILL" status
+          python3 "$SKILL" preflight
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          approved=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf-8"))
+          actual=json.loads(Path(".decision/plan.json").read_text(encoding="utf-8"))
+          assert actual["gates"].get("A") is not None
+          assert actual["gates"].get("B") is None
+          for key in ("risk","schema","name","milestones","steps","if_then","early_signals","first_step"):
+              assert actual[key]==approved[key], "APPROVED_PLAN_CHANGED: "+key
+          assert len(actual["steps"])==9 and all(s["status"]=="todo" for s in actual["steps"])
+          expected={
+              1:"test -s docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md",
+              2:"test -s docs/research/COMPETITOR_EVIDENCE_MATRIX.csv && test -s docs/research/fixtures/manifest.json",
+              4:"test -s docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md",
+              7:"test -s docs/product/STAGE01_PRD_REVIEW.md",
+              8:"test -s docs/architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md"
+          }
+          for step in actual["steps"]:
+              assert step["verify_cmd"]==expected.get(step["id"], ""), "VERIFY_CMD_CHANGED"
+              assert step["irreversible"] is False
+          skill="/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py"
+          p=subprocess.run(["python3",skill,"gate","B"],text=True,capture_output=True)
+          assert p.returncode==3, "Expected Gate B confirmation-required exit 3"
+          d=json.loads(p.stdout)
+          assert d.get("needs_confirmation") is True and d.get("token")=="db634f2e49", "OWNER_TOKEN_MISMATCH"
+          preview=d["preview"]
+          assert preview["risk"]=="standard" and preview["first_step"]==1
+          assert len(preview["steps"])==9 and preview["warnings"]==[]
+          print("AUTHORIZED_GATE_B_TOKEN_MATCH=true; full candidate plan+verify commands verified")
+          print(json.dumps(preview,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Execute explicitly authorized Gate B confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" gate B --confirm db634f2e49
+          python3 - <<'PY'
+          import json,subprocess
+          f="/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py"
+          d=json.loads(subprocess.check_output(["python3",f,"status"],text=True))
+          assert d["gates"]=={"A":"valid","B":"valid"} and d["stage"]=="execute"
+          print("REAL_GATE_B_CONFIRMATION_PASS; A=valid; B=valid")
+          PY
+
+      - name: Start S01 evidence-first without falsely claiming user validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          test -s docs/research/STAGE01_S01_EVIDENCE_RECORD_2026-10-14.md
+          python3 "$SKILL" step 1 --status in_progress --note "Verified desk source records; recruitment feasibility remains NOT_VERIFIED and 0 real consent sessions"
+          python3 "$SKILL" verify 1
+          python3 "$SKILL" status
+          python3 "$SKILL" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text(encoding="utf-8"))
+          assert p["gates"].get("A") and p["gates"].get("B")
+          assert p["steps"][0]["status"]=="in_progress"
+          assert all(s["status"]=="todo" for s in p["steps"][1:])
+          print("S01_STARTED_NOT_COMPLETED; PARTICIPANTS_RECRUITED=0; NO_RUST_PRODUCT_CODE")
+          PY
+          git diff --exit-code
+          git diff --cached --exit-code
+
+      - name: Preserve real machine-state evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/shareready-stage01-gate-b-pass-s01-in-progress.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-gate-b-pass-s01-in-progress.tgz
+
+      - name: Upload gate and S01 state archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-gate-b-pass-s01-in-progress
+          path: /tmp/shareready-stage01-gate-b-pass-s01-in-progress.tgz
+          if-no-files-found: error
+          retention-days: 30
