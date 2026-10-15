@@ -81,7 +81,9 @@ A3（实现层）：浏览器 Rust/WASM 可满足剪贴板、输入安全限制�
 ## 6. 实测记录格式
 
 每次会话最少：
-`participant_id,consent,session_date,tool,tool_version,os,browser,browser_version,task_id,order_index,prior_experience,completed,duration_s,action_count,required_regions,missed_regions,unnecessary_redactions,export_pixel_pass,metadata_pass,confidence_1to5,observed_issue,evidence_ref`
+`participant_id,consent_ok,session_date,tool,tool_version,os,browser,browser_version,task_id,order_index,prior_experience,completed,duration_s,action_count,required_regions,missed_regions,over_redacted_regions,export_pixel_pass,metadata_pass,confidence_1to5,observed_issue,evidence_ref`
+
+以上字段以 [COMPETITOR_TEST_CONTRACT](COMPETITOR_TEST_CONTRACT.md) 中的 CSV 表头为唯一权威（修订前不得另建别名）。
 
 隐私原则：访谈身份对应表与原始录音不入公开仓库；所有公开证据为非识别性汇总。与 [COMPETITOR_TEST_CONTRACT](COMPETITOR_TEST_CONTRACT.md) 不一致的字段，在正式 Gate B 前协调，不修改既有结果定义来改善数据。
 

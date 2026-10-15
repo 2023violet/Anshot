@@ -48,7 +48,13 @@
 - [Leptos CSR deployment](https://book.leptos.dev/deployment/csr.html) 描述 Trunk 生成静态 dist 后可静态部署；这**不等于**首屏性能、浏览器输入与隐私安全已经达标。
 - [Leptos CSR getting started](https://book.leptos.dev/getting_started/index.html) 明确首屏 JS/WASM 载入和 SEO 的权衡。
 
-## D. 研究空白（必须通过执行取证）
+## D. 2026-10-14 补充核实的外部约束
+
+- [Redaction Tools](https://redactiontools.com/redact-screenshot) 还建议聊天截图采用其 **chat anonymizer**，能够为聊天参与者使用一致的替代标签。**因此“对聊天截图特别友好”也不能自动视为差异点**，应先将聊天类工具纳入任务对照。
+- [MDN Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API) 明确跨浏览器存在用户激活、权限及弹窗行为差异，尤其 Safari/Firefox 与 Chromium 不同；不得把“浏览器支持 Clipboard.write”推导为每个平台都能自动复制。
+- [MDN Clipboard.write](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/write) 只在安全上下文提供，并在权限不允许时拒绝；产品必须保持文件下载回退路径。
+
+## E. 研究空白（必须通过执行取证）
 
 1. 真实用户在过去 30 天中**自己**遇到多少次分享前隐私处理任务，是否在传统聊天/收据/论坛技术求助中反复发生。
 2. 竞品在同一套合成截图上表现如何；是否能在实际结果里观察到遗漏或过度遮挡。

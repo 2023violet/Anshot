@@ -93,4 +93,6 @@
 
 以上只是研究设计。只有 Gate A/B 的真实执行授权得到满足后，才开始实际会话。
 
+实测字段命名以 [竞品测试合同](COMPETITOR_TEST_CONTRACT.md) 的 CSV 表头为准；不得另用 `actions`、`unnecessary_redactions` 或 `consent` 作为同义列名，以免无法审计和复算。
+
 **状态：PROTOCOL_DRAFT_COMPLETE / RECRUITED_0 / OBSERVED_0。**

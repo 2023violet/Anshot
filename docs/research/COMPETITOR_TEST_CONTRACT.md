@@ -63,6 +63,8 @@ Fixture artifacts must have explicit synthetic origins and license provenance. N
 
 ## Record template (CSV header, not measured data)
 
-`participant_id,consent_ok,session_date,task_id,tool,tool_version,os,browser,browser_version,order_index,completed,duration_s,actions,missed_regions,unnecessary_redactions,export_pixel_pass,metadata_pass,confidence_1to5,notes,evidence_ref`
+`participant_id,consent_ok,session_date,tool,tool_version,os,browser,browser_version,task_id,order_index,prior_experience,completed,duration_s,action_count,required_regions,missed_regions,over_redacted_regions,export_pixel_pass,metadata_pass,confidence_1to5,observed_issue,evidence_ref`
+
+**Schema decision:** The record header above is the canonical Stage 01 field list; use the same spellings across all study documents. Each record needs a participant-task-tool identity, not real personal identifiers.
 
 **Gate state:** `NO_TEST_RUN`. Do not advance based on this protocol alone.
