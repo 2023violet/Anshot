@@ -67,6 +67,27 @@ with sync_playwright() as pw:
   assert "changed" in p.locator("#status").inner_text().lower()
   print("E1_BROWSER_CLIPBOARD_STALE_REVISION_NEGATIVE_PASS")
   ctx.close()
+  # Clipboard readback mismatch must be a visible FAILURE, never a soft
+  # "write succeeded, paste-back unverified" message.
+  ctx=browser.new_context(accept_downloads=True)
+  p=ctx.new_page()
+  p.goto(f"http://127.0.0.1:{server.server_port}/e1-spike/web/index.html")
+  p.wait_for_function("window.e1Debug?.ready === true")
+  p.locator("#file").set_input_files(str(ROOT/"docs/research/fixtures/T04_EDGES.png"))
+  p.locator("#profile").select_option("T04_EDGES")
+  p.locator("#generate").click()
+  p.wait_for_function("!document.getElementById('copy').disabled")
+  p.evaluate("""() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+    write:async()=>{},
+    read:async()=>[{types:['image/png'],
+      getType:async()=>new Blob([new Uint8Array([1,2,3,4])],{type:'image/png'})}]
+  }})""")
+  p.locator("#copy").click()
+  p.wait_for_function("window.e1Debug.copiedStatus==='write_but_readback_mismatch'")
+  message=p.locator("#status").inner_text()
+  assert "NOT verified" in message and "Do not paste" in message, message
+  print("E1_BROWSER_CLIPBOARD_MISMATCH_FAIL_VISIBLE_NEGATIVE_PASS")
+  ctx.close()
  finally:
   browser.close()
   server.shutdown()
