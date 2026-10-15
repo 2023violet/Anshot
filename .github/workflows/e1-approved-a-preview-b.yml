@@ -1,0 +1,97 @@
+name: E1 approved A and unconfirmed B preview
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/e1-approved-a-preview-b.yml]
+permissions:
+  contents: read
+jobs:
+  gate-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check unchanged stage and approved preview sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = e542ef0745a60a3f439979fe45df92cf059b37c6
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc
+          test "$(git hash-object docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md)" = d4687fed6a58bf17ac2505c5bfb599d2ab5f205d
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+      - name: Reconstitute independent E1 workspace on pinned author Skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/skill
+          git -C /tmp/skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -q 'version: "4.1.0"' /tmp/skill/skills/deciding-and-executing/SKILL.md
+          mkdir /tmp/e1
+          cd /tmp/e1
+          git init -q
+          git -c user.name=Preview -c user.email=preview@example.invalid commit --allow-empty -qm 'initial E1 gate anchor'
+          DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" init --name 'ShareReady E1' --risk high
+          cp "$GITHUB_WORKSPACE/docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md" .decision/decision-card.md
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(".decision/plan.json")
+          x=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text())
+          x["last_event"]=sum(1 for line in Path(".decision/events.jsonl").open())
+          p.write_text(json.dumps(x,ensure_ascii=False,indent=2)+"\n")
+          PY
+          python3 "$DE" check card
+          python3 "$DE" check plan
+          python3 "$DE" preflight
+      - name: Confirm previously displayed A and produce new B human preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/e1
+          DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$DE" gate A > /tmp/a.txt 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          t=Path("/tmp/a.txt").read_text()
+          j=json.loads(t[t.index("{"):])
+          assert j["needs_confirmation"] and j["token"]=="536170c3e7"
+          print("ORIGINAL_A_PREVIEW_TOKEN_REVALIDATED")
+          PY
+          python3 "$DE" gate A --confirm 536170c3e7
+          python3 "$DE" check plan
+          set +e
+          python3 "$DE" gate B > /tmp/b.txt 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          s=Path("/tmp/b.txt").read_text()
+          j=json.loads(s[s.index("{"):])
+          assert j["needs_confirmation"] and j["token"] and j["preview"]
+          p=json.loads(Path(".decision/plan.json").read_text())
+          assert "A" in p["gates"] and "B" not in p["gates"]
+          Path("/tmp/e1-B-preview.json").write_text(json.dumps(j,ensure_ascii=False,indent=2)+"\n")
+          print("E1_GATE_B_PREVIEW_TOKEN",j["token"])
+          print("B_NOT_CONFIRMED_AND_NO_RUST_SOURCE_WRITTEN")
+          PY
+          python3 "$DE" status
+          tar -czf /tmp/e1-A-confirmed-B-pending.tgz .decision
+          sha256sum /tmp/e1-A-confirmed-B-pending.tgz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-confirmed-a-preview-b-human-approval-required
+          path: |
+            /tmp/e1-B-preview.json
+            /tmp/e1-A-confirmed-B-pending.tgz
+          retention-days: 30
