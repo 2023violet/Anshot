@@ -66,3 +66,14 @@ Real participant interviews = 0; A1 remains OPEN. Rust product code, merging and
 The actual pinned author Skill was restored and run in [CI 38689148605](https://github.com/2023violet/ShareReady/actions/runs/38689148605). Immutable Gate A/B approval provenance was rechecked, actual PNG binaries were reread against frozen synthetic source image hashes and the S03 research report was added as a hashed artifact. **S01–S03 = DONE; S04 = IN_PROGRESS; S05a onward TODO.** [Machine-state artifact #11951211324](https://github.com/2023violet/ShareReady/actions/runs/38689148605/artifacts/11951211324), ZIP SHA256 `23a2d6822e37459922b455da4aaec3c632914fb23af4d548a6724f42bdbd5a82`, expires 2026-11-14 UTC.
 
 [SR-RES-008](../research/STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md) is the corrected actual third-party export baseline. [S04 protocol](../research/STAGE01_S04_RESEARCH_PROTOCOL.md) and [consent](../research/STAGE01_S04_CONSENT_AND_SCREENERS.md) are drafts awaiting external review, not proof of recruitment. Participants contacted/recruited/consented/interviewed = **0**. A1 still OPEN. No Rust product implementation, merge, deploy or release.
+
+## 2026-10-15 S04 document gate
+
+The actual pinned deciding-and-executing Skill, previously approved Gate A/B fingerprint and authentic S03-success work state were restored through [CI 38691138148](https://github.com/2023violet/ShareReady/actions/runs/38691138148).
+
+- **Task states now verified:** S01–S04 DONE; S05a BLOCKED; S05b and later steps TODO.
+- S04 was documentation and protocol preparation, **not** human study / external ethics approval. The original plan verify_cmd checks file existence; a separate research validator reviews the 10 UNASSIGNED study slots, 15-item risks, zero participant count and explicitly disallows real recruiting. It includes negative tests rejecting invented subjects and a false authorization flag.
+- Genuine machine artifact: [#11951429992](https://github.com/2023violet/ShareReady/actions/runs/38691138148/artifacts/11951429992); GitHub ZIP digest sha256:7df88933d924dbfec52313e722751bb40e5706749b761301bfdf43ea7f3364b2; expiry 2026-11-14 UTC. Internal tarball SHA256 c0ae4e2ac2872856a1505b55cd3d6ecf18765e88e4de50d3ce9555cccfec0800.
+- [S04 adversarial review](../research/STAGE01_S04_REVIEW_AND_RECRUITMENT_FEASIBILITY_2026-10-15.md), [readiness JSON](../research/STAGE01_S04_READINESS.json) and [S05 operator handoff](../research/STAGE01_S05_RECRUITMENT_OPERATIONS_HANDOFF.md) explicitly state that external human ethics/privacy review, real study ownership, secure contact/storage, applicable jurisdiction and budget/access remain missing.
+- [Issue #6](https://github.com/2023violet/ShareReady/issues/6) tracks ethical review; [Issue #7](https://github.com/2023violet/ShareReady/issues/7) tracks true real-participant blocking prerequisites.
+- Participants 0, consent 0, user interviews 0, paid costs 0, A1 OPEN. No application Rust code, merges or release.
