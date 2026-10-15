@@ -1,0 +1,143 @@
+name: Stage 01 S03 evidence acceptance and S04 research ethics start
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-s03-to-s04.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  s03-accepted-s04-start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout currently reviewed research branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Restore original Skill machine state with unchanged approvals
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/sr-pinned-skill
+          git -C /tmp/sr-pinned-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/sr-pinned-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          mkdir -p /tmp/previous-state
+          gh run download 38680774786 --repo 2023violet/ShareReady --name shareready-stage01-s02-done-s03-in-progress --dir /tmp/previous-state
+          ARCHIVE="$(find /tmp/previous-state -maxdepth 1 -name '*.tgz' -type f)"
+          test -n "$ARCHIVE"
+          echo "305a06c56ad9b22d9187892a149da059573cc097273d9babe2f0357d579fea70  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C .
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          approved=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf8"))
+          assert d["gates"].get("A") and d["gates"].get("B")
+          for field in ["name","risk","schema","milestones","first_step","if_then","early_signals"]:
+              assert d[field]==approved[field], "GATE_DRIFT "+field
+          assert len(d["steps"])==len(approved["steps"])==9
+          for s,a in zip(d["steps"],approved["steps"]):
+              for field in ["id","title","done_when","verify","verify_cmd","depends_on","covers","tests_assumption","irreversible","estimate_h"]:
+                  assert s[field]==a[field], "PLAN_DRIFT "+str(s["id"])+field
+          assert [s["status"] for s in d["steps"]]==["done","done","in_progress"]+["todo"]*6
+          print("GATE_A_B_MACHINE_STATE_VALID_UNCHANGED; S03_IS_CURRENT")
+          PY
+          SKILL=/tmp/sr-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" check card
+          python3 "$SKILL" check plan
+          python3 "$SKILL" status
+
+      - name: Independently reread actual four PNGs against frozen research ground truth
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/sr-s03-verify
+          /tmp/sr-s03-verify/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0
+          mkdir -p /tmp/s03-verified-exports
+          gh run download 38688552378 --repo 2023violet/ShareReady --name s03-matched-real-exports-with-neutral-reset --dir /tmp/s03-verified-exports
+          /tmp/sr-s03-verify/bin/python - <<'PY'
+          import csv,hashlib,json
+          from pathlib import Path
+          from PIL import Image,ImageChops
+          local=Path("docs/research")
+          truth={f["id"]:f for f in json.loads((local/"fixtures/manifest.json").read_text(encoding="utf8"))["fixtures"]}
+          rows=list(csv.DictReader((local/"STAGE01_S03_MATCHED_EXPORTS.csv").open(encoding="utf8",newline="")))
+          assert len(rows)==4
+          expected={("Redacted","T01_CHAT"),("Redacted","T02_ORDER"),("Redaction Tools","T01_CHAT"),("Redaction Tools","T02_ORDER")}
+          assert {(r["tool"],r["task_id"]) for r in rows}==expected
+          base=Path("/tmp/s03-verified-exports")
+          measured=json.loads((base/"results.json").read_text(encoding="utf8"))["results"]
+          for row in rows:
+              tool,task=row["tool"],row["task_id"]
+              entry=next(e for e in measured if e["tool"]==tool and e["task_id"]==task)
+              assert entry["status"]=="REAL_UI_DOWNLOAD_COMPLETE_NEEDS_OUTPUT_REVIEW"
+              fn=base/(tool.replace(" ","_").lower()+"_"+task+"_export.png")
+              assert fn.exists()
+              digest=hashlib.sha256(fn.read_bytes()).hexdigest()
+              assert digest==row["export_sha256"]==entry["export_sha256"]
+              spec=truth[task]
+              src=local/"fixtures"/spec["file"]
+              with Image.open(src) as orig,Image.open(fn) as export:
+                  assert export.format=="PNG" and export.size==orig.size
+                  assert not export.info.get("exif"),"EXIF present"
+                  o=orig.convert("RGB");out=export.convert("RGB")
+                  for region in spec["sensitive_regions"]:
+                      x1,y1,x2,y2=region["rect_px"]
+                      center=((x1+x2)//2,(y1+y2)//2)
+                      assert out.getpixel(center)==((0,0,0) if tool=="Redacted" else (17,17,17)),(tool,task,region["id"])
+                      assert ImageChops.difference(o.crop((x1,y1,x2,y2)),out.crop((x1,y1,x2,y2))).getbbox() is not None
+                  for keep in spec["must_preserve_regions"]:
+                      assert ImageChops.difference(o.crop(tuple(keep["rect_px"])),out.crop(tuple(keep["rect_px"]))).getbbox() is None
+              if tool=="Redaction Tools":
+                  assert int(row["neutral_reset_clicks"])==len(entry["manual_drag_targets"])-1
+              print("REAL_BROWSER_EXPORT_AGAINST_SOURCE_PASS",tool,task,digest)
+          assert Path("docs/research/STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md").is_file()
+          print("S03_FOUR_TOOL_TASKS_BINARY_VERIFIED; SOURCE_FIXTURES_ONLY; HUMAN_PARTICIPANTS=0")
+          PY
+
+      - name: Mark only S03 done with a verified repo artifact; start S04
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/sr-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" step 3 --status done --artifact docs/research/STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md --note "Four actual competitor PNG exports, two tools and both synthetic tasks; SHA and target/keep pixels independently rechecked; scripted known-truth research only, not human benchmarking"
+          python3 "$SKILL" step 4 --status in_progress --note "Begin preregistration of ethical, consent-based recruitment; no participants, outreach, platform purchase or private data"
+          python3 "$SKILL" status
+          python3 "$SKILL" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          state=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert [s["status"] for s in state["steps"]]==["done","done","done","in_progress"]+["todo"]*5
+          ev=state["steps"][2].get("evidence",[])
+          assert ev and ev[-1]["kind"]=="artifact", ev
+          assert state["gates"].get("A") and state["gates"].get("B")
+          print("REAL_SKILL: S01_S02_S03_DONE / S04_IN_PROGRESS / A1_OPEN / HUMAN_SESSIONS_0")
+          PY
+          git diff --exit-code
+          git diff --cached --exit-code
+      - name: Archive actual consent-research initial state
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/shareready-stage01-s03-done-s04-in-progress.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-s03-done-s04-in-progress.tgz
+      - name: Upload auditable original Skill machine state
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-s03-done-s04-in-progress
+          path: /tmp/shareready-stage01-s03-done-s04-in-progress.tgz
+          if-no-files-found: error
+          retention-days: 30
