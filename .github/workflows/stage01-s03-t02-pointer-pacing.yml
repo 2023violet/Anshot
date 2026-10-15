@@ -1,0 +1,31 @@
+name: S03 T02 pointer pacing versus mask order
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-t02-pointer-pacing.yml]
+permissions:
+  contents: read
+jobs:
+  pointer-pacing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Prepare real Chrome browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/sr-pointer-pacing
+          /tmp/sr-pointer-pacing/bin/pip install --disable-pip-version-check playwright==1.55.0
+          google-chrome --version
+      - name: Compare fast and slow pointer paths on four clean synthetic sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/sr-pointer-pacing/bin/python docs/research/s03_t02_pointer_pacing.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s03-t02-pointer-pacing-output
+          path: /tmp/s03-t02-pointer-pacing/
+          retention-days: 30
