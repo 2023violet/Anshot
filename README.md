@@ -46,6 +46,19 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [Skill CLI gate runbook](docs/governance/STAGE01_GATE_RUNBOOK.md) | How to complete real Gate A/B in executable checkout |
 | [Competitor test contract](docs/research/COMPETITOR_TEST_CONTRACT.md) | Reproducible comparative UX/safety research protocol |
 
+## V1 product scope and UX/UI candidates (review only)
+
+The user-requested product-design track now has concrete reviewable candidates. **These are not a frozen Stage 01 PRD, production app or evidence of A1 user demand.** Original Skill Gate A/B card and machine plan are unchanged, S05a remains BLOCKED_BY_RECRUITMENT.
+
+| Design artifact | What to review |
+| --- | --- |
+| [V1 feature contract candidate](docs/product/SHAREREADY_V1_FUNCTION_CONTRACT_CANDIDATE.md) | 16 proposed P0/P1/excluded features and 12 concrete future engineering ACs |
+| [UX/UI baseline candidate](docs/design/SHAREREADY_V1_UX_UI_BASELINE_CANDIDATE.md) | Single workspace, five screen states, visual tokens and interaction contract |
+| [Offline interactive HTML prototype](docs/design/prototypes/ShareReady_V1_UX_Prototype.html) | Embedded synthetic demo chat; actual visual/interaction mock, NOT a safe-redaction image processor |
+| [Design-track gate boundary](docs/governance/STAGE01_DESIGN_DIRECTION_CHANGE_PROPOSAL.md) | How to review UX without falsifying the outstanding S05/S06 dependency |
+
+The HTML uses no CDN, account, real image import, real copy/download or Rust image transformation. The source is openable as a standalone file in a browser for review. Do **not** provide real private images to the prototype. Visual QA/Playwright mock tests are a design artifact only, not security testing.
+
 ## Design-to-delivery route / 交付顺序
 
 Stage 00 research → Stage 01 PRD → Stage 02 UX → Stage 03 visual exploration → Stage 04 design system → Stage 05 high fidelity → Stage 06 Rust engineering → Stage 07 verified open-source release.
