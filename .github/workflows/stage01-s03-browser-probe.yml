@@ -1,0 +1,40 @@
+name: Stage 01 S03 real-browser interface reconnaissance
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-browser-probe.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  probe-web-competitors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout research-only probe
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Isolate Playwright dependency and check real installed Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          google-chrome --version
+          python3 -m venv /tmp/sr-s03-probe
+          /tmp/sr-s03-probe/bin/python -m pip install --disable-pip-version-check playwright==1.55.0
+      - name: Open real tools in headless Chrome; classify access honestly
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/sr-s03-probe/bin/python docs/research/s03_browser_probe.py
+          test -s /tmp/share-ready-s03-probe/probe_results.json
+      - name: Retain public-page screenshots and machine environment JSON
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s03-browser-access-probe-evidence
+          path: /tmp/share-ready-s03-probe/
+          if-no-files-found: error
+          retention-days: 30
