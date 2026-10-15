@@ -2,7 +2,10 @@ name: E1 Rust codec tests and original Skill steps 2 and 3
 on:
   push:
     branches: [spike/e1-rust-wasm-feasibility]
-    paths: [.github/workflows/e1-core-rust-tests.yml]
+    paths:
+      - .github/workflows/e1-core-rust-tests.yml
+      - e1-spike/src/lib.rs
+      - e1-spike/tests/codec_security.rs
 permissions:
   contents: read
   actions: read
