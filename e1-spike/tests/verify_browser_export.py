@@ -52,7 +52,7 @@ with sync_playwright() as pw:
      bb=tuple(keep["rect_px"])
      assert image.crop(bb).tobytes()==orig.crop(bb).tobytes(),(name,keep["id"])
     assert "exif" not in result.info and b"eXIf" not in file.read_bytes()
-   assert all(x["method"] in ("GET","HEAD") and x["url"].startswith("http://127.0.0.1:") for x in network),network
+   assert all(x["method"] in ("GET","HEAD") and (x["url"].startswith("http://127.0.0.1:") or x["url"].startswith("blob:http://127.0.0.1:")) for x in network),network
    page.screenshot(path=str(OUT/(name+"_review.png")))
    metrics=page.evaluate("window.e1Debug")
    results.append({"fixture":name,"png_sha256":hashlib.sha256(file.read_bytes()).hexdigest(),"png_bytes":file.stat().st_size,
