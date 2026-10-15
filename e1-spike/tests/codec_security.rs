@@ -50,6 +50,12 @@ fn exif_gps_and_jpeg_to_new_png_without_private_metadata() {
     }
     let img=image::load_from_memory(&png).unwrap().to_rgba8();
     assert_eq!(img.dimensions(),(1200,800));
+    let decoded_source=decode_source(&source).unwrap();
+    for y in 277..451 {
+        for x in 780..1110 {
+            assert_eq!(img.get_pixel(x,y),decoded_source.get_pixel(x,y),"Rust codec altered JPEG preserve pixel {x},{y}");
+        }
+    }
     for (x,y) in [(78,539),(626,587),(78,612),(674,663)] {
         assert_eq!(*img.get_pixel(x,y),COVER);
     }
