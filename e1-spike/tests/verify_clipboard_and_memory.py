@@ -12,7 +12,7 @@ server=http.server.ThreadingHTTPServer(("127.0.0.1",0),H)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 trials=[]
 with sync_playwright() as pw:
- browser=pw.chromium.launch(headless=True,args=["--no-sandbox","--enable-precise-memory-info"])
+ browser=pw.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox","--enable-precise-memory-info"])
  try:
   for mode in ["default_browser_permissions","grant_clipboard_read_write"]:
    ctx=browser.new_context(accept_downloads=True)
