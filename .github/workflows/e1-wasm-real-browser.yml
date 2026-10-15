@@ -27,8 +27,10 @@ jobs:
           test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
           mkdir /tmp/e1-core-state
           gh run download 38751296127 --repo 2023violet/ShareReady --name e1-rust-core-tests-machine-proof --dir /tmp/e1-core-state
-          echo "ad0c7327d2b93b9503d323f729abd50c3e7d60b15a709773e0c23aef60073a4a  /tmp/e1-core-state/e1-core-after-skill.tgz" | sha256sum -c
-          tar -xzf /tmp/e1-core-state/e1-core-after-skill.tgz
+          STATE="$(find /tmp/e1-core-state -type f -name e1-core-after-skill.tgz -print -quit)"
+          test -n "$STATE"
+          echo "ad0c7327d2b93b9503d323f729abd50c3e7d60b15a709773e0c23aef60073a4a  $STATE" | sha256sum -c
+          tar -xzf "$STATE"
           cmp .decision/decision-card.md docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md
           python3 - <<'PY'
           import json
