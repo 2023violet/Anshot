@@ -95,9 +95,16 @@ $("download").addEventListener("click",()=>{
 });
 $("copy").addEventListener("click",async()=>{
  if(outputRevision!==sourceRevision||!blob){status("Stale or missing output; regenerate.");return}
+ const revisionAtStart=sourceRevision, outputAtStart=blob, bytesAtStart=bytes;
+ const stale=()=>sourceRevision!==revisionAtStart||outputRevision!==revisionAtStart||blob!==outputAtStart;
  try {
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error("PNG Clipboard API unavailable");
-  await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+  await navigator.clipboard.write([new ClipboardItem({"image/png":outputAtStart})]);
+  if(stale()){
+   window.e1Debug.copiedStatus="stale_during_copy";
+   status("Input/output changed during Clipboard write; copy result not confirmed. Regenerate.");
+   return;
+  }
   window.e1Debug.copiedStatus="write_succeeded_readback_unverified";
   if(navigator.clipboard.read) {
    try {
@@ -106,7 +113,7 @@ $("copy").addEventListener("click",async()=>{
     if(entry) {
      const read=new Uint8Array(await (await entry.getType("image/png")).arrayBuffer());
      const hash=async b=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",b))).map(x=>x.toString(16).padStart(2,"0")).join("");
-     if(await hash(bytes)===await hash(read)){
+     if(await hash(bytesAtStart)===await hash(read)){
       window.e1Debug.copiedStatus="write_and_readback_exact";
      }else {
       window.e1Debug.copiedStatus="write_but_readback_mismatch";throw Error("Clipboard PNG readback mismatch");
@@ -114,7 +121,20 @@ $("copy").addEventListener("click",async()=>{
     }
    }catch(e){ if(window.e1Debug.copiedStatus!=="write_but_readback_mismatch")window.e1Debug.readbackError=String(e?.message||e) }
   }
+  if(stale()){
+   window.e1Debug.copiedStatus="stale_during_copy";
+   status("Input/output changed during copy; regenerate before sharing.");
+   return;
+  }
   status(window.e1Debug.copiedStatus==="write_and_readback_exact"?"Copied and verified PNG readback.":"Clipboard write succeeded; paste-back remains unverified.");
- }catch(e){window.e1Debug.copiedStatus="denied_or_unavailable";status("Clipboard not available/allowed: "+String(e?.message||e)+". Download PNG instead.")}
+ }catch(e){
+  if(stale()){
+   window.e1Debug.copiedStatus="stale_during_copy";
+   status("Input/output changed during copy; regenerate before sharing.");
+   return;
+  }
+  window.e1Debug.copiedStatus="denied_or_unavailable";
+  status("Clipboard not available/allowed: "+String(e?.message||e)+". Download PNG instead.");
+ }
 });
 </script></body></html>
