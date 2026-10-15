@@ -1,0 +1,39 @@
+name: Stage 01 S03 Redaction Tools dynamic geometry recheck
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-redactiontools-recheck.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  recheck-redaction-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout research fixtures and harness
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install isolated browser and image dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          python3 -m venv /tmp/s03-dynamic-recheck
+          /tmp/s03-dynamic-recheck/bin/python -m pip install --disable-pip-version-check playwright==1.55.0 Pillow==12.3.0
+      - name: Recheck two synthetic tasks with per-drag geometry refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/s03-dynamic-recheck/bin/python docs/research/s03_redactiontools_recheck.py
+          test -s /tmp/shareready-s03-redactiontools-recheck/results.json
+      - name: Archive genuine exports and per-mask screenshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s03-redactiontools-dynamic-recheck
+          path: /tmp/shareready-s03-redactiontools-recheck/
+          if-no-files-found: error
+          retention-days: 30
