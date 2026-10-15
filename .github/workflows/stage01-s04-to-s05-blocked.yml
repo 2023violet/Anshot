@@ -1,0 +1,107 @@
+name: Stage 01 S04 internal research prep acceptance; S05 recruitment block
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-s04-to-s05-blocked.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  s04-document-accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout research branch only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Restore pinned Skill and authentic Gate A B state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/sr-fixed-skill
+          git -C /tmp/sr-fixed-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/sr-fixed-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          mkdir -p /tmp/sr-stage03
+          gh run download 38689148605 --repo 2023violet/ShareReady --name shareready-stage01-s03-done-s04-in-progress --dir /tmp/sr-stage03
+          ARCHIVE="$(find /tmp/sr-stage03 -maxdepth 1 -type f -name '*.tgz')"
+          test -n "$ARCHIVE"
+          echo "c6aee7adecd59a7fe6b26dba50f9311dfa6b9a59d7172bc00a8dc953cc7bfd31  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C .
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          machine=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          approved=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf8"))
+          assert machine["gates"].get("A") and machine["gates"].get("B")
+          for key in ("name","risk","schema","milestones","first_step","if_then","early_signals"):
+              assert machine[key]==approved[key], "APPROVED_PLAN_DRIFT "+key
+          assert len(machine["steps"])==len(approved["steps"])==9
+          for a,b in zip(machine["steps"],approved["steps"]):
+              for key in ("id","title","done_when","verify","verify_cmd","depends_on","covers","tests_assumption","irreversible","estimate_h"):
+                  assert a[key]==b[key], "APPROVED_STEP_DRIFT "+str(a["id"])+key
+          assert [s["status"] for s in machine["steps"]]==["done","done","done","in_progress"]+["todo"]*5
+          print("APPROVED_CARD_PLAN_SKILL_AND_REAL_S03_STATE_RESTORED")
+          PY
+          DE=/tmp/sr-fixed-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card
+          python3 "$DE" check plan
+          python3 "$DE" status
+
+      - name: Execute S04 substantive document and safety negative tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docs/research/s04_validate.py
+          test -s docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md
+          test -s docs/research/STAGE01_S04_REVIEW_AND_RECRUITMENT_FEASIBILITY_2026-10-15.md
+
+      - name: Use original state machine: S04 document task DONE, S05a recruitment BLOCKED
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/sr-fixed-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" verify 4
+          python3 "$DE" step 4 --status done --note "Reviewed neutral screening, consent, identity isolation and counterbalanced allocation; risk audit with 15 issues and 0 real participants; human ethics review still pending and recruitment prohibited"
+          python3 "$DE" step 5 --status blocked --note "BLOCKED_BY_RECRUITMENT: no named research controller, private consent channel, legal jurisdiction, data controller/retention owner, incentives approval or independent human privacy review; contacted/consented/interviewed=0"
+          python3 "$DE" status
+          python3 "$DE" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert [s["status"] for s in d["steps"]]==["done","done","done","done","blocked"]+["todo"]*4
+          assert d["gates"].get("A") and d["gates"].get("B")
+          assert d["steps"][3]["evidence"][-1]["kind"]=="command"
+          r=json.loads(Path("docs/research/STAGE01_S04_READINESS.json").read_text(encoding="utf8"))
+          assert not r["recruitment_authorized"]
+          assert r["external_human_review"]=="PENDING"
+          assert all(v==0 for v in r["metrics"].values())
+          print("REAL_SKILL_S04_DONE_S05_BLOCKED_A1_OPEN; NO_RECRUITMENT_NO_RUST_CODE_NO_MERGE")
+          PY
+          git diff --exit-code
+          git diff --cached --exit-code
+
+      - name: Preserve real machine-state archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/shareready-stage01-s04-done-s05-blocked.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-s04-done-s05-blocked.tgz
+
+      - name: Upload machine-state evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-s04-done-s05-blocked
+          path: /tmp/shareready-stage01-s04-done-s05-blocked.tgz
+          retention-days: 30
+          if-no-files-found: error
