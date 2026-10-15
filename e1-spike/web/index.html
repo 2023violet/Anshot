@@ -126,6 +126,10 @@ $("copy").addEventListener("click",async()=>{
    status("Input/output changed during copy; regenerate before sharing.");
    return;
   }
+  if(window.e1Debug.copiedStatus==="write_but_readback_mismatch"){
+   status("Clipboard PNG readback mismatch: copied pixels are NOT verified. Do not paste; download and inspect the newly encoded PNG.");
+   return;
+  }
   status(window.e1Debug.copiedStatus==="write_and_readback_exact"?"Copied and verified PNG readback.":"Clipboard write succeeded; paste-back remains unverified.");
  }catch(e){
   if(stale()){
