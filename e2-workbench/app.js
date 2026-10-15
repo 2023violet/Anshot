@@ -10,6 +10,7 @@ const FIXTURE_SHA={
 let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
 let regions=[],selected=null,history=[],future=[],mode="mask",zoom=1;
 let revision=0,output=null,stage="empty",pointer=null,nextID=1,loadTicket=0;
+let copyState="not_attempted";
 
 window.e2Debug={
  get ready(){return ready},get stage(){return stage},
@@ -18,13 +19,16 @@ window.e2Debug={
  get regions(){return regions.map(r=>({...r}))},
  get sourceSize(){return [sourceW,sourceH]},
  get outputBytes(){return output?.bytes.byteLength??0},
- get fixture(){return label}
+ get fixture(){return label},get copyState(){return copyState}
 };
-function status(message){$("status").textContent=message}
+function status(message){
+ $("status").textContent=message;
+ $("reviewStatus").textContent=message;
+}
 function snapshot(){return JSON.stringify(regions)}
 function clearOutput(){
  if(output?.url)URL.revokeObjectURL(output.url);
- output=null;$("copy").disabled=true;$("download").disabled=true;
+ output=null;copyState="not_attempted";$("copy").disabled=true;$("download").disabled=true;
  $("outputImage").removeAttribute("src");
 }
 function edited(){
@@ -45,6 +49,10 @@ function redoAction(){
  history.push(snapshot());regions=JSON.parse(future.pop());selected=null;edited();
 }
 function render(){
+ const active=document.activeElement;
+ const focusedID=active?.dataset?.id;
+ const focusedKind=active?.classList?.contains("mask")?"mask":
+                   active?.classList?.contains("region")?"region":null;
  const editing=stage==="edit";
  $("check").disabled=!ready||!editing||!sourceBytes||regions.length===0;
  $("undo").disabled=!editing||!history.length;
@@ -60,6 +68,8 @@ function render(){
   button.setAttribute("aria-label","选择区域 "+r.id+"；方向键移动，Shift+方向键调整尺寸");
   button.setAttribute("aria-keyshortcuts","ArrowLeft ArrowRight ArrowUp ArrowDown Shift+ArrowLeft Shift+ArrowRight Shift+ArrowUp Shift+ArrowDown");
   button.dataset.id=String(r.id);
+  button.setAttribute("aria-pressed",String(r.id===selected));
+  button.setAttribute("aria-describedby","keyboardHelp");
   const sq=document.createElement("span");sq.className="square";
   const name=document.createElement("span");name.className="region-name";name.textContent="区域 "+String(r.id).padStart(2,"0");
   const size=document.createElement("span");size.className="region-size";
@@ -77,6 +87,9 @@ function render(){
   item.tabIndex=0;
   item.setAttribute("role","button");
   item.setAttribute("aria-label","遮挡区域 "+r.id+"；方向键移动，Shift+方向键调整尺寸");
+  item.setAttribute("aria-pressed",String(r.id===selected));
+  item.setAttribute("aria-describedby","keyboardHelp");
+  item.setAttribute("aria-keyshortcuts","ArrowLeft ArrowRight ArrowUp ArrowDown");
   const x=Math.min(r.x0,r.x1),y=Math.min(r.y0,r.y1);
   Object.assign(item.style,{
    left:x*zoom+"px",top:y*zoom+"px",
@@ -90,6 +103,12 @@ function render(){
   layer.append(item);
  }
  $("zoomValue").textContent=Math.round(zoom*100)+"%";
+ // Rebuilding the region nodes must not discard keyboard focus.
+ if(editing&&focusedKind&&focusedID){
+  const byKind=kind=>document.querySelector((kind==="mask"?'.mask[data-id="':'.region[data-id="')+focusedID+'"]');
+  const candidate=byKind(focusedKind);
+  (candidate?.getClientRects().length?candidate:byKind("mask"))?.focus({preventScroll:true});
+ }
 }
 function setMode(newMode){
  mode=newMode;
@@ -246,9 +265,25 @@ function nudgeSelected(key,resize){
  status(resize?"已使用键盘调整遮挡尺寸":"已使用键盘移动遮挡区域");
  return true;
 }
+function createKeyboardMask(){
+ if(!ready||stage!=="edit"||!sourceW||!sourceH)return;
+ const before=snapshot(),width=Math.min(180,sourceW),height=Math.min(64,sourceH);
+ const box=frame.getBoundingClientRect(),view=viewport.getBoundingClientRect();
+ const centerX=(view.left+view.width/2-box.left)/(box.width/sourceW);
+ const centerY=(view.top+view.height/2-box.top)/(box.height/sourceH);
+ const x=Math.round(Math.max(0,Math.min(sourceW-width,centerX-width/2)));
+ const y=Math.round(Math.max(0,Math.min(sourceH-height,centerY-height/2)));
+ const r={id:nextID++,x0:x,y0:y,x1:x+width,y1:y+height};
+ regions.push(r);selected=r.id;
+ setMode("select");saveAction(before);
+ document.querySelector('.mask[data-id="'+r.id+'"]')?.focus({preventScroll:true});
+ status("已通过键盘创建区域 "+r.id+"（"+width+" × "+height+" 像素）。方向键移动，Shift＋方向键调整尺寸。");
+}
 function deleteSelected(){
  if(stage!=="edit"||selected===null)return;
  const before=snapshot();regions=regions.filter(r=>r.id!==selected);selected=null;saveAction(before);
+ $("createMask").focus({preventScroll:true});
+ status("遮挡区域已删除；可按 N 创建新区域。");
 }
 async function enterReview(){
  if(stage!=="edit"||!ready||!sourceBytes||regions.length===0){
@@ -306,6 +341,7 @@ async function copy(){
 }
 for(const b of document.querySelectorAll("[data-tool]"))b.onclick=()=>setMode(b.dataset.tool);
 $("undo").onclick=undoAction;$("redo").onclick=redoAction;$("delete").onclick=deleteSelected;
+$("createMask").onclick=createKeyboardMask;
 $("zoomIn").onclick=()=>setZoom(zoom*1.25);
 $("zoomOut").onclick=()=>setZoom(zoom/1.25);
 $("zoomFit").onclick=fit;
@@ -340,7 +376,15 @@ document.addEventListener("keydown",e=>{
  if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();if(e.shiftKey)redoAction();else undoAction();return}
  if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redoAction();return}
  if(stage!=="edit")return;
+ if(k==="n"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey){
+  e.preventDefault();createKeyboardMask();return;
+ }
  const regionTarget=e.target.closest("#regionList .region, #maskLayer .mask");
+ if(regionTarget&&(e.key==="Enter"||e.key===" ")&&!e.ctrlKey&&!e.metaKey){
+  e.preventDefault();selected=Number(regionTarget.dataset.id);setMode("select");render();
+  status("已选中遮挡区域 "+selected+"。方向键移动，Shift＋方向键调整尺寸。");
+  return;
+ }
  if(regionTarget&&e.key.startsWith("Arrow")&&!e.ctrlKey&&!e.metaKey){
   selected=Number(regionTarget.dataset.id);
   e.preventDefault();
