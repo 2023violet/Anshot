@@ -1,0 +1,28 @@
+[package]
+name = "shareready-e1"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+license = "MIT"
+
+[lib]
+name = "shareready_e1"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "shareready-e1"
+path = "src/main.rs"
+
+[features]
+default = []
+web = ["dep:wasm-bindgen"]
+
+[dependencies]
+image = { version = "=0.25.8", default-features = false, features = ["png", "jpeg"] }
+wasm-bindgen = { version = "=0.2.105", optional = true }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
