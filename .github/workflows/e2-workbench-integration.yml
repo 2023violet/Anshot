@@ -9,6 +9,10 @@ on:
       - e1-spike/src/lib.rs
       - e1-spike/Cargo.toml
       - e1-spike/Cargo.lock
+      - e1-spike/web/index.html
+      - e1-spike/tests/codec_security.rs
+      - e1-spike/tests/verify_clipboard_and_memory.py
+      - e1-spike/tests/verify_browser_export.py
 
 permissions:
   contents: read
