@@ -202,9 +202,15 @@ mod tests {
     }
     #[test]
     fn malformed_and_wrong_magic_fail_closed() {
-        for b in [&b"not a real image"[..], &b"\x89PNG\r\n\x1a\n"[..],&b"\xff\xd8\xff"[..]] {
-            assert!(redact(b, &[]).is_err());
+        // Exercise the decoder with an effective rectangle; using [] would
+        // short-circuit at the fail-closed mask guard, never decoding input.
+        let valid_mask = [Region::new(0, 0, 1, 1)];
+        for b in [&b"not a real image"[..], &b"\x89PNG\r\n\x1a\n"[..], &b"\xff\xd8\xff"[..]] {
+            let err = redact(b, &valid_mask).expect_err("invalid image must fail");
+            assert!(!err.contains("effective redaction"), "{err}");
         }
-        assert!(redact(&vec![0;MAX_INPUT_BYTES+1], &[]).is_err());
+        let err = redact(&vec![0; MAX_INPUT_BYTES + 1], &valid_mask)
+            .expect_err("oversized compressed input must fail");
+        assert!(err.contains("oversized compressed input"), "{err}");
     }
 }
