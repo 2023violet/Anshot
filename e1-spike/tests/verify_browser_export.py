@@ -47,10 +47,10 @@ with sync_playwright() as pw:
      assert image.getpixel((x0,y0))==(17,24,39,255),(name,reg["id"])
      assert image.getpixel((x1-1,y1-1))==(17,24,39,255),(name,reg["id"])
      pixels=Image.new("RGBA",(x1-x0,y1-y0),(17,24,39,255))
-     assert ImageChops.difference(image.crop((x0,y0,x1,y1)),pixels).getbbox() is None,(name,reg["id"],"pixel leak")
+     assert image.crop((x0,y0,x1,y1)).tobytes()==pixels.tobytes(),(name,reg["id"],"pixel leak")
     for keep in spec["must_preserve_regions"]:
      bb=tuple(keep["rect_px"])
-     assert ImageChops.difference(image.crop(bb),orig.crop(bb)).getbbox() is None,(name,keep["id"])
+     assert image.crop(bb).tobytes()==orig.crop(bb).tobytes(),(name,keep["id"])
     assert "exif" not in result.info and b"eXIf" not in file.read_bytes()
    assert all(x["method"] in ("GET","HEAD") and x["url"].startswith("http://127.0.0.1:") for x in network),network
    page.screenshot(path=str(OUT/(name+"_review.png")))
