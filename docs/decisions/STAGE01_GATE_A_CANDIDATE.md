@@ -1,7 +1,7 @@
 # Gate A candidate — Stage 01: decide whether and how to build ShareReady
 
-> **SR-DEC-001 · 2026-10-14 · DRAFT / NOT APPROVED**  
-> This is a decision **candidate**, not a finalized ADR or a machine-validated `.decision/decision-card.md`. Stage 00 status: CONDITIONAL GO. Gate A status: **PENDING HUMAN PREVIEW**.
+> **SR-DEC-001 · 2026-10-14 · HUMAN CANDIDATE APPROVED / CLI GATE A PENDING**  
+> This is a decision **candidate**, not a finalized ADR or a machine-validated `.decision/decision-card.md`. Stage 00 status: CONDITIONAL GO. Gate A status: **human candidate approved; de.py Gate A preview/token/confirm NOT RUN**. See [approval record](STAGE01_GATE_A_APPROVAL_RECORD.md).
 
 - 日期：2026-10-14
 - 结论：改后做（仅进行研究与产品定义，未经证据验收不开展 Rust 工程实现）
@@ -60,7 +60,7 @@
 
 核心价值与已有工具高度重叠，且“截图高频”不等于“截图脱敏高频”。因此可能做成技术正确却无人常用的产品。第二风险是误导性隐私安全承诺及同名品牌冲突。
 
-## 待批准的 Gate A preview（人工摘要，非 de.py 输出）
+## 已获人类候选批准的 Gate A 范围（人工摘要，非 de.py 输出）
 
 - **结论：** 改后做——只批准真实用户与竞品验证以及 Stage 01 产品定义。
 - **成功标准：** 本文 1–5；不把未实测结果当 PASS。
@@ -73,3 +73,4 @@
 | 日期 | 改了什么 | 原因 |
 | --- | --- | --- |
 | 2026-10-14 | 建立 Stage 01 决策候选并把 Rust 与竞品验证写入成功标准 | 接管新仓库并采用作者自有的 deciding-and-executing skill |
+| 2026-10-14 | 记录用户批准候选方向，但 CLI Gate A/B 仍阻断 | 用户明确批准上一轮显示的人工决策预览 |

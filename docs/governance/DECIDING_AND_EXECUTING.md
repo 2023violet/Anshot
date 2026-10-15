@@ -22,13 +22,22 @@ A standard- or high-risk task needs a real, runnable installation (project-local
 
 The GitHub connector can read/write repository files, but it cannot run upstream Python scripts. The available runtime cannot resolve github.com directly, so the upstream `de.py` was **not** executed on a local clone in this handoff. This is **not** equivalent to a script-verified gate.
 
-Current outcome: `STAGE01_GATE_A_PREVIEW_REQUIRED`. No `.decision/` machine-state folder was fabricated, no `gate A --confirm` was executed, and no verification result was invented.
+Current outcome: `STAGE01_GATE_A_CANDIDATE_HUMAN_APPROVED / CLI_GATE_A_PREVIEW_REQUIRED` (2026-10-14; see [approval record](../decisions/STAGE01_GATE_A_APPROVAL_RECORD.md)). No `.decision/` machine-state folder was fabricated, no `gate A --confirm` was executed, and no verification result was invented.
 
 ## Next authorized transition
 
-1. Present this decision card's Gate A scope/acceptance/stop preview to the human and record an explicit approval or revision.
+1. **Completed (human candidate level):** The user approved the presented Stage 01 decision candidate; retained in [the approval record](../decisions/STAGE01_GATE_A_APPROVAL_RECORD.md). This is not an actual `de.py gate A` run.
 2. When a real execution checkout and exact upstream skill are available, initialize the actual `.decision/` workspace with `de.py init --risk standard`, enter the reviewed card, run `check card`, show the real `gate A` preview and request acknowledgment **again** before calling `--confirm`.
 3. Then create the Stage 01 PRD/research execution plan, test A1 first, `check plan`, and request Gate B approval before carrying out experiments or product code.
 4. At closure, use the current companion `closing-out` with explicit evidence layers: static audit, repository fact checks, runtime validation and human usability testing.
 
 The remote draft PR documents the approach; it **does not** bypass script or human gates.
+
+## Stage 01 drafts available after human candidate approval
+
+- [PRD draft](../product/STAGE01_PRD_DRAFT_v0.1.md)
+- [Research execution plan](../research/STAGE01_RESEARCH_PLAN_v0.1.md)
+- [Gate B candidate plan](../plans/STAGE01_GATE_B_CANDIDATE.md)
+- [Executable checkout and gate runbook](STAGE01_GATE_RUNBOOK.md)
+
+These are authored research/planning drafts, **not executed user research** or passed gates.

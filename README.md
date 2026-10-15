@@ -15,7 +15,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## Current stage / 当前阶段
 
-`Stage 00: CONDITIONAL GO` → `Stage 01: DIRECTION DRAFT / GATE A PENDING`.
+`Stage 00: CONDITIONAL GO` → `Stage 01: HUMAN DIRECTION CANDIDATE APPROVED / CLI GATE A PENDING / GATE B NOT STARTED`.
 
 **No Rust application code, benchmark results, user interviews, deployment or release is claimed.**
 
@@ -24,6 +24,10 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [AGENTS.md](AGENTS.md) | Agent constraints, stage gates and collaboration expectations |
 | [Skill adoption](docs/governance/DECIDING_AND_EXECUTING.md) | Exact upstream skill, version and honest execution limitations |
 | [Stage 01 decision candidate](docs/decisions/STAGE01_GATE_A_CANDIDATE.md) | Direction alternatives, hypotheses, success criteria, stop rules |
+| [Human approval record](docs/decisions/STAGE01_GATE_A_APPROVAL_RECORD.md) | Approved decision candidate; script gate is still pending |
+| [Stage 01 PRD draft](docs/product/STAGE01_PRD_DRAFT_v0.1.md) | Product definition and unverified requirements |
+| [Research plan](docs/research/STAGE01_RESEARCH_PLAN_v0.1.md) | Competitor study and participant test plan |
+| [Skill CLI gate runbook](docs/governance/STAGE01_GATE_RUNBOOK.md) | How to complete real Gate A/B in executable checkout |
 | [Competitor test contract](docs/research/COMPETITOR_TEST_CONTRACT.md) | Reproducible comparative UX/safety research protocol |
 
 ## Design-to-delivery route / 交付顺序
