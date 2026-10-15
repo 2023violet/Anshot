@@ -1,0 +1,129 @@
+name: Stage 01 verified Gate A confirmation and Gate B preview
+
+on:
+  push:
+    branches:
+      - docs/stage01-direction-skill-gates
+    paths:
+      - .github/workflows/stage01-gate-a-confirm-b-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  gate-a-confirm-b-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout candidate without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Pin decision card and owner Skill by Git blob and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-pinned-skill
+          git -C /tmp/shareready-pinned-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-pinned-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          test -s docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json
+          echo "Pinned decision card blob and exact Skill version verified."
+
+      - name: Initialize actual Skill, recheck Gate A and apply specifically approved token
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" init --name shareready-stage01 --risk standard
+          cp docs/decisions/STAGE01_GATE_A_CARD_READY.md .decision/decision-card.md
+          python3 "$SKILL" check card
+          python3 - <<'PY'
+          import json
+          import subprocess
+          result = subprocess.run(
+              ["python3", "/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py", "gate", "A"],
+              text=True, capture_output=True)
+          if result.returncode != 3:
+              raise SystemExit("Expected approval-required exit 3 for Gate A preview, got " + str(result.returncode))
+          item = json.loads(result.stdout)
+          preview = item.get("preview") or {}
+          assert item.get("needs_confirmation") is True, "Missing confirmation requirement"
+          assert item.get("token") == "22cd1becf5", "Changed decision, authorization TOKEN MISMATCH"
+          assert len(preview.get("成功标准", [])) == 5, "Changed success criteria"
+          assert preview.get("止损", {}).get("期限") == "2026-11-14", "Changed stop deadline"
+          assert preview.get("结论") == "改后做（只进入用户需求、竞品与产品定义阶段，工程代码暂不启动）"
+          assert preview.get("warnings") == [], "Gate A warnings require review"
+          print("AUTHORIZATION_MATCH: true; re-created Gate A preview matches owner-authorized token and scope.")
+          print(json.dumps(preview, ensure_ascii=False, indent=2))
+          PY
+          python3 "$SKILL" gate A --confirm 22cd1becf5
+          python3 "$SKILL" status
+
+      - name: Prepare real Gate B plan without confirming or executing research steps
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          statefile=Path(".decision/plan.json")
+          machine=json.loads(statefile.read_text(encoding="utf-8"))
+          assert "A" in machine.get("gates", {}), "A confirmation did not persist"
+          inp=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf-8"))
+          assert inp.get("risk") == machine.get("risk") == "standard"
+          assert inp.get("schema") == machine.get("schema") == 2
+          assert inp.get("gates") == {} and inp.get("last_event") == 0, "Input must contain no manufactured gates/events"
+          assert len(inp.get("steps", [])) == 9
+          assert all(x.get("status")=="todo" and x.get("evidence")==[] for x in inp["steps"])
+          for k in ["name","milestones","steps","if_then","early_signals","first_step"]:
+              machine[k]=inp[k]
+          statefile.write_text(json.dumps(machine,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print("Plan prepared in REAL .decision workspace, preserving machine-created Gate A and event sequence.")
+          PY
+          SKILL=/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" check plan
+          python3 "$SKILL" show
+          python3 "$SKILL" preflight
+          python3 "$SKILL" coverage
+          python3 "$SKILL" status
+          python3 - <<'PY'
+          import json, subprocess
+          command=["python3","/tmp/shareready-pinned-skill/skills/deciding-and-executing/scripts/de.py","gate","B"]
+          r=subprocess.run(command,text=True,capture_output=True)
+          print("GATE_B_PREVIEW_EXIT_CODE="+str(r.returncode))
+          if r.returncode != 3:
+              print(r.stdout)
+              print(r.stderr)
+              raise SystemExit("Gate B must request separate approval; no auto-confirmation")
+          data=json.loads(r.stdout)
+          assert data.get("needs_confirmation") is True
+          preview=data.get("preview") or {}
+          assert preview.get("risk")=="standard"
+          assert len(preview.get("steps",[]))==9
+          assert preview.get("first_step")==1
+          print("GATE_B_PREVIEW:",json.dumps(preview,ensure_ascii=False,indent=2))
+          print("GATE_B_TOKEN_FOR_SEPARATE_HUMAN_APPROVAL:",data.get("token"))
+          print("NO_GATE_B_CONFIRMATION_PERFORMED")
+          PY
+          git diff --exit-code
+          git diff --cached --exit-code
+
+      - name: Preserve ephemeral machine evidence for independent audit
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --no-same-owner -czf /tmp/shareready-stage01-gate-a-confirmed-b-preview.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-gate-a-confirmed-b-preview.tgz
+
+      - name: Upload ephemeral gate evidence (not an approval)
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-gate-a-confirmed-b-preview
+          path: /tmp/shareready-stage01-gate-a-confirmed-b-preview.tgz
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,229 @@
+{
+  "schema": 2,
+  "name": "ShareReady Stage 01 evidence-first product definition",
+  "risk": "standard",
+  "milestones": [
+    "A1 independent task evidence and missingness transparently recorded",
+    "At least two competitor paths tested on synthetic fixtures with export evidence",
+    "Consent-based participant results or explicit INSUFFICIENT_EVIDENCE",
+    "Reviewable PRD + conditional Rust architecture and GO/PIVOT/NO-GO decision"
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "title": "S01 Verify A1 user-problem signals and recruitment feasibility",
+      "done_when": "An evidence inventory contains at least two dated, independently attributable real-user problem statements, flags developer promotion, and records whether actual recruiting is feasible; no interview claims invented",
+      "verify": "Reviewer checks dated links, actual statement context, sampling limits, and explicit recruitment status",
+      "verify_cmd": "test -s docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md",
+      "depends_on": [],
+      "covers": [
+        1,
+        3
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 2,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 2,
+      "title": "S02 Four competitor evidence records and five synthetic fixtures",
+      "done_when": "At least four competitors have source/version/environment rows and five generated synthetic images have machine-readable sensitive/retained region ground truth; no real personal information",
+      "verify": "Check source provenance and manually review each PNG/JPEG + machine-readable fixture manifest; static claims are not measured tests",
+      "verify_cmd": "test -s docs/research/COMPETITOR_EVIDENCE_MATRIX.csv && test -s docs/research/fixtures/manifest.json",
+      "depends_on": [
+        1
+      ],
+      "covers": [
+        1,
+        2
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 6,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "title": "S03 Two actual competitor flows on synthetic T01/T02",
+      "done_when": "Two available tools each complete comparable end-to-end T01/T02 trials or have explicit blocked-by-platform records, including timings, omission counts, exported artifact paths and exact versions",
+      "verify": "Observe real interaction, independent exports and ground truth; report inability to run separately; webpage claims do not count",
+      "verify_cmd": "",
+      "depends_on": [
+        2
+      ],
+      "covers": [
+        1
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 4,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "title": "S04 Ethics and consent based recruitment prep",
+      "done_when": "A reviewed neutral recruitment screener, consent protocol, private identity handling and randomized AB/BA task orders exist with honest recruitment count",
+      "verify": "Review protocol against participant pack; preserve versioned recruitment status and refusal counts",
+      "verify_cmd": "test -s docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md",
+      "depends_on": [
+        1,
+        2
+      ],
+      "covers": [
+        3
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 3,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "title": "S05a Real participant sessions batch one",
+      "done_when": "First batch of up to five actually consenting participants has anonymized event-based interviews and task outputs, or BLOCKED_BY_RECRUITMENT is documented; no synthetic people",
+      "verify": "Independently check consent ledger privately, anonymous summary, actual sample size, per-task rows and export truth, including failures",
+      "verify_cmd": "",
+      "depends_on": [
+        3,
+        4
+      ],
+      "covers": [
+        3
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 5,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 6,
+      "title": "S05b Real participant sessions batch two",
+      "done_when": "Second batch of up to five actually consenting participants has preserved anonymous outputs, or transparent shortfall with reasons; no claimed quota if unmet",
+      "verify": "Independently verify actual count and missingness, per-task results and anonymization, including early stop decisions",
+      "verify_cmd": "",
+      "depends_on": [
+        5
+      ],
+      "covers": [
+        3
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 5,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 7,
+      "title": "S06 Evidence-linked PRD review",
+      "done_when": "Every P0/P1/non-goal and user story is marked approved, rework, defer or not-verified with source; A1/A2 decision and stop decision explicitly recorded",
+      "verify": "Trace each requirement to recorded research or clearly mark unverified; verify stage 01 PRD review document exists",
+      "verify_cmd": "test -s docs/product/STAGE01_PRD_REVIEW.md",
+      "depends_on": [
+        3,
+        5,
+        6
+      ],
+      "covers": [
+        4
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 4,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 8,
+      "title": "S07 Conditional Rust architecture review",
+      "done_when": "Leptos CSR/WASM, Tauri 2, egui/Slint compared on observed user workflow, security limits, deployment, platform UX; no code SPIKE implied",
+      "verify": "Review constraints against real research, source documentation and ADR, mark measurements still missing",
+      "verify_cmd": "test -s docs/architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md",
+      "depends_on": [
+        7
+      ],
+      "covers": [
+        5
+      ],
+      "tests_assumption": "A3",
+      "irreversible": false,
+      "estimate_h": 3,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": 9,
+      "title": "S08 Evidence-to-decision review by separate reviewer",
+      "done_when": "Review contains evidence table covering criteria 1–5, actual measurement count, independent reviewer identity/independence and GO/PIVOT/NO-GO/INSUFFICIENT_EVIDENCE outcome",
+      "verify": "An independent reviewer inspects actual artifacts, verifies CLI coverage and flags any absent real user/security evidence",
+      "verify_cmd": "",
+      "depends_on": [
+        7,
+        8
+      ],
+      "covers": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 3,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    }
+  ],
+  "if_then": [
+    {
+      "if": "Real users already meet sharing needs with current free screenshot tools",
+      "then": "Record A1 counterevidence, remove unique-value claims and consider PIVOT/NO-GO before further work"
+    },
+    {
+      "if": "Recruitment is below planned sample or consent not established",
+      "then": "Record true N and BLOCKED_BY_RECRUITMENT or INSUFFICIENT_EVIDENCE; never substitute synthetic sessions"
+    },
+    {
+      "if": "Browser clipboard or WASM fails on a target environment",
+      "then": "Retain user problem definition and request new architecture SPIKE approval rather than silently changing the framework"
+    },
+    {
+      "if": "Verified branding conflict exists",
+      "then": "Use ShareReady only internally until branding review"
+    }
+  ],
+  "early_signals": [
+    "Recent screenshot sharing does not imply redaction frequency; count privacy-relevant events separately",
+    "Competitor baselines match or exceed the hypothesized workflow without switching cost",
+    "User participants cannot be recruited without exposing real private screenshots",
+    "A UI-only success claim conflicts with pixel/metadata export evidence"
+  ],
+  "first_step": 1,
+  "gates": {},
+  "last_event": 0
+}
