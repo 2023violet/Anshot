@@ -30,7 +30,7 @@ jobs:
           test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
           test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc
           node --check e2-workbench/app.js
-          python3 -m py_compile e2-workbench/tests/verify_e2_browser.py
+          python3 -m py_compile e2-workbench/tests/verify_e2_browser.py e2-workbench/tests/verify_e2_precision_browser.py e2-workbench/tests/verify_e2_3_browser.py
           test -s e2-workbench/index.html
           ! grep -Eq '<script[^>]*src="https?://' e2-workbench/index.html
           git diff --exit-code
@@ -64,7 +64,9 @@ jobs:
           google-chrome --version
           /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_browser.py
           /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_precision_browser.py
+          /tmp/e2-env/bin/python e2-workbench/tests/verify_e2_3_browser.py
           test -s /tmp/e2-browser-evidence/e2-results.json
+          test -s /tmp/e2-browser-evidence/e2-3-results.json
           echo "E2_REAL_CHROMIUM_ALL_ACCEPTANCE_CHECKS_PASS"
       - name: Preserve exact binary and Chromium output evidence
         if: always()
