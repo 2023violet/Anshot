@@ -36,10 +36,13 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/e2-verified-e1-wasm
           gh run download 38758308909 --repo 2023violet/ShareReady --name e1-real-wasm-browser-and-clipboard-evidence --dir /tmp/e2-verified-e1-wasm
-          test -s /tmp/e2-verified-e1-wasm/e1-spike/web/pkg/shareready_e1_bg.wasm
-          test -s /tmp/e2-verified-e1-wasm/e1-spike/web/pkg/shareready_e1.js
+          WASM="$(find /tmp/e2-verified-e1-wasm -type f -name shareready_e1_bg.wasm -print -quit)"
+          GLUE="$(find /tmp/e2-verified-e1-wasm -type f -name shareready_e1.js -print -quit)"
+          test -s "$WASM"
+          test -s "$GLUE"
           mkdir -p e1-spike/web/pkg
-          cp /tmp/e2-verified-e1-wasm/e1-spike/web/pkg/shareready_e1* e1-spike/web/pkg/
+          cp "$WASM" e1-spike/web/pkg/shareready_e1_bg.wasm
+          cp "$GLUE" e1-spike/web/pkg/shareready_e1.js
           sha256sum e1-spike/web/pkg/shareready_e1_bg.wasm
       - name: Real Chrome pointer workflow and synthetic PNG pixel verification
         shell: bash
