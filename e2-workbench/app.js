@@ -238,6 +238,7 @@ function nudgeSelected(key,resize){
  const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[key];
  if(!delta)return false;
  const [dx,dy]=delta,before=snapshot();
+ const keyboardFocusKind=document.activeElement?.classList.contains("mask")?"mask":"region";
  let left=Math.floor(Math.min(r.x0,r.x1)),top=Math.floor(Math.min(r.y0,r.y1));
  let right=Math.ceil(Math.max(r.x0,r.x1)),bottom=Math.ceil(Math.max(r.y0,r.y1));
  if(resize){
@@ -259,7 +260,7 @@ function nudgeSelected(key,resize){
   // In compact layout the inspector and its region controls are display:none.
   // Focusing the hidden node silently drops subsequent keyboard operations.
   const inspectorVisible=getComputedStyle($("regionList").closest(".panel")).display!=="none";
-  const focusNode=inspectorVisible?(region||mask):(mask||region);
+  const focusNode=keyboardFocusKind==="mask"||!inspectorVisible?(mask||region):(region||mask);
   focusNode?.focus({preventScroll:true});
  });
  status(resize?"已使用键盘调整遮挡尺寸":"已使用键盘移动遮挡区域");
