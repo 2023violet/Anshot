@@ -69,6 +69,7 @@ jobs:
           google-chrome --version
           # Only localhost HTTP and browser-local blob URLs are permitted by the fixture verifier.
           python3 e1-spike/tests/verify_browser_export.py
+          # Includes genuine browser Permissions-Policy clipboard-write denial and real PNG download fallback.
           python3 e1-spike/tests/verify_clipboard_and_memory.py
           DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
           python3 "$DE" step 4 --status in_progress --note "Actual Rust compiled to wasm32 and real local-Chrome synthetic PNG export"
