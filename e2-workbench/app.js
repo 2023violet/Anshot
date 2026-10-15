@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const FIXTURE_SHA={
  "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6":"T01_CHAT",
  "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2":"T02_ORDER",
- "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4ccff9b629461f83d":"T04_EDGES",
+ "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d":"T04_EDGES",
  "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95":"T05_JPEG_EXIF"
 };
 let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
