@@ -1,0 +1,79 @@
+name: S03 verify actual output files from three gesture orders
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s03-order-output-audit.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Fetch actual browser exports
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/s03-case
+          gh run download 38686065063 --repo 2023violet/ShareReady --name s03-pointer-order-dom-diagnostics --dir /tmp/s03-case
+          test -s /tmp/s03-case/case1_export.png
+      - name: Check pixels and preserve diagnostic visual contact sheet
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/s03-case-venv
+          /tmp/s03-case-venv/bin/pip install --disable-pip-version-check Pillow==12.3.0
+          /tmp/s03-case-venv/bin/python - <<'PY'
+          import base64,json
+          from pathlib import Path
+          from PIL import Image,ImageDraw,ImageChops,ImageFont
+          root=Path("/tmp/s03-case")
+          fixture=Path("docs/research/fixtures")
+          info=next(f for f in json.loads((fixture/"manifest.json").read_text())["fixtures"] if f["id"]=="T01_CHAT")
+          src=Image.open(fixture/info["file"]).convert("RGB")
+          sheet=Image.new("RGB",(1350,1050),"#eceff3")
+          d=ImageDraw.Draw(sheet)
+          font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",22)
+          for n in range(3):
+              exported=root/f"case{n}_export.png"
+              assert exported.is_file()
+              with Image.open(exported) as p:
+                  assert p.size==src.size and p.format=="PNG"
+                  rgb=p.convert("RGB")
+                  targets=[]
+                  for region in info["sensitive_regions"]:
+                      a,b,c,e=region["rect_px"]
+                      center=((a+c)//2,(b+e)//2)
+                      changed=src.getpixel(center)!=rgb.getpixel(center)
+                      targets.append({"id":region["id"],"center_changed":changed,"result_color":rgb.getpixel(center)})
+                  keeps=[]
+                  for region in info["must_preserve_regions"]:
+                      a,b,c,e=region["rect_px"]
+                      keep=ImageChops.difference(src.crop((a,b,c,e)),rgb.crop((a,b,c,e))).getbbox() is None
+                      keeps.append({"id":region["id"],"unchanged":keep})
+                  print("ACTUAL_EXPORTED_FILE_DIAGNOSTIC",json.dumps({"case":n,"sensitive":targets,"preservation":keeps,"metadata_present":bool(p.info.get("exif"))}))
+                  v=rgb.copy()
+                  g=ImageDraw.Draw(v)
+                  for region,target in zip(info["sensitive_regions"],targets):
+                      a,b,c,e=region["rect_px"]
+                      g.rectangle((a,b,c-1,e-1),outline="#43a271" if target["center_changed"] else "#eb493c",width=5)
+                  v.thumbnail((620,425))
+                  x=20+(n%2)*670;y=22+(n//2)*500
+                  d.text((x,y),f"Case {n}: "+["avatar first","sender first","notification first"][n],font=font,fill="#162536")
+                  sheet.paste(v,(x,y+32))
+          sheet.save("/tmp/s03_order_export_contact.jpg",quality=60)
+          payload=base64.b64encode(Path("/tmp/s03_order_export_contact.jpg").read_bytes()).decode("ascii")
+          print("S03_ORDER_CONTACT_BASE64_BEGIN")
+          for i in range(0,len(payload),1000):print(payload[i:i+1000])
+          print("S03_ORDER_CONTACT_BASE64_END")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s03-order-export-image-audit
+          path: /tmp/s03_order_export_contact.jpg
+          retention-days: 30
