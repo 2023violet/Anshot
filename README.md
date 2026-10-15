@@ -15,7 +15,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## Current stage / 当前阶段
 
-`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S03 DONE / S04 IN_PROGRESS / A1 NOT_VERIFIED`.
+`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S04 DONE / S05a BLOCKED_BY_RECRUITMENT / A1 NOT_VERIFIED`.
 
 **No Rust application code, human usability benchmarks, user interviews, deployment or release is claimed.** We do have scripted third-party browser results, which are not human performance claims.
 
@@ -35,6 +35,9 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [S04 ethics and recruitment protocol](docs/research/STAGE01_S04_RESEARCH_PROTOCOL.md) | Draft consent, balanced research design and stop conditions |
 | [S04 screening and consent](docs/research/STAGE01_S04_CONSENT_AND_SCREENERS.md) | Not yet circulated; zero consenting participants |
 | [S04 allocation slots](docs/research/STAGE01_S04_ALLOCATION_SLOTS.csv) | Ten UNASSIGNED balanced slots; not real people |
+| [S04 internal adversarial review](docs/research/STAGE01_S04_REVIEW_AND_RECRUITMENT_FEASIBILITY_2026-10-15.md) | 15 open/privacy risks, real recruiting platform feasibility and no participant claims |
+| [S04 machine readiness](docs/research/STAGE01_S04_READINESS.json) | Live outreach explicitly forbidden, all counters zero |
+| [S05 operator handoff](docs/research/STAGE01_S05_RECRUITMENT_OPERATIONS_HANDOFF.md) | True human recruiting prerequisites; no outreach or payments authorized |
 | [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
 | [A1 problem evidence & counterevidence](docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md) | External user discussions, promotion bias, and falsification plan |
 | [Stage 01 internal readiness self-review](docs/reviews/STAGE01_READINESS_REVIEW_2026-10-14.md) | Same-agent desk review, not an external independent audit |
