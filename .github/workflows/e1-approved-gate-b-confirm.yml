@@ -89,7 +89,11 @@ jobs:
           assert new["needs_confirmation"] and old["needs_confirmation"]
           assert new["token"]==old["token"]=="b64d6bae91"
           assert new["preview"]==old["preview"],"FULL_PREVIEW_CONTENT_DRIFT"
-          assert len(new["preview"].get("verify_commands",[]))==6, "SIX_COMMANDS_EXPECTED"
+          six=new["preview"].get("steps",[])
+          assert len(six)==6, "SIX_STEPS_EXPECTED"
+          candidate=json.loads((Path(__import__("os").environ["GITHUB_WORKSPACE"])/"docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text(encoding="utf8"))
+          assert [step["verify_cmd"] for step in six]==[step["verify_cmd"] for step in candidate["steps"]], "EXECUTION_COMMAND_MISMATCH"
+          assert [step["id"] for step in six]==[step["id"] for step in candidate["steps"]], "STEP_ID_MISMATCH"
           print("GATE_B_TOKEN_AND_FULL_PREVIEW_IDENTICAL_TO_HUMAN_REVIEWED")
           PY
           python3 "$DE" gate B --confirm b64d6bae91 | tee /tmp/e1-B-confirm-result.json
