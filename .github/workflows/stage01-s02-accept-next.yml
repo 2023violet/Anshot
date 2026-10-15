@@ -1,0 +1,127 @@
+name: Stage 01 S02 research fixture acceptance and S03 start
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-s02-accept-next.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  accept-s02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout approved research branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Restore authentic Gate B and S01 work state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-skill
+          git -C /tmp/shareready-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-skill rev-parse HEAD)" = "1eb9624ee2037e4a2b253ee8120fa274dad1ef21"
+          mkdir -p /tmp/prev-stage
+          gh run download 38678816777 --repo 2023violet/ShareReady --name shareready-stage01-s01-done-s02-in-progress --dir /tmp/prev-stage
+          ARCHIVE="$(find /tmp/prev-stage -maxdepth 1 -type f -name '*.tgz')"
+          test -n "$ARCHIVE"
+          echo "01a276af710c741f79f29411b53e9fa2648984b0b9a5475145fe3bdf47b49c69  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C .
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          machine=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          approved=json.loads(Path("docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json").read_text(encoding="utf8"))
+          assert machine["gates"].get("A") and machine["gates"].get("B")
+          for field in ["name","risk","schema","milestones","first_step","if_then","early_signals"]:
+              assert machine[field]==approved[field], "GATE_B_DRIFT: "+field
+          for left,right in zip(machine["steps"],approved["steps"]):
+              for field in ["id","title","done_when","verify","verify_cmd","depends_on","covers","tests_assumption","irreversible","estimate_h"]:
+                  assert left[field]==right[field],"STEP_DRIFT "+str(left["id"])+" "+field
+          assert machine["steps"][0]["status"]=="done" and machine["steps"][1]["status"]=="in_progress"
+          assert all(s["status"]=="todo" for s in machine["steps"][2:])
+          print("PREVIOUS_REAL_MACHINE_STATE_RESTORED; A/B VALID AND APPROVED STRUCTURE UNCHANGED")
+          PY
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" check card
+          python3 "$SKILL" check plan
+          python3 "$SKILL" status
+
+      - name: Verify actual fixture files visual QA report and competitor matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,hashlib,json
+          from pathlib import Path
+          root=Path("docs/research")
+          qa=(root/"STAGE01_S02_VISUAL_AND_MATRIX_QA.md").read_text(encoding="utf8")
+          for item in ["38680414793","38680571476","SAME-AGENT","NOT_MEASURED","T04","T05","Screenshot Redactor"]:
+              assert item in qa, "QA_REPORT_MISSING "+item
+          with (root/"COMPETITOR_EVIDENCE_MATRIX.csv").open(newline="",encoding="utf8") as f:
+              rows=list(csv.DictReader(f))
+          assert len(rows)>=4
+          documented=[r for r in rows if r["evidence_level"]=="DOCUMENTED"]
+          assert len(documented)>=4
+          assert all(r["source_url"].startswith("https://") for r in documented)
+          assert all(r["version_at_measurement"]=="NOT_OBSERVED" for r in rows)
+          assert all(r["observed_environment"]=="NOT_MEASURED" for r in rows)
+          assert all(int(r["hands_on_runs"])==0 for r in rows)
+          fixtures=json.loads((root/"fixtures/manifest.json").read_text(encoding="utf8"))["fixtures"]
+          assert len(fixtures)==5
+          for f in fixtures:
+              p=root/"fixtures"/f["file"]
+              assert p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==f["sha256"]
+              assert len(f["sensitive_regions"])>=2 and len(f["must_preserve_regions"])>=1
+              for r in f["sensitive_regions"]+f["must_preserve_regions"]:
+                  a,b,c,d=r["rect_px"]
+                  assert 0<=a<c<=f["width"] and 0<=b<d<=f["height"]
+          print("S02_DOCUMENTARY_AND_SYNTHETIC_FIXTURES_ACCEPTANCE_PASS")
+          print("CAVEAT: NO REAL COMPETITOR HANDS_ON TEST, NO HUMAN INTERVIEW, NO PRODUCT PIXEL SECURITY CLAIM")
+          PY
+
+      - name: Use actual Skill state machine to complete S02 and open S03 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$SKILL" verify 1
+          python3 "$SKILL" verify 2
+          python3 "$SKILL" step 2 --status done --note "Four documented alternatives and five actual synthetic images; same-agent visual check including T04 native corners, explicit limitations; no measured competitive advantage"
+          python3 "$SKILL" status
+          python3 "$SKILL" step 3 --status in_progress --note "Begin actual competitive task trials; currently 0 live browser tasks, do not infer from official docs"
+          python3 "$SKILL" status
+          python3 "$SKILL" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert [s["status"] for s in p["steps"]]==["done","done","in_progress"]+["todo"]*6
+          assert p["gates"].get("A") and p["gates"].get("B")
+          print("SKILL_STATE_ASSERT: S01_DONE/S02_DONE/S03_IN_PROGRESS; N_USERS=0; HANDS_ON_TESTS=0; RUST_CODE=0")
+          PY
+          git diff --exit-code
+          git diff --cached --exit-code
+
+      - name: Archive real Skill work state
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/shareready-stage01-s02-done-s03-in-progress.tgz -C . .decision
+          sha256sum /tmp/shareready-stage01-s02-done-s03-in-progress.tgz
+
+      - name: Publish ephemeral audit evidence artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-stage01-s02-done-s03-in-progress
+          path: /tmp/shareready-stage01-s02-done-s03-in-progress.tgz
+          if-no-files-found: error
+          retention-days: 30
