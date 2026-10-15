@@ -42,6 +42,7 @@ jobs:
           mkdir -p /tmp/shareready-e1-preview-repo
           cd /tmp/shareready-e1-preview-repo
           git init --quiet
+          git -c user.name='ShareReady Preview Bot' -c user.email='preview@example.invalid' commit --quiet --allow-empty -m 'isolate E1 preview fingerprint root'
           DE=/tmp/sr-e1-skill/skills/deciding-and-executing/scripts/de.py
           python3 "$DE" init --name "ShareReady E1 browser image safety feasibility" --risk high
           cp "$GITHUB_WORKSPACE/docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md" .decision/decision-card.md
