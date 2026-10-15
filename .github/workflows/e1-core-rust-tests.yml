@@ -74,7 +74,7 @@ jobs:
           cmd=["e1-spike/target/release/shareready-e1",str(inp),str(dst)]
           cmd += [",".join(str(n) for n in region["rect_px"]) for region in fixture["sensitive_regions"]]
           subprocess.run(cmd,check=True)
-          assert dst.read_bytes().startswith(b"\\x89PNG"), "not PNG"
+          assert dst.read_bytes().startswith(bytes([137,80,78,71])), "not PNG"
           print("E1_NATIVE_OUTPUT_BYTES",dst.stat().st_size,"SHA256",hashlib.sha256(dst.read_bytes()).hexdigest())
           PY
       - name: Run original Skill state transitions 2 and 3 only
