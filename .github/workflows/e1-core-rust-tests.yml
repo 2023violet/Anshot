@@ -1,0 +1,111 @@
+name: E1 Rust codec tests and original Skill steps 2 and 3
+on:
+  push:
+    branches: [spike/e1-rust-wasm-feasibility]
+    paths: [.github/workflows/e1-core-rust-tests.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  codec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify pin and prepare actual E0 machine state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = spike/e1-rust-wasm-feasibility
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/skill
+          git -C /tmp/skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          mkdir /tmp/e0
+          gh run download 38749174802 --repo 2023violet/ShareReady --name e1-e0-permissioned-baseline --dir /tmp/e0
+          echo "5ea68e42ee33f9aa6bc452b61e5a251f1100669fefd774d2ccb165b0289e1f61  /tmp/e0/e1-e0-state.tgz" | sha256sum -c
+          tar -xzf /tmp/e0/e1-e0-state.tgz
+          cmp .decision/decision-card.md docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text())
+          c=json.loads(Path("docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text())
+          assert p["gates"]["A"] and p["gates"]["B"]
+          assert [s["status"] for s in p["steps"]]==["done"]+["todo"]*5
+          for k in ("name","risk","milestones","steps","if_then","early_signals","first_step"):
+              if k=="steps":
+                  for a,b in zip(p["steps"],c["steps"]):
+                      for field in ("id","title","verify_cmd","done_when","depends_on","covers","tests_assumption"):
+                          assert a[field]==b[field],("DRIFT",a["id"],field)
+              else: assert p[k]==c[k],k
+          PY
+      - name: Generate locked dependencies and warm cargo cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustc -V
+          cargo -V
+          cargo generate-lockfile --manifest-path e1-spike/Cargo.toml
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          test -s e1-spike/Cargo.lock
+          echo E1_LOCK_BASE64_BEGIN
+          base64 -w0 e1-spike/Cargo.lock
+          echo
+          echo E1_LOCK_BASE64_END
+      - name: Run mandatory authorized tests with no network dependency resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline --test codec_security
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release
+          test -x e1-spike/target/release/shareready-e1
+          python3 - <<'PY'
+          import json,pathlib,subprocess,hashlib
+          manifest=json.loads(pathlib.Path("docs/research/fixtures/manifest.json").read_text())
+          fixture=manifest["fixtures"][0]
+          inp=pathlib.Path("docs/research/fixtures")/fixture["file"]
+          dst=pathlib.Path("/tmp/e1_chat_output.png")
+          cmd=["e1-spike/target/release/shareready-e1",str(inp),str(dst)]
+          cmd += [",".join(str(n) for n in region["rect_px"]) for region in fixture["sensitive_regions"]]
+          subprocess.run(cmd,check=True)
+          assert dst.read_bytes().startswith(b"\\x89PNG"), "not PNG"
+          print("E1_NATIVE_OUTPUT_BYTES",dst.stat().st_size,"SHA256",hashlib.sha256(dst.read_bytes()).hexdigest())
+          PY
+      - name: Run original Skill state transitions 2 and 3 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" step 2 --status in_progress --note "Rust opaque mask native tests verified on synthetic input"
+          python3 "$DE" step 2 --status done --timeout 240 --note "Tests proven with pinned crate versions and offline lock"
+          python3 "$DE" step 3 --status in_progress --note "Fresh PNG, metadata and invalid-input fixture tests verified"
+          python3 "$DE" step 3 --status done --timeout 240 --note "codec_security integration test and independent binary readback"
+          python3 "$DE" status
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text())
+          assert [s["status"] for s in p["steps"]]==["done","done","done","todo","todo","todo"]
+          assert all(s["evidence"][-1]["kind"]=="command" for s in p["steps"][:3])
+          print("REAL_SKILL_E1_0_1A_1B_DONE_BROWSER_AND_SECURITY_STILL_TODO")
+          PY
+          tar -czf /tmp/e1-core-after-skill.tgz .decision
+          sha256sum /tmp/e1-core-after-skill.tgz
+          echo "RUST_SOURCE_HASH"
+          sha256sum e1-spike/src/lib.rs e1-spike/tests/codec_security.rs e1-spike/Cargo.lock
+      - name: Preserve core evidence including real generated lock
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-rust-core-tests-machine-proof
+          path: |
+            /tmp/e1-core-after-skill.tgz
+            /tmp/e1_chat_output.png
+            e1-spike/Cargo.lock
+          if-no-files-found: error
+          retention-days: 30
