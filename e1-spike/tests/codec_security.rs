@@ -98,3 +98,38 @@ fn valid_pixel_amid_invalid_regions_still_masks_and_preserves_others() {
         assert_eq!(result.get_pixel(x, y), original.get_pixel(x, y), "unexpected mask at {x},{y}");
     }
 }
+
+#[test]
+fn malformed_image_decoder_and_pixel_limit_are_exercised() {
+    let png = fixture("T01_CHAT.png");
+    let jpeg = fixture("T05_JPEG_EXIF.jpg");
+    let mask = [Region::new(0, 0, 1, 1)];
+    // These all retain valid magic bytes, so failure must happen in header
+    // parsing or image decoding, not in the format or zero-mask guards.
+    for truncated in [&png[..8], &png[..24], &jpeg[..3], &jpeg[..16]] {
+        let error = redact(truncated, &mask).expect_err("truncated input must fail");
+        assert!(error.contains("invalid image header") || error.contains("image decode failed"),
+                "{error}");
+    }
+
+    // Build a small compressed PNG claiming an oversized image. Recalculate
+    // IHDR CRC to ensure the decoder sees valid dimensions rather than bad CRC.
+    fn crc32(payload: &[u8]) -> u32 {
+        let mut value = !0u32;
+        for &b in payload {
+            value ^= u32::from(b);
+            for _ in 0..8 {
+                value = (value >> 1) ^ (if value & 1 == 1 { 0xedb88320 } else { 0 });
+            }
+        }
+        !value
+    }
+    let mut bomb = png;
+    assert_eq!(&bomb[12..16], b"IHDR");
+    bomb[16..20].copy_from_slice(&6000u32.to_be_bytes());
+    bomb[20..24].copy_from_slice(&6000u32.to_be_bytes());
+    let crc = crc32(&bomb[12..29]);
+    bomb[29..33].copy_from_slice(&crc.to_be_bytes());
+    let error = redact(&bomb, &mask).expect_err("36MP image must be refused before decode");
+    assert!(error.contains("decoded pixel dimensions out of bounds"), "{error}");
+}
