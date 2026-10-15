@@ -45,6 +45,8 @@ window.e1Debug={ready:false,renderMs:null,outputBytes:0,masks:0,copiedStatus:"no
 function status(t){$("status").textContent=t}
 function invalidate(){
  sourceRevision++;outputRevision=-1;blob=null;bytes=null;
+ window.e1Debug.copiedStatus="not_attempted";
+ window.e1Debug.readbackError=undefined;
  $("download").disabled=true;$("copy").disabled=true;
  if(activeURL){URL.revokeObjectURL(activeURL);activeURL=null}
  $("preview").removeAttribute("src");
@@ -59,6 +61,8 @@ $("generate").addEventListener("click",async()=>{
  const f=$("file").files?.[0];
  if(!f){status("Select a local synthetic fixture first.");return}
  $("generate").disabled=true;$("copy").disabled=true;$("download").disabled=true;
+ window.e1Debug.copiedStatus="not_attempted";
+ window.e1Debug.readbackError=undefined;
  const v=sourceRevision;
  try{
   const input=new Uint8Array(await f.arrayBuffer());
