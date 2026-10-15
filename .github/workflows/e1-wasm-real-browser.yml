@@ -67,6 +67,7 @@ jobs:
           /tmp/e1-python/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
           source /tmp/e1-python/bin/activate
           google-chrome --version
+          # Only localhost HTTP and browser-local blob URLs are permitted by the fixture verifier.
           python3 e1-spike/tests/verify_browser_export.py
           python3 e1-spike/tests/verify_clipboard_and_memory.py
           DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
