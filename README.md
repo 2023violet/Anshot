@@ -15,7 +15,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## Current stage / 当前阶段
 
-`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A PASS / GATE B PASS / S01 DONE / S02 IN_PROGRESS / A1 NOT_VERIFIED`.
+`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01,S02 DONE / S03 IN_PROGRESS / A1 NOT_VERIFIED`.
 
 **No Rust application code, benchmark results, user interviews, deployment or release is claimed.**
 
@@ -27,6 +27,9 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [Human approval record](docs/decisions/STAGE01_GATE_A_APPROVAL_RECORD.md) | Approved decision candidate; script gate is still pending |
 | [Stage 01 PRD draft](docs/product/STAGE01_PRD_DRAFT_v0.1.md) | Product definition and unverified requirements |
 | [Research plan](docs/research/STAGE01_RESEARCH_PLAN_v0.1.md) | Competitor study and participant test plan |
+| [S02 fixture visual QA](docs/research/STAGE01_S02_VISUAL_AND_MATRIX_QA.md) | Real generated image review, benchmark fixture constraints |
+| [S03 actual-browser pilot](docs/research/STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md) | Real third-party exported files, pixel comparisons and known automation limitations |
+| [S03 scripted observations CSV](docs/research/STAGE01_S03_SCRIPTED_TRIALS.csv) | Oracle-assisted Chrome trials, not human UX statistics |
 | [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
 | [A1 problem evidence & counterevidence](docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md) | External user discussions, promotion bias, and falsification plan |
 | [Stage 01 independent readiness review](docs/reviews/STAGE01_READINESS_REVIEW_2026-10-14.md) | Verifiable exit status, blockers and quality corrections |
