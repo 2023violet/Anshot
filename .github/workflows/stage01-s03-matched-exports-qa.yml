@@ -3,7 +3,7 @@ name: Stage 01 S03 verify matched competitor exports after reset
 on:
   push:
     branches: [docs/stage01-direction-skill-gates]
-    paths: [.github/workflows/stage01-s03-inspect-exports.yml]
+    paths: [.github/workflows/stage01-s03-matched-exports-qa.yml]
 
 permissions:
   contents: read
