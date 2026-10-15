@@ -27,6 +27,9 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [Human approval record](docs/decisions/STAGE01_GATE_A_APPROVAL_RECORD.md) | Approved decision candidate; script gate is still pending |
 | [Stage 01 PRD draft](docs/product/STAGE01_PRD_DRAFT_v0.1.md) | Product definition and unverified requirements |
 | [Research plan](docs/research/STAGE01_RESEARCH_PLAN_v0.1.md) | Competitor study and participant test plan |
+| [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
+| [Participant study pack](docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md) | Consent, neutral interview, counterbalanced UX tasks |
+| [Rust-first ADR candidate](docs/architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md) | Architecture alternatives without premature dependency lock |
 | [Skill CLI gate runbook](docs/governance/STAGE01_GATE_RUNBOOK.md) | How to complete real Gate A/B in executable checkout |
 | [Competitor test contract](docs/research/COMPETITOR_TEST_CONTRACT.md) | Reproducible comparative UX/safety research protocol |
 

@@ -106,6 +106,8 @@
 
 ## 9. Rust 技术决策暂存（Architecture Decision Pending）
 
+详见 [ADR-0001 Rust-first 技术候选](../architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md)；只有 A1 得到用户与竞品实测支持之后才能进行技术 SPIKE。
+
 | 路线 | 原因 | 验证门槛 | 当前结论 |
 |---|---|---|---|
 | Rust + Leptos CSR + Trunk / WASM | Rust 驱动浏览器 UI、静态托管，零安装 | Web 剪贴板、图片大小、PNG 编码、首屏 WASM 加载与各浏览器适配 | **首选 SPIKE**，非冻结 |

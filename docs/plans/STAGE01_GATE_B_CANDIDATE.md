@@ -3,6 +3,8 @@
 > **SR-PLAN-001 · 2026-10-14 · DRAFT / GATE B NOT STARTED**  
 > 此为供审查的文字计划，**不是** `.decision/plan.json`，不构成脚本认可的执行命令。前置条件：真实 `de.py gate A` 通过并记录脚本证据。
 
+研究者需要先阅读 [公开竞品证据](../research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md)、[真实参与者协议](../research/STAGE01_PARTICIPANT_STUDY_PACK.md) 与 [Rust 技术候选](../architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md)；三份均为准备材料，不算实验完成。
+
 ## 成功标准编号映射
 
 决策卡成功标准 1–5 见 [Gate A 卡片](../decisions/STAGE01_GATE_A_CARD_READY.md)。
