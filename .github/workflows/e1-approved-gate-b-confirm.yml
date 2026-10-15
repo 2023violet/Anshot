@@ -1,0 +1,122 @@
+name: E1 confirmed Gate B only — original preview fingerprint
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/e1-approved-gate-b-confirm.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  e1-b-confirm-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout reviewed candidate only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact original and E1 source blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = e542ef0745a60a3f439979fe45df92cf059b37c6
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc
+          test "$(git hash-object docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md)" = d4687fed6a58bf17ac2505c5bfb599d2ab5f205d
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          git diff --exit-code
+          git diff --cached --exit-code
+          echo "E1_AND_STAGE01_SOURCE_BLOBS_IDENTICAL"
+
+      - name: Get pinned Skill and restore actual A-confirmed B-preview machine state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/e1-skill
+          git -C /tmp/e1-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/e1-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -q 'version: "4.1.0"' /tmp/e1-skill/skills/deciding-and-executing/SKILL.md
+          mkdir -p /tmp/e1-prior-artifact /tmp/e1-confirm-workspace
+          gh run download 38745548101 --repo 2023violet/ShareReady --name e1-confirmed-a-preview-b-human-approval-required --dir /tmp/e1-prior-artifact
+          test -s /tmp/e1-prior-artifact/e1-B-preview.json
+          test -s /tmp/e1-prior-artifact/e1-A-confirmed-B-pending.tgz
+          echo "e9dd85513c0e0d3db1d120ca18125b77fa5ae4cecbb7193da5009e68f4b6fb4c  /tmp/e1-prior-artifact/e1-A-confirmed-B-pending.tgz" | sha256sum -c
+          cd /tmp/e1-confirm-workspace
+          git init --quiet
+          git -c user.name='E1 Gate Bot' -c user.email='e1-gate@example.invalid' commit --quiet --allow-empty -m 'separate E1 gate workspace'
+          tar -xzf /tmp/e1-prior-artifact/e1-A-confirmed-B-pending.tgz
+          cmp .decision/decision-card.md "$GITHUB_WORKSPACE/docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          candidate=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text(encoding="utf8"))
+          machine=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert machine["gates"].get("A") and not machine["gates"].get("B"),machine["gates"]
+          assert len(machine["steps"])==len(candidate["steps"])==6
+          for k in ("schema","name","risk","milestones","steps","if_then","early_signals","first_step"):
+              assert machine[k]==candidate[k],"E1_APPROVED_PLAN_DRIFT "+k
+          assert all(step["status"]=="todo" for step in machine["steps"])
+          old=json.loads(Path("/tmp/e1-prior-artifact/e1-B-preview.json").read_text(encoding="utf8"))
+          assert old["needs_confirmation"] and old["token"]=="b64d6bae91"
+          print("RESTORED_AUTHENTIC_A_VALID_B_MISSING_6_STEPS_UNCHANGED")
+          PY
+          DE=/tmp/e1-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card
+          python3 "$DE" check plan
+          python3 "$DE" status
+
+      - name: Recompute exact B preview and confirm only this user-approved B
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/e1-confirm-workspace
+          DE=/tmp/e1-skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$DE" gate B > /tmp/e1-B-recomputed.txt 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          new_raw=Path("/tmp/e1-B-recomputed.txt").read_text(encoding="utf8")
+          new=json.loads(new_raw[new_raw.index("{"):])
+          old=json.loads(Path("/tmp/e1-prior-artifact/e1-B-preview.json").read_text(encoding="utf8"))
+          assert new["needs_confirmation"] and old["needs_confirmation"]
+          assert new["token"]==old["token"]=="b64d6bae91"
+          assert new["preview"]==old["preview"],"FULL_PREVIEW_CONTENT_DRIFT"
+          assert len(new["preview"].get("verify_commands",[]))==6, "SIX_COMMANDS_EXPECTED"
+          print("GATE_B_TOKEN_AND_FULL_PREVIEW_IDENTICAL_TO_HUMAN_REVIEWED")
+          PY
+          python3 "$DE" gate B --confirm b64d6bae91 | tee /tmp/e1-B-confirm-result.json
+          python3 "$DE" status | tee /tmp/e1-B-confirm-status.json
+          python3 "$DE" coverage
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path(".decision/plan.json").read_text(encoding="utf8"))
+          assert plan["gates"].get("A") and plan["gates"].get("B")
+          assert len(plan["steps"])==6
+          assert all(x["status"]=="todo" for x in plan["steps"])
+          output=Path("/tmp/e1-B-confirm-result.json").read_text(encoding="utf8")
+          assert '"gate": "B"' in output and '"ok": true' in output
+          print("E1_REAL_GATE_B_VALID_ALL_SIX_STEPS_TODO_NO_RUST_EXECUTION")
+          PY
+          tar -czf /tmp/e1-gates-A-B-valid-machine-evidence.tgz .decision
+          sha256sum /tmp/e1-gates-A-B-valid-machine-evidence.tgz
+
+      - name: Preserve genuine Gate B confirm and machine event ledger
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-gates-a-b-valid-no-code
+          path: |
+            /tmp/e1-B-recomputed.txt
+            /tmp/e1-B-confirm-result.json
+            /tmp/e1-B-confirm-status.json
+            /tmp/e1-gates-A-B-valid-machine-evidence.tgz
+          retention-days: 30
+          if-no-files-found: error
