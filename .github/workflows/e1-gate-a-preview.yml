@@ -1,0 +1,99 @@
+name: E1 deciding-and-executing Gate A preview ONLY
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/e1-gate-a-preview.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  e1-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout research branch, without writing any approved Stage01 state
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Assert original Stage 01 Gate A/B inputs unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object docs/decisions/STAGE01_GATE_A_CARD_READY.md)" = "e542ef0745a60a3f439979fe45df92cf059b37c6"
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = "d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc"
+          git diff --exit-code
+          git diff --cached --exit-code
+          echo "STAGE01_APPROVED_INPUTS_UNCHANGED"
+      - name: Pin the real deciding-and-executing v4.1.0 tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/sr-e1-skill
+          git -C /tmp/sr-e1-skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/sr-e1-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -q 'version: "4.1.0"' /tmp/sr-e1-skill/skills/deciding-and-executing/SKILL.md
+          echo "PINNED_E1_SKILL_SHA_AND_VERSION_PASS"
+      - name: Initialize an entirely separate temporary Git worktree and check both candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/shareready-e1-preview-repo
+          cd /tmp/shareready-e1-preview-repo
+          git init --quiet
+          DE=/tmp/sr-e1-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" init --name "ShareReady E1 browser image safety feasibility" --risk high
+          cp "$GITHUB_WORKSPACE/docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md" .decision/decision-card.md
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          target=Path(".decision/plan.json")
+          initialized=json.loads(target.read_text(encoding="utf-8"))
+          candidate=json.loads((Path(os.environ["GITHUB_WORKSPACE"])/"docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text(encoding="utf-8"))
+          candidate["schema"]=initialized["schema"]
+          candidate["gates"]={}
+          candidate["last_event"]=initialized.get("last_event")
+          assert len(candidate["steps"])==6
+          assert candidate["risk"]=="high"
+          assert all(s["status"]=="todo" for s in candidate["steps"])
+          target.write_text(json.dumps(candidate,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          PY
+          python3 "$DE" check card
+          python3 "$DE" check plan
+          python3 "$DE" status
+          echo "SEPARATE_E1_WORKSPACE_READY_NO_CONFIRM_NO_CODE"
+      - name: Run real Gate A to produce a human approval preview token without confirming it
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/shareready-e1-preview-repo
+          DE=/tmp/sr-e1-skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$DE" gate A > /tmp/e1-gate-a-preview.json 2>&1
+          RESULT=$?
+          set -e
+          cat /tmp/e1-gate-a-preview.json
+          test "$RESULT" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          response=json.loads(Path("/tmp/e1-gate-a-preview.json").read_text(encoding="utf-8"))
+          assert response.get("needs_confirmation") is True,response
+          assert len(response.get("token",""))>=8,response
+          assert response.get("preview"),response
+          p=json.loads(Path(".decision/plan.json").read_text(encoding="utf-8"))
+          assert p.get("gates",{})=={},"Gate A/B were confirmed without owner!"
+          print("REAL_E1_GATE_A_PREVIEW_ISSUED_NOT_CONFIRMED; E1_GATE_B_NOT_REQUESTED; PRODUCT_RUST_CODE=0")
+          PY
+          tar -czf /tmp/shareready-e1-gate-a-preview-state.tgz -C /tmp/shareready-e1-preview-repo .decision
+          sha256sum /tmp/shareready-e1-gate-a-preview-state.tgz
+      - name: Preserve authentic preview and separate unconfirmed state
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shareready-e1-real-gate-a-preview-unconfirmed
+          path: |
+            /tmp/e1-gate-a-preview.json
+            /tmp/shareready-e1-gate-a-preview-state.tgz
+          retention-days: 30
+          if-no-files-found: error
