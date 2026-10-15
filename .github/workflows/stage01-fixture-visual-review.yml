@@ -1,0 +1,91 @@
+name: Stage 01 S02 fixture contact-sheet and export-contract QA
+
+on:
+  push:
+    branches: [docs/stage01-direction-skill-gates]
+    paths: [.github/workflows/stage01-fixture-visual-review.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout fixture evidence without stored credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Pillow for research-only visual inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/shareready-inspect
+          /tmp/shareready-inspect/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0
+      - name: Inspect original files and create actual-image contact sheet
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/shareready-inspect/bin/python - <<'PY'
+          import base64, csv, hashlib, io, json
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          path=Path("docs/research/fixtures")
+          fixtures=json.loads((path/"manifest.json").read_text(encoding="utf8"))["fixtures"]
+          assert len(fixtures)==5
+          sheet=Image.new("RGB",(1260,1450),"#e4e7eb")
+          d=ImageDraw.Draw(sheet)
+          f=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",18)
+          for idx,item in enumerate(fixtures):
+              im_path=path/item["file"]
+              assert hashlib.sha256(im_path.read_bytes()).hexdigest()==item["sha256"]
+              with Image.open(im_path) as img:
+                  img.load()
+                  assert img.size==(item["width"],item["height"])
+                  assert img.format==item["format"]
+                  image=img.convert("RGB")
+                  # independent non-product export simulation: opaque replace + fresh PNG
+                  mask=image.copy()
+                  md=ImageDraw.Draw(mask)
+                  for reg in item["sensitive_regions"]:
+                      box=reg["rect_px"]
+                      md.rectangle((box[0],box[1],box[2]-1,box[3]-1),fill=(10,10,10))
+                  buf=io.BytesIO()
+                  mask.save(buf,format="PNG")
+                  with Image.open(io.BytesIO(buf.getvalue())) as result:
+                      assert result.info.get("exif") is None
+                      for reg in item["sensitive_regions"]:
+                          b=reg["rect_px"]
+                          assert result.getpixel((b[0],b[1]))==(10,10,10)
+                          assert result.getpixel((b[2]-1,b[3]-1))==(10,10,10)
+                  if item["id"]=="T05_JPEG_EXIF":
+                      assert 315 in img.getexif() and img.getexif().get_ifd(34853)
+                  image.thumbnail((600,390))
+                  col=idx%2;row=idx//2
+                  x=16+col*624;y=18+row*470
+                  d.rectangle((x-6,y-6,x+610,y+426),fill="#ffffff",outline="#bec5d0",width=2)
+                  d.text((x,y),item["id"]+" | "+str(item["width"])+"x"+str(item["height"]),font=f,fill="#202936")
+                  sheet.paste(image,(x+int((600-image.width)/2),y+35))
+                  d.text((x,y+403),str(len(item["sensitive_regions"]))+" private zones / "+str(len(item["must_preserve_regions"]))+" preserved",font=f,fill="#364151")
+                  print("EXPORT_CONTRACT_FIXTURE_TEST_PASS:",item["id"],"original_sha256",item["sha256"])
+          sheet.save("/tmp/s02_contact_sheet.jpg",format="JPEG",quality=51,subsampling=2,optimize=True)
+          payload=base64.b64encode(Path("/tmp/s02_contact_sheet.jpg").read_bytes()).decode("ascii")
+          print("QA_IMAGE_BASE64_BEGIN")
+          for start in range(0,len(payload),1000):print(payload[start:start+1000])
+          print("QA_IMAGE_BASE64_END")
+          with open("docs/research/COMPETITOR_EVIDENCE_MATRIX.csv",newline="",encoding="utf8") as inp:
+              rows=list(csv.DictReader(inp))
+          assert len(rows)>=4
+          assert sum(int(r["hands_on_runs"]) for r in rows)==0
+          assert all(r["evidence_level"] in ("DOCUMENTED","NOT_VERIFIED") for r in rows)
+          print("COMPETITOR_MATRIX_SCHEMA_PASS",len(rows))
+          print("S02_RESEARCH_DATA_STRUCTURE_PASS; THIS_IS_NOT_SHARE_READY_PRODUCT_TEST")
+          PY
+      - name: Upload contact sheet for independent review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: s02-actual-image-contact-sheet
+          path: /tmp/s02_contact_sheet.jpg
+          if-no-files-found: error
+          retention-days: 30
