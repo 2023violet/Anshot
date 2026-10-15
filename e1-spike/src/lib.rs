@@ -1,5 +1,5 @@
 //! E1 minimal local pixel redaction experiment. Synthetic fixtures ONLY.
-use image::{DynamicImage, ImageFormat, Rgba, RgbaImage};
+use image::{DynamicImage, GenericImageView, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 
 pub const MAX_INPUT_BYTES: usize = 25 * 1024 * 1024;
@@ -75,7 +75,7 @@ pub fn jpeg_orientation(input: &[u8]) -> u16 {
 }
 
 fn read_exif_orientation(t: &[u8]) -> Option<u16> {
-    let little = match t.get(0..2)? { b"II" => true, b"MM" => false, _ => return None };
+    let little = if t.get(0..2)? == b"II" { true } else if t.get(0..2)? == b"MM" { false } else { return None };
     let u16_at = |offset: usize| -> Option<u16> {
         let b = t.get(offset..offset.checked_add(2)?)?;
         Some(if little { u16::from_le_bytes([b[0], b[1]]) }
