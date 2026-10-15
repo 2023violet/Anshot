@@ -1,0 +1,80 @@
+name: E1 E0 engineering authorization and isolated baseline proof
+on:
+  push:
+    branches: [spike/e1-rust-wasm-feasibility]
+    paths: [.github/workflows/e1-e0-engineering-preflight.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  e0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated engineering branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prove E1 branch, original author Skill, and authorized plan hash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "spike/e1-rust-wasm-feasibility"
+          test "$(git hash-object docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)" = f008a25717a6623186dca2675d322ce2049d09dc
+          test "$(git hash-object docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md)" = d4687fed6a58bf17ac2505c5bfb599d2ab5f205d
+          test "$(git hash-object docs/plans/STAGE01_GATE_B_MACHINE_INPUT.json)" = d24b33c5c77d13a3a1efc67c5eb6a7b63e7986bc
+          git clone --quiet https://github.com/2023violet/deciding-and-executing.git /tmp/skill
+          git -C /tmp/skill checkout --quiet --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          mkdir /tmp/machine-e0
+          gh run download 38747997797 --repo 2023violet/ShareReady --name e1-gates-a-b-valid-no-code --dir /tmp/machine-e0
+          echo "e7ce9925fc5ea3ff1316dab1bed62a3bf03f173edded1176d5d332a4eb6c9dc8  /tmp/machine-e0/e1-gates-A-B-valid-machine-evidence.tgz" | sha256sum -c
+          tar -xzf /tmp/machine-e0/e1-gates-A-B-valid-machine-evidence.tgz
+          cmp .decision/decision-card.md docs/decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path(".decision/plan.json").read_text())
+          b=json.loads(Path("docs/plans/SHAREREADY_E1_GATE_B_CANDIDATE.json").read_text())
+          assert a["gates"]["A"] and a["gates"]["B"]
+          assert [s["status"] for s in a["steps"]] == ["todo"] * 6
+          for k in ("steps","milestones","if_then","early_signals","risk","first_step"):
+              assert a[k]==b[k], ("APPROVED_PLAN_DRIFT",k)
+          print("E1_GATE_A_B_VALID_EXACT_PLAN_SIX_STEPS_TODO")
+          PY
+          DE=/tmp/skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card
+          python3 "$DE" check plan
+          python3 "$DE" status
+          python3 "$DE" step 1 --status in_progress --note "Owner authorized all E1 steps; isolated spike branch, untouched main and fixed original plan confirmed"
+          python3 "$DE" step 1 --status done --note "Isolated E1 branch and original machine gate evidence verified; no Rust work in this E0 workflow"
+          python3 "$DE" status
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text())
+          assert p["steps"][0]["status"]=="done" and len(p["steps"][0]["evidence"])>0
+          assert [s["status"] for s in p["steps"][1:]]==["todo"]*5
+          print("E0_AUTHORIZED_PRECHECK_DONE; STEPS_2_6_TODO")
+          PY
+          cat > /tmp/e0-baseline.txt <<EOF
+          E1_BRANCH=spike/e1-rust-wasm-feasibility
+          BASE_BRANCH_COMMIT=97904074110c0f7e98b8584f9d0c5ca7b50e57d7
+          E1_APPROVED_PLAN_BLOB=f008a25717a6623186dca2675d322ce2049d09dc
+          PINNED_SKILL=1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          ORIGINAL_MAIN=84fed42bee8d6accef62e06f9fc47f9291c1de3c
+          CODE_NOT_STARTED_IN_E0=true
+          EOF
+          tar -czf /tmp/e1-e0-state.tgz .decision
+          sha256sum /tmp/e1-e0-state.tgz
+      - name: Upload actual machine E0 evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1-e0-permissioned-baseline
+          path: |
+            /tmp/e1-e0-state.tgz
+            /tmp/e0-baseline.txt
+          if-no-files-found: error
+          retention-days: 30
