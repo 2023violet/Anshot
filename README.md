@@ -15,7 +15,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## Current stage / 当前阶段
 
-`Stage 00: CONDITIONAL GO` → `Stage 01: HUMAN DIRECTION CANDIDATE APPROVED / CLI GATE A PENDING / GATE B NOT STARTED`.
+`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A PASS / GATE B PASS / S01 DONE / S02 IN_PROGRESS / A1 NOT_VERIFIED`.
 
 **No Rust application code, benchmark results, user interviews, deployment or release is claimed.**
 
