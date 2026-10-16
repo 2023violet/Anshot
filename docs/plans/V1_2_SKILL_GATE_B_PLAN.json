@@ -1,0 +1,171 @@
+{
+  "schema": 2,
+  "name": "ShareReady V1.2 Windows Loopback HTTP hardening — independent high-risk plan",
+  "risk": "high",
+  "milestones": [
+    "锁定既有 Gate A hash、V1.1 基线 SHA，候选计划的六项成功标准与命令逐项可审",
+    "旧 V1.1 Windows 启动器确实存在可重现的 HTTP 负向边界反例，留存 RED 机器证据",
+    "仅在隔离候选分支的 Windows HTTP Host/Header/EOF 加固通过原生 TCP 负向测试且合法 GET/HEAD 不回归",
+    "真实 Rust/WASM/Chrome 合成图片回归与 Windows 证据绑定同一工程 HEAD",
+    "独立审查意见与文档证据齐备，仍维持 Draft 且没有发布"
+  ],
+  "steps": [
+    {
+      "id": "V12-01",
+      "title": "原生 Windows raw TCP RED 基线：证明 V1.1 缺陷可复现",
+      "done_when": "独立工程 Draft 基于 V1.1 固定 SHA c16b0953...；新增 web-app/tests/test_v12_http_baseline_red.ps1，仅合成原始 HTTP 报文；实际 Windows Runner 测出至少一个 Host/EOF/超限失败边界并将旧基线漏洞作为预期 RED 证据记录，不修改旧 PR #14。",
+      "verify": "native Windows runner 执行新建红测，其自身 PASS 必须依赖对旧代码发生目标失败的观察，归档完整请求字节分类、HTTP status、runner 和 SHA；红测文件此时尚不存在，批准后先实现再运行。",
+      "verify_cmd": "pwsh -NoProfile -File web-app/tests/test_v12_http_baseline_red.ps1",
+      "depends_on": [],
+      "covers": [
+        2,
+        3
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 3,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": "V12-02",
+      "title": "最小修改 PowerShell HTTP Host/输入解析，先使 N01-N11 负向测试 GREEN",
+      "done_when": "只有隔离实现分支修改 web-app/Start-ShareReady.ps1 与专用测试；Host: 127.0.0.1:<端口> 唯一且准确，HTTP/1.0 不可绕过；按缓冲区长度或增量读取限制请求行/单 Header/累计 Header；超限、恶意 Host、截断 EOF 不提供静态资源。",
+      "verify": "native Windows 运行 new web-app/tests/test_v12_http_boundaries.ps1 的原始 TCP 字节级 N01-N11，校验恶意请求绝不返回白名单静态资源；单纯返回 4xx 不足以证明内存上界，需要检查增量/定长读取代码并记录资源观察。",
+      "verify_cmd": "pwsh -NoProfile -File web-app/tests/test_v12_http_boundaries.ps1",
+      "depends_on": [
+        "V12-01"
+      ],
+      "covers": [
+        2,
+        3,
+        4
+      ],
+      "tests_assumption": "A1",
+      "irreversible": false,
+      "estimate_h": 5,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": "V12-03",
+      "title": "Windows 正向回归、HTTP 头、绑定与 10/11 实机证据",
+      "done_when": "native Windows runner 实际执行新协议合同及既有启动器 smoke，确认正常 GET/HEAD、POST/PUT 405、404、CSP/no-store/nosniff、127.0.0.1 only；若 Windows 10/11 消费版实机无法安排，单独保留 AC01 对实际设备的 NOT_VERIFIED，不能把 windows-latest 标为 Windows 10/11 实测。",
+      "verify": "Windows runner 上真实 powershell.exe 启动服务并运行 web-app/tests/test_v12_windows_full.ps1（包含原 launcher smoke、新 N01-N11、退出和资源核对）。Windows 10/11 真实设备的用户操作和 Edge 浏览器证据必须独立追加。",
+      "verify_cmd": "pwsh -NoProfile -File web-app/tests/test_v12_windows_full.ps1",
+      "depends_on": [
+        "V12-02"
+      ],
+      "covers": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "tests_assumption": "A2",
+      "irreversible": false,
+      "estimate_h": 4,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": "V12-04",
+      "title": "Rust/WASM/Chrome 合成 PNG/EXIF/剪贴板及网络全回归",
+      "done_when": "候选实现 HEAD 在 Linux 环境使用锁定 Cargo 依赖构建真实 wasm-bindgen、运行 cargo test + codec_security + Playwright Chrome；合成 PNG/JPEG 导出、像素遮挡、EXIF 清理、clipboard fallback、CSP 和远端请求数均留存可复验工件。",
+      "verify": "Ubuntu runner 执行 web-app/tests/test_v12_rust_chrome.sh（编写脚本时必须沿用已通过的 V1.1 workflow 的构建和 Python/Chrome 环境步骤），每项测试与 SHA、ZIP 哈希有机器记录。",
+      "verify_cmd": "bash web-app/tests/test_v12_rust_chrome.sh",
+      "depends_on": [
+        "V12-02"
+      ],
+      "covers": [
+        1,
+        4,
+        5
+      ],
+      "tests_assumption": "A3",
+      "irreversible": false,
+      "estimate_h": 5,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": "V12-05",
+      "title": "独立代码与安全审查：不允许本次实现者自签",
+      "done_when": "未参与工程实现的实际独立审查者对 V1.1 与 V1.2 diff、Windows 恶意 TCP 工件、真实 Chrome 结果和部署/DoS/Edge 剩余风险给出有来源的审查意见；Draft PR 的提交 SHA 与独立 GitHub Review 绑定；若无独立审查者则 BLOCKED，不能当 PASS。",
+      "verify": "独立 reviewer 在 GitHub PR 实际提交 APPROVED 或 CHANGES_REQUESTED，或具可信身份的签署审查文档；web-app/tests/verify_v12_review_state.py 从 GitHub API 验证 reviewer 与实现者不同及审查绑定当前 SHA。不得写一份空文件代替签署。",
+      "verify_cmd": "python3 web-app/tests/verify_v12_review_state.py --require-independent-approval",
+      "depends_on": [
+        "V12-03",
+        "V12-04"
+      ],
+      "covers": [
+        5,
+        6
+      ],
+      "tests_assumption": "",
+      "irreversible": false,
+      "estimate_h": 4,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    },
+    {
+      "id": "V12-06",
+      "title": "docs/README/AGENTS 事实同步，保持 Draft 且无合并发布",
+      "done_when": "产品说明准确记录已测 Windows server runner 与未测 Windows 10/11/Edge 实机，仍无法承诺全部真实隐私材料安全；新代码只在独立 Draft，历史分支/原 PR #14/main SHA 原样，未 merge、release、deploy；closing-out 审计和现场代码事实检查完成。",
+      "verify": "在持有仓库只读权限的 CI 运行 web-app/tests/verify_v12_governance.py --base c16b0953a4705a36b5c93a1645704ebd7a4cde7e，验证文档标记、实际 PR 状态、原 HEAD、无已发布 Release，并单独检查 closing-out static audit 及代码实际文档一致。",
+      "verify_cmd": "python3 web-app/tests/verify_v12_governance.py --base c16b0953a4705a36b5c93a1645704ebd7a4cde7e",
+      "depends_on": [
+        "V12-05"
+      ],
+      "covers": [
+        1,
+        6
+      ],
+      "tests_assumption": "",
+      "irreversible": false,
+      "estimate_h": 3,
+      "spent_h": 0,
+      "status": "todo",
+      "fails": 0,
+      "evidence": []
+    }
+  ],
+  "if_then": [
+    {
+      "if": "raw TCP RED 基线未能复现静态源码问题",
+      "then": "停止实施，不篡改测试结果；先保存所有原始请求及 HTTP 响应，审查假设 A1 后必要时返回 Gate A。"
+    },
+    {
+      "if": "加固 Host 导致合法浏览器请求失败",
+      "then": "冻结新补丁，仅在独立分支重审 Host/port 对齐与 HTTP/1.0 策略，不降低 N02-N11 断言。"
+    },
+    {
+      "if": "原生 Windows HTTP 与 Rust/Chrome 两类 CI 在最新 HEAD 不能同时通过",
+      "then": "停止 V12-05，隔离失败用例并重新验证准确源码 SHA，不把历史绿灯搬到当前提交。"
+    },
+    {
+      "if": "独立 reviewer 缺席或者要求修改",
+      "then": "记录 BLOCKED/NEEDS_REWORK，保留 Draft 和 E1e R10 门禁，不对外发布安全承诺。"
+    }
+  ],
+  "early_signals": [
+    "重复 Host 或 HTTP/1.0 缺失 Host 返回 HTML 200",
+    "HTTP 长行攻击触发大规模进程内存增长、连接长时间阻塞",
+    "Windows runner 成功被错误描述为 Windows 10/11 家用设备和 Edge 实机通过",
+    "脚本仅检查返回码但实际发送了部分 JS/HTML/WASM 字节",
+    "新增代码改变了 Rust 图像像素内核或未获授权的远端出站请求",
+    "在没有独立审查签署时将 README 写成已验证的生产隐私安全"
+  ],
+  "first_step": "V12-01"
+}
