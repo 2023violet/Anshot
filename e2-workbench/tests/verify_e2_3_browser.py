@@ -142,7 +142,10 @@ with sync_playwright() as pw:
                        url.startswith((origin + "/", "blob:" + origin + "/"))
                        for method, url in requests), requests
             assert not failures, (width, failures)
-            page.screenshot(path=str(OUT / f"e2_3_keyboard_{width}.png"))
+            page.screenshot(path=str(OUT / f"e2_3_viewport_{width}.png"))
+            # Never let a UI screenshot overwrite the downloaded PNG that
+            # was independently read back above. Both are required artifacts.
+            assert destination.exists() and destination.stat().st_size > 0
             observations.append({"viewport": [width, height], "dpr": 2,
                                  "chromium_visual_viewport_scale": actual_scale,
                                  "keyboard_created": 2, "pointer_created": 1, "focus_restored": True,
