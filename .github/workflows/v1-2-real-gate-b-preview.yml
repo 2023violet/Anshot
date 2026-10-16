@@ -1,0 +1,150 @@
+name: V1.2 high-risk real Skill Gate B preview ONLY
+
+on:
+  push:
+    branches: [docs/v1-2-localhost-security-gates]
+    paths:
+      - .github/workflows/v1-2-real-gate-b-preview.yml
+      - docs/plans/V1_2_SKILL_GATE_B_PLAN.json
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  real-approved-a-and-b-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Exact source checkout, immutable Skill version and approved card
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check exact approved Gate A inputs before B planning
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = docs/v1-2-localhost-security-gates
+          test "$(git hash-object docs/decisions/V1_2_SKILL_GATE_A_INPUT.md)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          test -s docs/plans/V1_2_SKILL_GATE_B_PLAN.json
+          python3 -m json.tool docs/plans/V1_2_SKILL_GATE_B_PLAN.json >/dev/null
+          git rev-parse HEAD > /tmp/v12-gate-b-source-head.txt
+          git hash-object docs/plans/V1_2_SKILL_GATE_B_PLAN.json > /tmp/v12-gate-b-plan-git-blob.txt
+          sha256sum docs/plans/V1_2_SKILL_GATE_B_PLAN.json docs/decisions/V1_2_SKILL_GATE_A_INPUT.md > /tmp/v12-gate-b-inputs-sha256.txt
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/share-ready-v12-skill
+          git -C /tmp/share-ready-v12-skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/share-ready-v12-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -Fx '  version: "4.1.0"' /tmp/share-ready-v12-skill/skills/deciding-and-executing/SKILL.md
+          echo V12_SKILL_VERSION_AND_APPROVED_CARD_MATCH
+      - name: Retrieve exact CONFIRMED Gate A workspace from prior successful CI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/v12-authorized-gate-a
+          gh run download 38848678903 --repo 2023violet/ShareReady --name v12-gate-a-approved-confirmed-machine-proof --dir /tmp/v12-authorized-gate-a
+          test -s /tmp/v12-authorized-gate-a/v12-confirmed-skill-workspace.tgz
+          printf '%s  %s\n' '78f00522382803e45b0fadd9ce4c95cf8a55674a5f0e25258177a324001e9c16' '/tmp/v12-authorized-gate-a/v12-confirmed-skill-workspace.tgz' | sha256sum -c -
+          test ! -e .decision
+          tar -xzf /tmp/v12-authorized-gate-a/v12-confirmed-skill-workspace.tgz
+          cmp .decision/decision-card.md docs/decisions/V1_2_SKILL_GATE_A_INPUT.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path(".decision/plan.json").read_text())
+          state=json.loads(Path("/tmp/v12-authorized-gate-a/v12-confirmed-status.json").read_text())
+          confirmed=json.loads(Path("/tmp/v12-authorized-gate-a/v12-gate-a-confirm.json").read_text())
+          assert confirmed=={"ok":True,"gate":"A","next":"制定计划，然后 check plan → gate B"}
+          assert state["gates"]=={"A":"valid","B":"missing"} and state["stage"]=="plan"
+          assert p["gates"]["A"]["hash"]=="848928a7453060f1",p
+          assert "B" not in p["gates"], "GATE_B_PREVIOUSLY_CONFIRMED"
+          assert p["risk"]=="high"
+          print("V12_REAL_PREVIOUS_GATE_A_CONFIRMED_STATE_RESTORED")
+          PY
+      - name: Construct verifiable six-step high-risk plan without changing approved Gate A
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          previous=json.loads(Path(".decision/plan.json").read_text())
+          candidate=json.loads(Path("docs/plans/V1_2_SKILL_GATE_B_PLAN.json").read_text())
+          assert candidate["risk"]=="high" and candidate["schema"]==2
+          assert len(candidate["steps"])==6 and len({s["id"] for s in candidate["steps"]})==6
+          assert all(s["status"]=="todo" and not s["evidence"] and s["verify_cmd"].strip() for s in candidate["steps"])
+          assert all(not s["irreversible"] for s in candidate["steps"])
+          assert not candidate.get("gates") and not candidate.get("review")
+          candidate["gates"]=previous["gates"]
+          candidate["last_event"]=previous["last_event"]
+          Path(".decision/plan.json").write_text(json.dumps(candidate,ensure_ascii=False,indent=2)+"\n")
+          print("V12_PLAN_RESTORED_APPROVED_A_AND_ALL_STEPS_TODO")
+          PY
+          DE=/tmp/share-ready-v12-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card | tee /tmp/v12-b-card-check.json
+          python3 "$DE" check plan | tee /tmp/v12-b-plan-check.json
+          python3 "$DE" preflight | tee /tmp/v12-b-preflight.json
+          python3 "$DE" show > /tmp/v12-b-show.md
+          python3 "$DE" status > /tmp/v12-b-status-before-preview.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("/tmp/v12-b-plan-check.json").read_text())
+          s=json.loads(Path("/tmp/v12-b-status-before-preview.json").read_text())
+          assert p.get("ok") is True and not p.get("errors") and not p.get("warnings"),p
+          assert s["gates"]=={"A":"valid","B":"missing"} and s["stage"]=="plan",s
+          assert s["counts"]["todo"]==6 and s["total"]==6,s
+          print("V12_GENUINE_SKILL_CHECK_PLAN_PASS_ALL_SIX_STEPS")
+          PY
+      - name: Generate genuine Gate B token and preview, prohibit any confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/share-ready-v12-skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$DE" gate B > /tmp/v12-gate-b-real-preview.json
+          EXIT=$?
+          set -e
+          test "$EXIT" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("/tmp/v12-gate-b-real-preview.json").read_text())
+          assert p.get("needs_confirmation") and not p.get("ok"),p
+          assert p.get("token") and len(p["token"])==10,p
+          q=p.get("preview",{})
+          assert q.get("risk")=="high" and q.get("first_step")=="V12-01",q
+          assert len(q.get("steps",[]))==6 and not q.get("warnings"),q
+          assert all(x["verify_cmd"] and x["verify_command_review_required"] for x in q["steps"]),q
+          actual=json.loads(Path(".decision/plan.json").read_text())
+          assert "A" in actual["gates"] and "B" not in actual["gates"],actual
+          assert all(s["status"]=="todo" for s in actual["steps"]),actual
+          print("V12_REAL_PINNED_SKILL_GATE_B_PREVIEW_ONLY_PASS")
+          print("V12_GATE_B_TOKEN",p["token"])
+          print("V12_GATE_B_PREVIEW",json.dumps(q,ensure_ascii=False))
+          PY
+          python3 "$DE" status | tee /tmp/v12-b-status-after-preview.json
+          tar -czf /tmp/v12-b-preview-workspace-unconfirmed.tgz .decision
+          sha256sum /tmp/v12-b-preview-workspace-unconfirmed.tgz /tmp/v12-gate-b-real-preview.json > /tmp/v12-b-preview-evidence-sha256.txt
+      - name: Save genuine reviewable Gate B machine evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-real-skill-gate-b-preview-not-confirmed
+          path: |
+            /tmp/v12-gate-b-source-head.txt
+            /tmp/v12-gate-b-plan-git-blob.txt
+            /tmp/v12-gate-b-inputs-sha256.txt
+            /tmp/v12-b-card-check.json
+            /tmp/v12-b-plan-check.json
+            /tmp/v12-b-preflight.json
+            /tmp/v12-b-show.md
+            /tmp/v12-b-status-before-preview.json
+            /tmp/v12-gate-b-real-preview.json
+            /tmp/v12-b-status-after-preview.json
+            /tmp/v12-b-preview-workspace-unconfirmed.tgz
+            /tmp/v12-b-preview-evidence-sha256.txt
+          if-no-files-found: warn
+          retention-days: 30
