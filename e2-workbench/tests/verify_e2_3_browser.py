@@ -106,7 +106,13 @@ with sync_playwright() as pw:
                     actual_scale, pointer_region
                 )
 
-            page.locator("#check").click()
+            # Under CDP PageScaleFactor Playwright's synthetic pointer
+            # hit-testing can land on the sticky header instead of its child
+            # button. E2.3 explicitly validates the keyboard-only review path;
+            # pointer geometry is asserted separately on the image canvas.
+            page.locator("#check").focus()
+            assert page.evaluate("document.activeElement?.id") == "check"
+            page.keyboard.press("Enter")
             page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
             assert page.evaluate("document.activeElement?.id") == "back"
             assert page.evaluate("document.querySelector('.app').inert") is True
