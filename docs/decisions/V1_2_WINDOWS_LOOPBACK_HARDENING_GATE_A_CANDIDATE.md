@@ -35,7 +35,7 @@ GitHub 已有 V1 Draft PR #13 和 V1.1 Draft PR #14，**均未合并**。E1e Iss
 目标：在不更换当前单机静态架构的情况下，给 V1.1 的 Windows loopback HTTP 边界增加可复核的最小输入信任约束，并以正负测试和工件证明没有破坏 Rust/WASM 编辑器。
 
 1. **AC01** 普通 Chrome/Edge 对 `http://127.0.0.1:<实际端口>/` 的合法静态资源 GET/HEAD 仍成功；Windows 10/11 可双击启动，不引入额外安装依赖。
-2. **AC02** HTTP/1.1 请求必须提供 **唯一且精确匹配** `Host: 127.0.0.1:<boundPort>`；缺失、重复、恶意 Host、其他 IP/域名、畸形格式应拒绝（4xx），不暴露静态资源字节。
+2. **AC02** 所有被接受的 HTTP 版本请求都必须提供 **唯一且精确匹配** `Host: 127.0.0.1:<boundPort>`；HTTP/1.0 如不能保证该规则则直接拒绝。缺失、重复、恶意 Host、其他 IP/域名、畸形格式应拒绝（4xx），不暴露静态资源字节。
 3. **AC03** 请求行在输入缓冲层和头部逐行、累计层面具有限制；超过限额、无终止空行、超时应失败封闭或直接关闭连接，不输出有效资源；不能只在 `ReadLine()` 后检查。
 4. **AC04** 固定文件路由白名单、仅 loopback、405 对 POST/PUT、`no-store`、`nosniff` 和 **HTTP 响应** CSP 均不退化；应用不提供接收文件的 HTTP 路由。
 5. **AC05** 原生 Windows runner 执行一组真实 TCP 负向协议探针，不依赖 JavaScript mock；Linux Rust/WASM + Chrome 正向和合成图片像素测试全部运行并且当前 HEAD 绿灯。
