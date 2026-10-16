@@ -54,6 +54,7 @@ function render(){
  $("undo").disabled=!editing||!history.length;
  $("redo").disabled=!editing||!future.length;
  $("delete").disabled=!editing||selected===null;
+ $("clearAll").disabled=!editing||regions.length===0;
  $("count").textContent=String(regions.length);
  $("regionsEmpty").hidden=regions.length>0;
  $("regionList").replaceChildren();
@@ -288,6 +289,14 @@ function createKeyboardMask(){
  document.querySelector('.mask[data-id="'+r.id+'"]')?.focus({preventScroll:true});
  status("已通过键盘创建区域 "+r.id+"（"+width+" × "+height+" 像素）。方向键移动，Shift＋方向键调整尺寸。");
 }
+function clearAllMasks(){
+ if(stage!=="edit"||regions.length===0)return;
+ if(!confirm("清空全部 "+regions.length+" 个遮挡区域？该操作可以撤销。"))return;
+ const before=snapshot();
+ regions=[];selected=null;saveAction(before);
+ $("createMask").focus({preventScroll:true});
+ status("已清空全部遮挡。可按 Ctrl+Z 撤销。");
+}
 function deleteSelected(){
  if(stage!=="edit"||selected===null)return;
  const before=snapshot();regions=regions.filter(r=>r.id!==selected);selected=null;saveAction(before);
@@ -377,10 +386,12 @@ async function copy(){
 }
 for(const b of document.querySelectorAll("[data-tool]"))b.onclick=()=>setMode(b.dataset.tool);
 $("undo").onclick=undoAction;$("redo").onclick=redoAction;$("delete").onclick=deleteSelected;
+$("clearAll").onclick=clearAllMasks;
 $("createMask").onclick=createKeyboardMask;
 $("zoomIn").onclick=()=>setZoom(zoom*1.25);
 $("zoomOut").onclick=()=>setZoom(zoom/1.25);
 $("zoomFit").onclick=fit;
+$("zoomActual").onclick=()=>setZoom(1);
 $("check").onclick=enterReview;$("back").onclick=back;
 $("download").onclick=download;$("copy").onclick=copy;
 function choose(){$("pick").click()}
@@ -435,6 +446,7 @@ document.addEventListener("keydown",e=>{
  if(k==="v")setMode("select");
  if(k==="h")setMode("pan");
  if(k==="0")fit();
+ if(k==="1"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey)setZoom(1);
  if(e.key==="Delete"||e.key==="Backspace")deleteSelected();
 });
 try{
