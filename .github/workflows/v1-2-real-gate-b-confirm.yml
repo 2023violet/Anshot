@@ -1,0 +1,148 @@
+name: V1.2 user-approved Skill Gate B confirm ONLY
+
+on:
+  push:
+    branches: [docs/v1-2-localhost-security-gates]
+    paths:
+      - .github/workflows/v1-2-real-gate-b-confirm.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate-b-confirm-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout immutable reviewed planning source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Confirm source boundaries and fixed Skill identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPROVED_PREVIEW_HEAD=4c1ce6d4146ee5cb638eecd09b9a43382d0d8eb1
+          test "$(git branch --show-current)" = docs/v1-2-localhost-security-gates
+          git cat-file -e "$APPROVED_PREVIEW_HEAD^{commit}"
+          test "$(git diff --name-only "$APPROVED_PREVIEW_HEAD" HEAD)" = .github/workflows/v1-2-real-gate-b-confirm.yml
+          test "$(git hash-object docs/decisions/V1_2_SKILL_GATE_A_INPUT.md)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          test "$(git hash-object docs/plans/V1_2_SKILL_GATE_B_PLAN.json)" = f15231cf01031c9fe5e1cc39801a3678c204ce75
+          test "$(git show "$APPROVED_PREVIEW_HEAD":docs/plans/V1_2_SKILL_GATE_B_PLAN.json | git hash-object --stdin)" = f15231cf01031c9fe5e1cc39801a3678c204ce75
+          test "$(git show "$APPROVED_PREVIEW_HEAD":docs/decisions/V1_2_SKILL_GATE_A_INPUT.md | git hash-object --stdin)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/shareready-skill
+          git -C /tmp/shareready-skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/shareready-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -Fx '  version: "4.1.0"' /tmp/shareready-skill/skills/deciding-and-executing/SKILL.md
+          git rev-parse HEAD | tee /tmp/v12-b-confirm-source-head.txt
+          printf '%s\n' "$APPROVED_PREVIEW_HEAD" > /tmp/v12-b-approved-preview-head.txt
+          sha256sum docs/plans/V1_2_SKILL_GATE_B_PLAN.json docs/decisions/V1_2_SKILL_GATE_A_INPUT.md > /tmp/v12-b-confirm-inputs-sha256.txt
+          echo V12_APPROVED_B_INPUTS_AND_FIXED_SKILL_MATCH
+      - name: Restore original Gate B preview workspace and approved token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/shareready-approved-gate-b
+          gh run download 38849296325 --repo 2023violet/ShareReady --name v12-real-skill-gate-b-preview-not-confirmed --dir /tmp/shareready-approved-gate-b
+          test "$(cat /tmp/shareready-approved-gate-b/v12-gate-b-source-head.txt)" = 4c1ce6d4146ee5cb638eecd09b9a43382d0d8eb1
+          test "$(cat /tmp/shareready-approved-gate-b/v12-gate-b-plan-git-blob.txt)" = f15231cf01031c9fe5e1cc39801a3678c204ce75
+          test -s /tmp/shareready-approved-gate-b/v12-gate-b-preview-workspace-unconfirmed.tgz
+          test ! -e .decision
+          tar -xzf /tmp/shareready-approved-gate-b/v12-b-preview-workspace-unconfirmed.tgz
+          cmp docs/decisions/V1_2_SKILL_GATE_A_INPUT.md .decision/decision-card.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw=json.loads(Path("/tmp/shareready-approved-gate-b/v12-gate-b-real-preview.json").read_text())
+          prev=json.loads(Path("/tmp/shareready-approved-gate-b/v12-b-status-after-preview.json").read_text())
+          p=json.loads(Path(".decision/plan.json").read_text())
+          source=json.loads(Path("docs/plans/V1_2_SKILL_GATE_B_PLAN.json").read_text())
+          assert raw["token"]=="3a022ef6ee" and raw["needs_confirmation"],raw
+          assert raw["preview"]["risk"]=="high" and raw["preview"]["first_step"]=="V12-01"
+          assert not raw["preview"]["warnings"] and len(raw["preview"]["steps"])==6,raw
+          assert prev["stage"]=="plan" and prev["gates"]=={"A":"valid","B":"missing"},prev
+          assert p["gates"]["A"]["hash"]=="848928a7453060f1" and "B" not in p["gates"],p
+          assert p["risk"]=="high" and source["risk"]=="high"
+          assert len(p["steps"])==len(source["steps"])==6
+          for actual,origin,approved in zip(p["steps"],source["steps"],raw["preview"]["steps"]):
+              assert actual["id"]==origin["id"]==approved["id"]
+              assert actual["verify_cmd"]==origin["verify_cmd"]==approved["verify_cmd"]
+              assert actual["status"]==origin["status"]=="todo"
+              assert not actual.get("evidence")
+              assert actual["irreversible"] is False and not approved["irreversible"]
+          assert not p.get("review"),"NO_PREMATURE_REVIEW"
+          print("V12_ORIGINAL_GATE_B_MACHINE_PREVIEW_RESTORED_SIX_COMMANDS_IDENTICAL")
+          PY
+      - name: Recheck card, plan and recompute exact same gate B preview before approval use
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card | tee /tmp/v12-b-confirm-card-check.json
+          python3 "$DE" check plan | tee /tmp/v12-b-confirm-plan-check.json
+          python3 "$DE" preflight | tee /tmp/v12-b-confirm-preflight.json
+          set +e
+          python3 "$DE" gate B > /tmp/v12-b-confirm-repreview.json
+          CODE=$?
+          set -e
+          test "$CODE" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          old=json.loads(Path("/tmp/shareready-approved-gate-b/v12-gate-b-real-preview.json").read_text())
+          new=json.loads(Path("/tmp/v12-b-confirm-repreview.json").read_text())
+          assert new["token"]==old["token"]=="3a022ef6ee","GATE_B_TOKEN_DRIFT"
+          assert new["preview"]==old["preview"],"GATE_B_FULL_PREVIEW_DRIFT"
+          assert new["needs_confirmation"] and not new["ok"]
+          for filename in ("v12-b-confirm-card-check.json","v12-b-confirm-plan-check.json"):
+              c=json.loads(Path("/tmp/"+filename).read_text())
+              assert c["ok"] and not c.get("errors") and not c.get("warnings"),(filename,c)
+          print("V12_REAL_GATE_B_ALL_SIX_VERIFY_COMMANDS_AND_PREVIEW_EXACTLY_MATCH")
+          PY
+      - name: Execute only the human-approved Gate B confirm token
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/shareready-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" gate B --confirm 3a022ef6ee | tee /tmp/v12-b-real-confirm-result.json
+          python3 "$DE" status | tee /tmp/v12-b-confirmed-status.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path("/tmp/v12-b-real-confirm-result.json").read_text())
+          state=json.loads(Path("/tmp/v12-b-confirmed-status.json").read_text())
+          p=json.loads(Path(".decision/plan.json").read_text())
+          assert result["ok"] is True and result["gate"]=="B" and result["first_step"]=="V12-01",result
+          assert state["stage"]=="execute" and state["gates"]=={"A":"valid","B":"valid"},state
+          assert state["risk"]=="high" and state["total"]==6 and state["counts"]["todo"]==6,state
+          assert p["gates"]["A"]["hash"]=="848928a7453060f1"
+          assert "B" in p["gates"] and p["gates"]["B"]["a_hash"]==p["gates"]["A"]["hash"],p
+          assert all(s["status"]=="todo" and not s.get("evidence") for s in p["steps"])
+          assert not p.get("review")
+          print("V12_TRUE_GATE_B_CONFIRMED_A_AND_B_VALID_SIX_TODO_NO_ENGINEERING_EXECUTED")
+          PY
+          tar -czf /tmp/v12-b-real-confirmed-de-workspace.tgz .decision
+          sha256sum /tmp/v12-b-real-confirmed-de-workspace.tgz /tmp/v12-b-real-confirm-result.json /tmp/v12-b-confirmed-status.json > /tmp/v12-b-confirmed-evidence-sha256.txt
+      - name: Upload actual approved gate B machine evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-approved-gate-b-confirmed-machine-proof
+          path: |
+            /tmp/v12-b-confirm-source-head.txt
+            /tmp/v12-b-approved-preview-head.txt
+            /tmp/v12-b-confirm-inputs-sha256.txt
+            /tmp/v12-b-confirm-card-check.json
+            /tmp/v12-b-confirm-plan-check.json
+            /tmp/v12-b-confirm-preflight.json
+            /tmp/v12-b-confirm-repreview.json
+            /tmp/v12-b-real-confirm-result.json
+            /tmp/v12-b-confirmed-status.json
+            /tmp/v12-b-real-confirmed-de-workspace.tgz
+            /tmp/v12-b-confirmed-evidence-sha256.txt
+          if-no-files-found: warn
+          retention-days: 30
