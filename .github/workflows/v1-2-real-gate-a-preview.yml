@@ -1,0 +1,81 @@
+name: V1.2 true pinned Skill Gate A preview ONLY
+
+on:
+  push:
+    branches: [docs/v1-2-localhost-security-gates]
+    paths:
+      - .github/workflows/v1-2-real-gate-a-preview.yml
+      - docs/decisions/V1_2_SKILL_GATE_A_INPUT.md
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-skill-gate-a-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact V1.2 decision source without saved credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Load immutable deciding-and-executing v4.1.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = docs/v1-2-localhost-security-gates
+          git rev-parse HEAD | tee /tmp/v12-gate-source-head.txt
+          test -s docs/decisions/V1_2_SKILL_GATE_A_INPUT.md
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/share-ready-pinned-skill
+          git -C /tmp/share-ready-pinned-skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/share-ready-pinned-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -F 'version: "4.1.0"' /tmp/share-ready-pinned-skill/skills/deciding-and-executing/SKILL.md
+          git hash-object docs/decisions/V1_2_SKILL_GATE_A_INPUT.md | tee /tmp/v12-decision-blob.txt
+      - name: Run genuine high-risk init, check card and preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/share-ready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" init --name "ShareReady V1.2 Windows Loopback 安全加固" --risk high > /tmp/v12-init-result.json
+          cp docs/decisions/V1_2_SKILL_GATE_A_INPUT.md .decision/decision-card.md
+          python3 "$DE" check card | tee /tmp/v12-card-check.json
+          python3 "$DE" preflight | tee /tmp/v12-preflight.json
+      - name: Capture REAL Gate A preview token, do NOT confirm
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/share-ready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          set +e
+          python3 "$DE" gate A > /tmp/v12-gate-a-preview.json
+          RESULT=$?
+          set -e
+          test "$RESULT" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("/tmp/v12-gate-a-preview.json").read_text())
+          assert p.get("token"),p
+          assert p.get("preview"),p
+          assert not json.loads(Path(".decision/plan.json").read_text())["gates"].get("A"), "Gate A must still be unconfirmed"
+          print("V12_GENUINE_PINNED_SKILL_GATE_A_PREVIEW_ONLY_PASS")
+          print("V12_GATE_A_TOKEN",p["token"])
+          print("V12_GATE_A_PREVIEW",json.dumps(p["preview"],ensure_ascii=False))
+          PY
+          python3 "$DE" status | tee /tmp/v12-gate-status.json
+          tar -czf /tmp/v12-gate-a-workspace-preview-only.tgz .decision
+      - name: Preserve the raw preview and exact machine state
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-gate-a-pinned-skill-preview-only-not-confirmed
+          path: |
+            /tmp/v12-init-result.json
+            /tmp/v12-card-check.json
+            /tmp/v12-preflight.json
+            /tmp/v12-gate-a-preview.json
+            /tmp/v12-gate-status.json
+            /tmp/v12-gate-source-head.txt
+            /tmp/v12-decision-blob.txt
+            /tmp/v12-gate-a-workspace-preview-only.tgz
+          if-no-files-found: warn
+          retention-days: 30
