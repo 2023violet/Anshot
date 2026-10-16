@@ -1,0 +1,99 @@
+name: V1.2 approved Gate A exact replay and confirm
+
+on:
+  push:
+    branches: [docs/v1-2-localhost-security-gates]
+    paths:
+      - .github/workflows/v1-2-real-gate-a-confirm-verified.yml
+
+permissions:
+  contents: read
+
+jobs:
+  confirm-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify approved source content and pinned Skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGINAL=627262ba670cb00d8fdf2d7f629179e606e9e038
+          test "$(git branch --show-current)" = docs/v1-2-localhost-security-gates
+          git cat-file -e "$ORIGINAL^{commit}"
+          test "$(git hash-object docs/decisions/V1_2_SKILL_GATE_A_INPUT.md)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          test "$(git show "$ORIGINAL":docs/decisions/V1_2_SKILL_GATE_A_INPUT.md | git hash-object --stdin)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/v12-skill
+          git -C /tmp/v12-skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/v12-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -Fx '  version: "4.1.0"' /tmp/v12-skill/skills/deciding-and-executing/SKILL.md
+          git rev-parse HEAD > /tmp/v12-confirm-source.txt
+          echo V12_PINNED_SKILL_AND_CARD_NO_DRIFT
+      - name: Real high risk workspace and exact approved gate A preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/v12-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" init --name "ShareReady V1.2 Windows Loopback 安全加固" --risk high > /tmp/v12-init.json
+          cp docs/decisions/V1_2_SKILL_GATE_A_INPUT.md .decision/decision-card.md
+          python3 "$DE" check card | tee /tmp/v12-card-check.json
+          python3 "$DE" preflight > /tmp/v12-preflight.json
+          set +e
+          python3 "$DE" gate A > /tmp/v12-approved-preview-recomputed.json
+          CODE=$?
+          set -e
+          test "$CODE" -eq 3
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          p=json.loads(Path("/tmp/v12-approved-preview-recomputed.json").read_text())
+          c=json.loads(Path("/tmp/v12-card-check.json").read_text())
+          digest=hashlib.sha256(json.dumps(p["preview"],ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+          assert digest=="7bd009b2f8caf76672c9fdcfd0e0210a8ba699148d632f0359ef6525e9142f39",("APPROVED_PREVIEW_DRIFT",digest)
+          assert p["token"]=="1f4e00e52a" and p["needs_confirmation"],p
+          assert c["ok"] and not c["errors"] and not c["warnings"],c
+          assert not json.loads(Path(".decision/plan.json").read_text()).get("gates",{}), "UNAUTHORIZED_EXISTING_GATE"
+          print("V12_EXACT_APPROVED_GATE_A_PREVIEW_NO_DRIFT")
+          PY
+      - name: Execute only the user's approved Gate A token
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/v12-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" gate A --confirm 1f4e00e52a | tee /tmp/v12-gate-a-confirm.json
+          python3 "$DE" status | tee /tmp/v12-confirmed-status.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path("/tmp/v12-gate-a-confirm.json").read_text())
+          state=json.loads(Path("/tmp/v12-confirmed-status.json").read_text())
+          plan=json.loads(Path(".decision/plan.json").read_text())
+          assert result.get("ok") and result.get("gate")=="A",result
+          assert state["stage"]=="plan" and state["gates"]=={"A":"valid","B":"missing"},state
+          assert state["risk"]=="high" and "B" not in plan.get("gates",{}),plan
+          assert all(step["status"]=="todo" for step in plan["steps"]),"UNAUTHORIZED_ENGINEERING_WORK"
+          print("V12_GATE_A_CONFIRMED_GATE_B_MISSING_NO_WORK_STEPS_DONE")
+          PY
+          tar -czf /tmp/v12-confirmed-skill-workspace.tgz .decision
+          sha256sum /tmp/v12-confirmed-skill-workspace.tgz /tmp/v12-gate-a-confirm.json /tmp/v12-confirmed-status.json > /tmp/v12-evidence-sha256.txt
+      - name: Upload exact machine proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-gate-a-approved-confirmed-machine-proof
+          path: |
+            /tmp/v12-confirm-source.txt
+            /tmp/v12-init.json
+            /tmp/v12-card-check.json
+            /tmp/v12-preflight.json
+            /tmp/v12-approved-preview-recomputed.json
+            /tmp/v12-gate-a-confirm.json
+            /tmp/v12-confirmed-status.json
+            /tmp/v12-confirmed-skill-workspace.tgz
+            /tmp/v12-evidence-sha256.txt
+          if-no-files-found: warn
+          retention-days: 30
