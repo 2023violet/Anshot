@@ -8,7 +8,11 @@
 `shareready-v1-local-app-and-chrome-evidence` 工件，解压出
 `ShareReady-V1` 文件夹。该文件夹已经包含 JavaScript 和编译好的 WebAssembly。
 
-在文件夹内启动一个本地 HTTP 服务（需要 Python 3）：
+**Windows 10/11：** 解压后双击 `Start-ShareReady.cmd`。它通过 Windows 自带的 PowerShell
+只在 `127.0.0.1` 开一个临时端口，自动尝试打开浏览器，**不需要 Python 或 Rust**。使用期间请保持启动窗口打开；关闭窗口即关闭本地服务。
+首次从互联网下载的脚本可能遇到 Windows 的安全提示，请先核对 ZIP 来源和文件内容；本工具目前不是签名安装程序。
+
+**macOS / Linux / 手动启动：** 在文件夹内启动一个本地 HTTP 服务（需要 Python 3）：
 
 ```bash
 cd ShareReady-V1
@@ -25,6 +29,7 @@ python -m http.server 8000 --bind 127.0.0.1
 - Rust 校验最大 25 MiB 输入和 24 MP 解码像素，将 JPEG EXIF 方向统一后生成新的 PNG 编辑预览。
 - 手动绘制多个实心遮挡、选中移动、缩放、键盘微调、删除、撤销/重做。
 - 画布适合窗口、缩放与平移，源图像素坐标不会因显示比例改变。
+- 点击 `100% 原图` 可按真实源像素比例查看，`0` 适应画布、`1` 100%；清空全部遮挡有确认，并支持撤销。
 - “检查成品”是真正 Rust 编码后的独立 PNG 解码；可保存 PNG 或尝试复制 PNG 到剪贴板。
 - 如果 Clipboard 被浏览器拒绝，请直接下载 PNG。下载不会回退为未经遮挡的原图。
 - 只覆盖你手动选中的区域；**分享前必须仔细检查结果**。不含 OCR/AI 自动检测。
