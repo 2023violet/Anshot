@@ -1,0 +1,112 @@
+name: V12-01 native Windows RED baseline and approved Skill step
+
+on:
+  push:
+    branches: [test/v12-01-win-raw-tcp-red]
+    paths:
+      - web-app/tests/test_v12_http_baseline_red.ps1
+      - .github/workflows/v12-01-windows-raw-tcp-red.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native-windows-red-and-real-step:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated V12-01 test branch and immutable V1.1 base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify production server untouched and source branch correct
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $base='c16b0953a4705a36b5c93a1645704ebd7a4cde7e'
+          if ((git branch --show-current).Trim() -ne 'test/v12-01-win-raw-tcp-red') { throw 'UNEXPECTED_BRANCH' }
+          if ((git hash-object web-app/Start-ShareReady.ps1).Trim() -ne (git rev-parse ($base + ':web-app/Start-ShareReady.ps1')).Trim()) { throw 'PRODUCTION_SCRIPT_MODIFIED' }
+          $changes=@(git diff --name-only $base HEAD)
+          $expected=@('.github/workflows/v12-01-windows-raw-tcp-red.yml','web-app/tests/test_v12_http_baseline_red.ps1')
+          if (@(Compare-Object $changes $expected).Count -ne 0) { throw ('UNAUTHORIZED_DIFF: ' + ($changes -join ',')) }
+          git rev-parse HEAD | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP 'v12-01-current-head.txt')
+          Get-FileHash -LiteralPath web-app/Start-ShareReady.ps1 -Algorithm SHA256 | Format-List
+          Write-Host V12_01_IMMUTABLE_PRODUCTION_BASELINE_VERIFIED
+      - name: Restore genuine Gate B confirmed skill workspace and pinned v4.1.0
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $saved=Join-Path $env:RUNNER_TEMP 'approved-v12-gate-b'
+          New-Item -ItemType Directory -Path $saved -Force | Out-Null
+          & gh run download 38869725007 --repo 2023violet/ShareReady --name v12-approved-gate-b-confirmed-machine-proof --dir $saved
+          if ($LASTEXITCODE -ne 0) { throw 'GATE_B_MACHINE_EVIDENCE_DOWNLOAD_FAILED' }
+          $archive=Join-Path $saved 'v12-b-real-confirmed-de-workspace.tgz'
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'NO_GATE_B_CONFIRMED_WORKSPACE' }
+          & tar -xzf $archive
+          if ($LASTEXITCODE -ne 0) { throw 'GATE_B_WORKSPACE_EXTRACTION_FAILED' }
+          & git clone -q https://github.com/2023violet/deciding-and-executing.git (Join-Path $env:RUNNER_TEMP 'v12-pinned-skill')
+          if ($LASTEXITCODE -ne 0) { throw 'PINNED_SKILL_UNAVAILABLE' }
+          $skill=Join-Path $env:RUNNER_TEMP 'v12-pinned-skill'
+          & git -C $skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          if ($LASTEXITCODE -ne 0 -or (git -C $skill rev-parse HEAD).Trim() -ne '1eb9624ee2037e4a2b253ee8120fa274dad1ef21') { throw 'SKILL_SHA_DRIFT' }
+          $de=Join-Path $skill 'skills/deciding-and-executing/scripts/de.py'
+          $card=Get-Content -LiteralPath '.decision/decision-card.md' -Raw
+          if (-not $card.Contains('ShareReady V1.2 Windows Loopback')) { throw 'APPROVED_CARD_MISSING' }
+          $plan=Get-Content -LiteralPath '.decision/plan.json' -Raw | ConvertFrom-Json
+          if ($plan.risk -ne 'high' -or $plan.gates.A.hash -ne '848928a7453060f1' -or $plan.gates.B.hash -ne '875a0340be0e3623' -or $plan.gates.B.a_hash -ne $plan.gates.A.hash) { throw 'APPROVED_GATES_NOT_VALID' }
+          if ($plan.steps.Count -ne 6 -or $plan.first_step -ne 'V12-01' -or $plan.steps[0].verify_cmd -ne 'pwsh -NoProfile -File web-app/tests/test_v12_http_baseline_red.ps1') { throw 'APPROVED_STEP_CHANGED' }
+          & python $de check card
+          if ($LASTEXITCODE -ne 0) { throw 'APPROVED_CARD_INVALID' }
+          & python $de check plan
+          if ($LASTEXITCODE -ne 0) { throw 'APPROVED_PLAN_INVALID' }
+          & python $de preflight | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-preflight.json')
+          if ($LASTEXITCODE -ne 0) { throw 'SKILL_PREFLIGHT_FAILED' }
+          & python $de status | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-status-before.json')
+          if ($LASTEXITCODE -ne 0) { throw 'SKILL_STATUS_FAILED' }
+          $before=Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-status-before.json') -Raw | ConvertFrom-Json
+          if ($before.gates.A -ne 'valid' -or $before.gates.B -ne 'valid' -or $before.stage -ne 'execute' -or $before.counts.todo -ne 6) { throw 'CONFIRMED_GATE_STATUS_UNEXPECTED' }
+          Write-Host V12_01_ORIGINAL_CONFIRMED_GATE_B_STATE_RESTORED_PASS
+      - name: Execute exact user-approved V12-01 via genuine Skill, no subsequent step
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $de=Join-Path $env:RUNNER_TEMP 'v12-pinned-skill/skills/deciding-and-executing/scripts/de.py'
+          & python $de step V12-01 --status in_progress
+          if ($LASTEXITCODE -ne 0) { throw 'SKILL_COULD_NOT_ENTER_APPROVED_STEP' }
+          & python $de step V12-01 --status done | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP 'v12-01-step-result.json')
+          if ($LASTEXITCODE -ne 0) { throw 'V12_01_REAL_SKILL_VERIFY_FAILED' }
+          & python $de status | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-status-after.json')
+          if ($LASTEXITCODE -ne 0) { throw 'V12_01_STATUS_CHECK_FAILED' }
+          $state=Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-status-after.json') -Raw | ConvertFrom-Json
+          $p=Get-Content -LiteralPath '.decision/plan.json' -Raw | ConvertFrom-Json
+          if ($state.gates.A -ne 'valid' -or $state.gates.B -ne 'valid' -or $state.counts.done -ne 1 -or $state.counts.todo -ne 5) { throw 'V12_01_SKILL_STEP_NOT_ACTUALLY_DONE' }
+          if ($p.steps[0].id -ne 'V12-01' -or $p.steps[0].status -ne 'done' -or $p.steps[1].status -ne 'todo') { throw 'NEXT_STEP_STARTED_UNAUTHORIZED' }
+          $commandEvidence=@($p.steps[0].evidence | Where-Object { $_.kind -eq 'command' -and $_.ok })
+          if ($commandEvidence.Count -lt 1) { throw 'MISSING_NATIVE_WINDOWS_COMMAND_EVIDENCE' }
+          $rawReport=Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-red-evidence.json') -Raw | ConvertFrom-Json
+          if ($rawReport.synthetic_only -ne $true -or @($rawReport.probes).Count -lt 11) { throw 'RED_EVIDENCE_NOT_SAVED' }
+          $malformed=@($rawReport.probes | Where-Object { $_.case -match '^N0[2-8]_' })
+          if ($malformed.Count -ne 7 -or @($malformed | Where-Object { $_.status -eq 200 -and $_.synthetic_index_served }).Count -ne 7) { throw 'SEVEN_INSECURE_BASELINE_EXPOSURES_NOT_PROVEN' }
+          Write-Host V12_01_REAL_NATIVE_WINDOWS_RED_STEP_DONE_ALL_SEVEN_EXPOSURES_REPRODUCED
+          & tar -czf (Join-Path $env:RUNNER_TEMP 'v12-01-skill-evidence.tgz') .decision
+          if ($LASTEXITCODE -ne 0) { throw 'SKILL_EVIDENCE_ARCHIVE_FAILED' }
+          Get-FileHash -LiteralPath (Join-Path $env:RUNNER_TEMP 'v12-01-skill-evidence.tgz') -Algorithm SHA256 | Format-List
+      - name: Upload exact Windows RED and Skill evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-01-windows-raw-tcp-red-and-skill-machine-evidence
+          path: |
+            ${{ runner.temp }}/v12-01-current-head.txt
+            ${{ runner.temp }}/v12-01-preflight.json
+            ${{ runner.temp }}/v12-01-status-before.json
+            ${{ runner.temp }}/v12-01-step-result.json
+            ${{ runner.temp }}/v12-01-red-evidence.json
+            ${{ runner.temp }}/v12-01-status-after.json
+            ${{ runner.temp }}/v12-01-skill-evidence.tgz
+          if-no-files-found: warn
+          retention-days: 30
