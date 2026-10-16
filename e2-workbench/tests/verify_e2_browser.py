@@ -9,6 +9,19 @@ from pathlib import Path
 from PIL import Image, ImageChops
 from playwright.sync_api import sync_playwright
 
+
+# CSP-friendly test polling: Playwright wait_for_function uses page-side eval,
+# which a correct strict script-src policy must block. CDP evaluate of this
+# trusted direct function avoids relaxing the production/script CSP.
+import time
+def wait_csp(page, expression, arg=None, timeout=30000):
+    until=time.monotonic()+timeout/1000
+    while time.monotonic()<until:
+        if page.evaluate(f"(value) => Boolean({expression})", arg):
+            return
+        page.wait_for_timeout(100)
+    raise AssertionError("CSP-safe browser condition timeout: "+expression)
+
 ROOT=Path(__file__).resolve().parents[2]
 FIX=ROOT/"docs/research/fixtures"
 OUT=Path("/tmp/e2-browser-evidence")
@@ -61,14 +74,14 @@ with sync_playwright() as pw:
    page.on("pageerror",lambda err:errors.append(str(err)))
    page.on("request",lambda req:requests.append((req.method,req.url)))
    page.goto("http://127.0.0.1:"+str(server.server_port)+"/e2-workbench/index.html")
-   page.wait_for_function("window.e2Debug?.ready===true")
+   wait_csp(page, "window.e2Debug?.ready===true")
    # Unknown or tampered images are forbidden for this unreviewed integration build.
    page.locator("#pick").set_input_files({"name":"private_example.png","mimeType":"image/png","buffer":b"unknown fake private PNG"})
-   page.wait_for_function("document.getElementById('status').textContent.includes('只能使用冻结')")
+   wait_csp(page, "document.getElementById('status').textContent.includes('只能使用冻结')")
    assert page.evaluate("window.e2Debug.stage")=="empty"
    assert page.locator("#check").is_disabled()
    page.locator("#pick").set_input_files(str(FIX/fixture["file"]))
-   page.wait_for_function("window.e2Debug?.stage==='edit'")
+   wait_csp(page, "window.e2Debug?.stage==='edit'")
    assert page.evaluate("window.e2Debug.fixture")==name
    assert tuple(page.evaluate("window.e2Debug.sourceSize"))==(fixture["width"],fixture["height"])
    page.locator("#check").is_disabled()
@@ -119,7 +132,7 @@ with sync_playwright() as pw:
    assert abs(page.evaluate("window.e2Debug.zoom")-z_before)<.00001
    page.locator("#maskTool").click()
    page.locator("#check").click()
-   page.wait_for_function("window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0")
+   wait_csp(page, "window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0")
    assert page.locator("#outputImage").evaluate("(img)=>img.complete && img.naturalWidth>0")
    assert not page.locator("#copy").is_disabled()
    assert not page.locator("#download").is_disabled()
@@ -149,18 +162,18 @@ with sync_playwright() as pw:
   ctx=browser.new_context(accept_downloads=True,viewport={"width":1440,"height":900})
   page=ctx.new_page()
   page.goto("http://127.0.0.1:"+str(server.server_port)+"/e2-workbench/index.html?deny_clipboard=1")
-  page.wait_for_function("window.e2Debug?.ready===true")
+  wait_csp(page, "window.e2Debug?.ready===true")
   page.locator("#pick").set_input_files(str(FIX/fixture["file"]))
-  page.wait_for_function("window.e2Debug.stage==='edit'")
+  wait_csp(page, "window.e2Debug.stage==='edit'")
   box=page.locator("#frame").bounding_box();z=page.evaluate("window.e2Debug.zoom")
   rect=fixture["sensitive_regions"][0]["rect_px"]
   x0,y0,x1,y1=rect
   page.mouse.move(box["x"]+(x0+.2)*z,box["y"]+(y0+.2)*z);page.mouse.down()
   page.mouse.move(box["x"]+(x1-.2)*z,box["y"]+(y1-.2)*z,steps=6);page.mouse.up()
   page.locator("#check").click()
-  page.wait_for_function("window.e2Debug.stage==='review'")
+  wait_csp(page, "window.e2Debug.stage==='review'")
   page.locator("#copy").click()
-  page.wait_for_function("document.getElementById('status').textContent.includes('复制失败')")
+  wait_csp(page, "document.getElementById('status').textContent.includes('复制失败')")
   assert page.locator("#download").is_enabled()
   print("E2_REAL_CLIPBOARD_DENIAL_AND_DOWNLOAD_FALLBACK_PASS")
   ctx.close()
