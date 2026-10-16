@@ -1,0 +1,63 @@
+name: E1e synthetic security-depth evidence (R04 and R09)
+
+on:
+  push:
+    branches: [spike/e1-rust-wasm-feasibility]
+    paths:
+      - .github/workflows/e1e-security-depth.yml
+      - e1-spike/src/lib.rs
+      - e1-spike/tests/codec_security.rs
+      - e1-spike/tests/verify_adversarial_resources.py
+      - e1-spike/tests/verify_dependency_inventory.py
+      - e1-spike/Cargo.toml
+      - e1-spike/Cargo.lock
+
+permissions:
+  contents: read
+
+jobs:
+  native-resource-and-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Pin exact source and compile negative input scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = spike/e1-rust-wasm-feasibility
+          git rev-parse HEAD
+          python3 -m py_compile e1-spike/tests/verify_adversarial_resources.py e1-spike/tests/verify_dependency_inventory.py
+          test -s e1-spike/Cargo.lock
+      - name: Lock, build, baseline regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline --test codec_security
+          cargo build --manifest-path e1-spike/Cargo.toml --release --locked --offline
+          git diff --exit-code -- e1-spike/Cargo.lock
+      - name: R04 synthetic PNG header / input limit / peak native RSS characterization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 e1-spike/tests/verify_adversarial_resources.py
+          test -s /tmp/e1-security-depth/r04-native-resource-report.json
+      - name: R09 capture full locked graph and declared-license inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 e1-spike/tests/verify_dependency_inventory.py
+          test -s /tmp/e1-security-depth/r09-locked-dependency-inventory.json
+          echo "R04_CHARACTERIZED_R09_INVENTORIED_NO_INDEPENDENT_SIGNOFF"
+      - name: Upload inspection-ready evidence even if a later step fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e1e-r04-r09-characterization-synthetic-only
+          path: /tmp/e1-security-depth/
+          if-no-files-found: warn
+          retention-days: 30
