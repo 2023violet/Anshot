@@ -9,6 +9,7 @@ on:
       - e1-spike/tests/codec_security.rs
       - e1-spike/tests/verify_adversarial_resources.py
       - e1-spike/tests/verify_dependency_inventory.py
+      - e1-spike/tests/verify_osv_advisories.py
       - e1-spike/Cargo.toml
       - e1-spike/Cargo.lock
 
@@ -29,7 +30,7 @@ jobs:
           set -euo pipefail
           test "$(git branch --show-current)" = spike/e1-rust-wasm-feasibility
           git rev-parse HEAD
-          python3 -m py_compile e1-spike/tests/verify_adversarial_resources.py e1-spike/tests/verify_dependency_inventory.py
+          python3 -m py_compile e1-spike/tests/verify_adversarial_resources.py e1-spike/tests/verify_dependency_inventory.py e1-spike/tests/verify_osv_advisories.py
           test -s e1-spike/Cargo.lock
       - name: Lock, build, baseline regression
         shell: bash
@@ -53,6 +54,12 @@ jobs:
           python3 e1-spike/tests/verify_dependency_inventory.py
           test -s /tmp/e1-security-depth/r09-locked-dependency-inventory.json
           echo "R04_CHARACTERIZED_R09_INVENTORIED_NO_INDEPENDENT_SIGNOFF"
+      - name: R09 check every crate version against live OSV advisory database (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 e1-spike/tests/verify_osv_advisories.py
+          test -s /tmp/e1-security-depth/r09-osv-lookup.json
       - name: Upload inspection-ready evidence even if a later step fails
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
