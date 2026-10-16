@@ -116,8 +116,13 @@ with sync_playwright() as pw:
             page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
             assert page.evaluate("document.activeElement?.id") == "back"
             assert page.evaluate("document.querySelector('.app').inert") is True
+            # Browser-native visual page scaling and synthetic Playwright
+            # mouse coordinates can disagree; verify an actual trusted key
+            # activation for the keyboard-only review/download contract.
+            page.locator("#download").focus()
+            assert page.evaluate("document.activeElement?.id") == "download"
             with page.expect_download() as event:
-                page.locator("#download").click()
+                page.keyboard.press("Enter")
             destination = OUT / f"e2_3_keyboard_{width}.png"
             event.value.save_as(destination)
             with Image.open(destination) as image:
@@ -129,7 +134,8 @@ with sync_playwright() as pw:
                     for x, y in corners:
                         assert pixels.getpixel((int(x), int(y))) == (17, 24, 39, 255)
                 assert pixels.getpixel((10, 10)) != (17, 24, 39, 255)
-            page.locator("#back").click()
+            page.locator("#back").focus()
+            page.keyboard.press("Enter")
             assert page.evaluate("document.querySelector('.app').inert") is False
             assert page.evaluate("document.activeElement?.id") == "check"
             assert all(method in ("GET", "HEAD") and
