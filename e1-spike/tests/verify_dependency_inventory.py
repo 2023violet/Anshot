@@ -10,19 +10,21 @@ LOCK=ROOT/"e1-spike/Cargo.lock"
 OUT=Path("/tmp/e1-security-depth")
 OUT.mkdir(parents=True,exist_ok=True)
 before=hashlib.sha256(LOCK.read_bytes()).hexdigest()
-p=subprocess.run(["cargo","metadata","--format-version","1","--locked","--offline","--manifest-path",str(MANIFEST)],check=True,capture_output=True,text=True)
+p=subprocess.run(["cargo","metadata","--format-version","1","--all-features","--locked","--offline","--manifest-path",str(MANIFEST)],check=True,capture_output=True,text=True)
 metadata=json.loads(p.stdout)
 lock=tomllib.loads(LOCK.read_text())
 locked={(p["name"],p["version"]):p for p in lock["package"]}
 assert len(locked)==len(lock["package"]), "Duplicate name/version in Cargo.lock"
+found={(pkg["name"],pkg["version"]):pkg for pkg in metadata["packages"]}
+assert set(found).issubset(set(locked)), "Metadata referenced a package absent from committed Cargo.lock"
 items=[]
-for pkg in metadata["packages"]:
-    key=(pkg["name"],pkg["version"])
-    assert key in locked,("Metadata drift",key)
-    entry=locked[key]
+for key,entry in locked.items():
+    pkg=found.get(key,{})
     items.append({
-      "name":pkg["name"],"version":pkg["version"],
-      "source":pkg.get("source"),"checksum_sha256":entry.get("checksum"),
+      "name":key[0],"version":key[1],
+      "metadata_available":bool(pkg),
+      "source":entry.get("source"),
+      "checksum_sha256":entry.get("checksum"),
       "license_declared_by_package":pkg.get("license"),
       "license_file":pkg.get("license_file"),
       "repository":pkg.get("repository"),
