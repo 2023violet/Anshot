@@ -167,8 +167,32 @@ pub fn redact(input: &[u8], regions: &[Region]) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+/// Decode and orient a user-selected JPEG/PNG *before* constructing the edit
+/// canvas. The preview is a fresh PNG containing normalized source pixels,
+/// rather than a browser EXIF-dependent view of the original file. The same
+/// decoded dimensions and orientation are used again at the export boundary.
+pub fn preview_png(input: &[u8]) -> Result<Vec<u8>, String> {
+    let image = decode_source(input)?;
+    let size = image.dimensions();
+    let mut out = Cursor::new(Vec::new());
+    DynamicImage::ImageRgba8(image).write_to(&mut out, ImageFormat::Png)
+        .map_err(|e| format!("preview PNG encode failed: {e}"))?;
+    let png = out.into_inner();
+    let decoded = image::load_from_memory_with_format(&png, ImageFormat::Png)
+        .map_err(|e| format!("preview PNG verification failed: {e}"))?;
+    if decoded.dimensions() != size {
+        return Err("preview dimensions changed".into());
+    }
+    Ok(png)
+}
+
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::*;
+#[cfg(feature = "web")]
+#[wasm_bindgen]
+pub fn preview_web(input: &[u8]) -> Result<Vec<u8>, JsValue> {
+    preview_png(input).map_err(|e| JsValue::from_str(&e))
+}
 #[cfg(feature = "web")]
 #[wasm_bindgen]
 pub fn redact_web(input: &[u8], rectangles: &[i32]) -> Result<Vec<u8>, JsValue> {
