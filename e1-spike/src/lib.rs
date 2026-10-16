@@ -213,4 +213,61 @@ mod tests {
             .expect_err("oversized compressed input must fail");
         assert!(err.contains("oversized compressed input"), "{err}");
     }
+    #[test]
+    fn all_eight_exif_orientations_have_independent_pixel_truth() {
+        // Asymmetric 3x2 source exposes every mirror, rotate and transpose.
+        let mut src = RgbaImage::new(3, 2);
+        for (index, (_, _, pixel)) in src.enumerate_pixels_mut().enumerate() {
+            *pixel = Rgba([b'A' + index as u8, 0, 0, 255]);
+        }
+        let cases: &[(u16, &[&str])] = &[
+            (1, &["ABC", "DEF"]),
+            (2, &["CBA", "FED"]),
+            (3, &["FED", "CBA"]),
+            (4, &["DEF", "ABC"]),
+            (5, &["AD", "BE", "CF"]),
+            (6, &["DA", "EB", "FC"]),
+            (7, &["FC", "EB", "DA"]),
+            (8, &["CF", "BE", "AD"]),
+        ];
+        for &(orientation, expected) in cases {
+            let out = orient_rgba(src.clone(), orientation);
+            assert_eq!(out.height() as usize, expected.len(), "orientation {orientation}");
+            assert_eq!(out.width() as usize, expected[0].len(), "orientation {orientation}");
+            for (y, line) in expected.iter().enumerate() {
+                for (x, pixel) in line.as_bytes().iter().enumerate() {
+                    assert_eq!(
+                        out.get_pixel(x as u32, y as u32).0[0], *pixel,
+                        "orientation={orientation} x={x} y={y}"
+                    );
+                }
+            }
+        }
+    }
+    #[test]
+    fn malformed_exif_offsets_and_lengths_are_bounded() {
+        // Minimal JPEG APP1 Exif segment with a deliberately invalid TIFF IFD0
+        // offset (0xffffffff). The parser must never index or wrap that offset.
+        let mut jpeg = vec![0xff, 0xd8, 0xff, 0xe1, 0, 0];
+        jpeg.extend_from_slice(b"Exif\0\0II");
+        jpeg.extend_from_slice(&42u16.to_le_bytes());
+        jpeg.extend_from_slice(&u32::MAX.to_le_bytes());
+        let segment_len = (jpeg.len() - 4) as u16;
+        jpeg[4..6].copy_from_slice(&segment_len.to_be_bytes());
+        jpeg.extend_from_slice(&[0xff, 0xd9]);
+        assert_eq!(jpeg_orientation(&jpeg), 1);
+        // Truncation and mutated lengths are intentionally non-crashing;
+        // optional EXIF orientation is either valid (1..=8) or defaults to 1.
+        for end in 0..=jpeg.len() {
+            let result = jpeg_orientation(&jpeg[..end]);
+            assert!((1..=8).contains(&result));
+        }
+        for offset in 4..jpeg.len() - 2 {
+            let mut mutated = jpeg.clone();
+            mutated[offset] = 0xff;
+            let result = jpeg_orientation(&mutated);
+            assert!((1..=8).contains(&result));
+        }
+    }
+
 }
