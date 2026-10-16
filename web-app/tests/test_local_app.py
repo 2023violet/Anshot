@@ -77,6 +77,21 @@ with sync_playwright() as pw:
         assert len(page.evaluate("window.e2Debug.regions"))==0
         page.keyboard.press("Control+Shift+z")
         assert len(page.evaluate("window.e2Debug.regions"))==1
+        # Real 100% original pixel zoom, undoable bulk clear, and confirmation.
+        page.locator("#zoomActual").click()
+        assert page.evaluate("window.e2Debug.zoom")==1
+        page.locator("#zoomFit").click()
+        assert 0<page.evaluate("window.e2Debug.zoom")<=1
+        page.once("dialog",lambda dialog:dialog.dismiss())
+        page.locator("#clearAll").click()
+        assert len(page.evaluate("window.e2Debug.regions"))==1,"cancel must keep masks"
+        page.once("dialog",lambda dialog:dialog.accept())
+        page.locator("#clearAll").click()
+        assert len(page.evaluate("window.e2Debug.regions"))==0
+        assert page.locator("#check").is_disabled()
+        page.keyboard.press("Control+z")
+        assert len(page.evaluate("window.e2Debug.regions"))==1
+        results.append({"case":"100% zoom / fit / clear-all cancel-confirm / undo restores mask"})
         rect=page.evaluate("window.e2Debug.regions[0]")
         page.locator("#check").click()
         wait(page,"window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
