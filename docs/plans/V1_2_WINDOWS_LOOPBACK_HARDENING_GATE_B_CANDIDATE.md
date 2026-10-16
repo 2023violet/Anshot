@@ -56,6 +56,7 @@ V12-06: python3 <固定 closing-out skill>/scripts/audit.py --base feature/v1-1-
 | N08 | Header 缺失终止空行（EOF） | 不返回 200/资源 |
 | N09 | POST /app.js、GET /secret.txt | 405 / 404（原有门禁不能退化） |
 | N10 | 只监听 `127.0.0.1` + HTTP CSP 包含 `default-src 'none'` | PASS，检查真实绑定与响应头 |
+| N11 | HTTP/1.0 无 Host 或伪 Host（如仍支持 1.0） | 拒绝，不能绕开 HTTP/1.1 的 Host 验证 |
 
 防误报：N06/N07 的“超长流读取前不分配”仅凭返回 400 **不能证明**，需要资源边界的定量指标或改为定长分段解析才能成立。测试必须以严格的网络原始字节形式构造，不能依赖 `HttpWebRequest` 自动修复重复 Host 等畸形输入。
 
