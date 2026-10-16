@@ -6,8 +6,22 @@ namespace ShareReady.Desktop;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--verify-package")
+        {
+            // Runs on CI without an interactive desktop or WebView2 runtime.
+            // This verifies only bundled files, not a visually rendered window.
+            var webRoot = Path.Combine(AppContext.BaseDirectory, "www");
+            foreach (var asset in new[] { "index.html", "app.js",
+                "pkg/shareready_e1.js", "pkg/shareready_e1_bg.wasm" })
+            {
+                var file = Path.Combine(webRoot, asset.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(file) || new FileInfo(file).Length == 0)
+                    Environment.Exit(3);
+            }
+            Environment.Exit(0);
+        }
         ApplicationConfiguration.Initialize();
         Application.Run(new ShareReadyWindow());
     }
