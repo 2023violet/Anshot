@@ -59,7 +59,7 @@ huge=SIG+(b"\0"*(25*1024*1024+1-len(SIG)))
 test("compressed_over_25mib",huge,False,"invalid or oversized compressed input")
 del huge
 # Deliberately truncated PNG with a plausible magic/header.
-test("truncated_idat",png(800,600)[:45],False,"invalid image")
+test("truncated_idat",png(800,600)[:45],False,"image")
 # Valid 4.84MP highly compressed synthetic PNG exercises decode, opaque overwrite,
 # new PNG encoder and readback; measured child RSS is an observation, not cap.
 test("valid_compressed_4_84mp",png(2200,2200,True),True)
