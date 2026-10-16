@@ -104,7 +104,7 @@ with sync_playwright() as pw:
         fake=OUT/"not-really-an-image.png"
         fake.write_text("not a PNG even if extension claims PNG")
         page.locator("#pick").set_input_files(str(fake))
-        wait(page,"'导入失败' in document.getElementById('status').textContent")
+        wait(page,"document.getElementById('status').textContent.includes('导入失败')")
         assert page.evaluate("window.e2Debug.stage==='edit'")
         assert len(page.evaluate("window.e2Debug.regions"))==1
         assert page.evaluate("window.e2Debug.sourceSize")==[640,400]
