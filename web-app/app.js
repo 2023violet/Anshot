@@ -133,7 +133,7 @@ async function decodeImage(url){
 async function loadFile(file){
  if(!ready){status("Rust/WASM 尚未加载完成");return}
  if(!file)return;
- if((stage==="edit"||stage==="review")&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？"))return;
+
  const ticket=++loadTicket;
  status("正在本地读取并解码图片…");
  try{
@@ -152,6 +152,11 @@ async function loadFile(file){
   if(ticket!==loadTicket){URL.revokeObjectURL(url);return}
   if(!image.naturalWidth||!image.naturalHeight||image.naturalWidth*image.naturalHeight>24000000){
    URL.revokeObjectURL(url);throw Error("解码图像超限");
+  }
+  // Validate the replacement before asking the user to discard old masks.
+  // A bad/corrupted file must not trigger a destructive confirmation dialog.
+  if((stage==="edit"||stage==="review")&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？")){
+   URL.revokeObjectURL(url);return;
   }
   const previousStage=stage;
   // A new verified source invalidates the previous review surface, including
