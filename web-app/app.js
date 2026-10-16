@@ -57,6 +57,20 @@ function render(){
  $("clearAll").disabled=!editing||regions.length===0;
  $("count").textContent=String(regions.length);
  $("regionsEmpty").hidden=regions.length>0;
+ const chosen=editing?regions.find(r=>r.id===selected):null;
+ $("precisionPanel").hidden=!chosen;
+ $("precisionPlaceholder").hidden=Boolean(chosen);
+ for(const id of ["precX","precY","precW","precH"])$(id).disabled=!chosen;
+ if(chosen){
+  const x=Math.floor(Math.min(chosen.x0,chosen.x1));
+  const y=Math.floor(Math.min(chosen.y0,chosen.y1));
+  const right=Math.ceil(Math.max(chosen.x0,chosen.x1));
+  const bottom=Math.ceil(Math.max(chosen.y0,chosen.y1));
+  const values={precX:x,precY:y,precW:right-x,precH:bottom-y};
+  for(const [id,value] of Object.entries(values)){
+   if(document.activeElement!==$(id))$(id).value=String(value);
+  }
+ }
  $("regionList").replaceChildren();
  for(const r of regions){
   const li=document.createElement("li");
@@ -106,6 +120,22 @@ function render(){
   const candidate=byKind(focusedKind);
   (candidate?.getClientRects().length?candidate:byKind("mask"))?.focus({preventScroll:true});
  }
+}
+function commitPrecision(){
+ if(stage!=="edit"||selected===null)return;
+ const r=regions.find(item=>item.id===selected);if(!r)return;
+ const read=id=>Number($(id).value);
+ const [x,y,w,h]=["precX","precY","precW","precH"].map(read);
+ if(![x,y,w,h].every(Number.isSafeInteger)||x<0||y<0||w<1||h<1||x>=sourceW||y>=sourceH){
+  status("坐标必须为图内整数，宽度和高度至少 1 像素");render();return;
+ }
+ const width=Math.min(w,sourceW-x),height=Math.min(h,sourceH-y);
+ const before=snapshot();
+ Object.assign(r,{x0:x,y0:y,x1:x+width,y1:y+height});
+ if(before!==snapshot()){
+  saveAction(before);
+  status("已精确设置遮挡位置："+x+", "+y+" · "+width+" × "+height+" 像素");
+ }else render();
 }
 function setMode(newMode){
  mode=newMode;
@@ -178,6 +208,21 @@ async function loadFile(file){
  }catch(e){if(ticket===loadTicket)status("导入失败（原有编辑已保留）："+String(e?.message||e))}
 }
 const frame=$("frame"),viewport=$("viewport");
+// Ctrl/Cmd + wheel zooms around the cursor without moving the edit coordinate.
+viewport.addEventListener("wheel",e=>{
+ if(stage!=="edit"||!sourceW||!(e.ctrlKey||e.metaKey))return;
+ e.preventDefault();
+ const before=frame.getBoundingClientRect();
+ if(before.width<=0||before.height<=0)return;
+ const px=(e.clientX-before.left)/before.width;
+ const py=(e.clientY-before.top)/before.height;
+ const oldZoom=zoom;
+ setZoom(zoom*(e.deltaY<0?1.12:1/1.12));
+ if(oldZoom===zoom)return;
+ const after=frame.getBoundingClientRect();
+ viewport.scrollLeft+=after.left+px*after.width-e.clientX;
+ viewport.scrollTop+=after.top+py*after.height-e.clientY;
+},{passive:false});
 function coordinates(e){
  const box=frame.getBoundingClientRect();
  // Use the actual rendered pixel scale, not merely app zoom: browser
@@ -392,6 +437,12 @@ $("zoomIn").onclick=()=>setZoom(zoom*1.25);
 $("zoomOut").onclick=()=>setZoom(zoom/1.25);
 $("zoomFit").onclick=fit;
 $("zoomActual").onclick=()=>setZoom(1);
+for(const id of ["precX","precY","precW","precH"]){
+ $(id).addEventListener("change",commitPrecision);
+ $(id).addEventListener("keydown",event=>{
+  if(event.key==="Enter"){event.preventDefault();$(id).blur()}
+ });
+}
 $("check").onclick=enterReview;$("back").onclick=back;
 $("download").onclick=download;$("copy").onclick=copy;
 function choose(){$("pick").click()}
