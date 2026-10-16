@@ -153,15 +153,17 @@ fn output_png_has_only_required_chunks_and_no_trailing_payload() {
             let end = offset.checked_add(12).and_then(|n| n.checked_add(length))
                 .expect("PNG chunk length overflow");
             assert!(end <= data.len(), "{name}: out-of-bounds PNG chunk");
-            match kind {
-                b"IHDR" => { ihdr += 1; assert_eq!(offset, 8, "{name}: IHDR must be first"); }
-                b"IDAT" => { idat += 1; }
-                b"IEND" => {
-                    iend += 1;
-                    assert_eq!(length, 0, "{name}: nonempty IEND");
-                    assert_eq!(end, data.len(), "{name}: trailing bytes after IEND");
-                }
-                _ => panic!("{name}: unexpected metadata/ancillary chunk {kind:?}"),
+            if kind == b"IHDR" {
+                ihdr += 1;
+                assert_eq!(offset, 8, "{name}: IHDR must be first");
+            } else if kind == b"IDAT" {
+                idat += 1;
+            } else if kind == b"IEND" {
+                iend += 1;
+                assert_eq!(length, 0, "{name}: nonempty IEND");
+                assert_eq!(end, data.len(), "{name}: trailing bytes after IEND");
+            } else {
+                panic!("{name}: unexpected metadata/ancillary chunk {kind:?}");
             }
             offset = end;
         }
