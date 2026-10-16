@@ -15,6 +15,9 @@ jobs:
   native-windows-red-and-real-step:
     runs-on: windows-latest
     timeout-minutes: 15
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
     steps:
       - name: Checkout isolated V12-01 test branch and immutable V1.1 base
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
