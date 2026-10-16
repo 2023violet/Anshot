@@ -155,6 +155,13 @@ with sync_playwright() as pw:
         assert copy_state == "write_succeeded_readback_unverified", copy_state
         page.evaluate("""() => {
           window.__e23Paste={state:'pending'};
+          // Trusted paste is browser-defined for an editable target. Focusing
+          // a regular button can silently suppress the actual paste event.
+          const target=document.createElement('div');
+          target.id='e23pasteTarget';target.contentEditable='true';
+          target.setAttribute('aria-label','Synthetic PNG paste verification');
+          target.style.cssText='position:fixed;left:8px;top:8px;width:2px;height:2px;opacity:.01;z-index:10000';
+          document.body.append(target);
           const rgbaHash=async blob=>{
             const bitmap=await createImageBitmap(blob);
             const canvas=document.createElement('canvas');
@@ -180,7 +187,8 @@ with sync_playwright() as pw:
             }catch(error){window.__e23Paste={state:'error',message:String(error)};}
           },{capture:true,once:true});
         }""")
-        page.locator("#copy").focus()
+        page.locator("#e23pasteTarget").focus()
+        assert page.evaluate("document.activeElement?.id") == "e23pasteTarget"
         page.keyboard.press("Control+v")
         paste_result = None
         try:
