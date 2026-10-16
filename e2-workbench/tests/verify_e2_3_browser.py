@@ -220,6 +220,23 @@ with sync_playwright() as pw:
         observations.append({"delayed_clipboard_write": "stale_during_copy",
                              "method": "deterministic delayed Promise, NOT native clipboard"})
         print("E2_3_CLIPBOARD_REVISION_RACE_NEGATIVE_PASS")
+        # Replacement from the review state must dismiss the modal, restore
+        # editor focus and invalidate old PNG. No old review overlay may remain.
+        page.locator("#check").click()
+        page.wait_for_function("window.e2Debug.stage==='review'")
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.locator("#pick").set_input_files(str(FIXTURE))
+        page.wait_for_function(
+            "window.e2Debug.stage==='edit' && window.e2Debug.outputRevision===-1"
+            " && window.e2Debug.regions.length===0"
+        )
+        assert not page.locator("#review").evaluate("(el)=>el.classList.contains('visible')")
+        assert page.evaluate("document.querySelector('.app').inert") is False
+        assert page.evaluate("document.activeElement?.id") == "createMask"
+        assert page.locator("#check").is_disabled()
+        observations.append({"replace_during_review": "modal_closed_focus_restored",
+                             "old_export": "invalidated", "input": "synthetic_T01"})
+        print("E2_3_REPLACE_FROM_REVIEW_RECOVERY_PASS")
         ctx.close()
     finally:
         browser.close()
