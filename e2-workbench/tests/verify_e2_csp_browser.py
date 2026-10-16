@@ -8,6 +8,16 @@ import threading
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+# CSP-safe test polling: no unsafe-eval in the real application policy.
+import time
+def wait_csp(page, expression, arg=None, timeout=30000):
+    until=time.monotonic()+timeout/1000
+    while time.monotonic()<until:
+        if page.evaluate(f"(value) => Boolean({expression})", arg):
+            return
+        page.wait_for_timeout(100)
+    raise AssertionError("CSP-safe browser condition timeout: "+expression)
+
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/research/fixtures/T01_CHAT.png"
 OUT = Path("/tmp/e2-browser-evidence")
@@ -32,7 +42,7 @@ with sync_playwright() as pw:
         page.on("request", lambda r: requests.append(r.url))
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(origin + "/e2-workbench/index.html")
-        page.wait_for_function("window.e2Debug?.ready===true")
+        wait_csp(page, "window.e2Debug?.ready===true")
         assert page.locator('meta[http-equiv="Content-Security-Policy"]').count() == 1
         page.evaluate("""() => {
           window.__cspViolations=[];
@@ -45,7 +55,7 @@ with sync_playwright() as pw:
           s.textContent='window.__untrustedInlineScriptDidRun=true';
           document.body.append(s);
         }""")
-        page.wait_for_function("window.__cspViolations.some(x => x.directive.startsWith('script-src'))")
+        wait_csp(page, "window.__cspViolations.some(x => x.directive.startsWith('script-src'))")
         assert page.evaluate("window.__untrustedInlineScriptDidRun === undefined")
         blocked = page.evaluate("""async () => {
           try {
@@ -54,13 +64,13 @@ with sync_playwright() as pw:
           } catch(e) { return true; }
         }""")
         assert blocked, "CSP allowed external fetch"
-        page.wait_for_function("window.__cspViolations.some(x => x.directive==='connect-src')")
+        wait_csp(page, "window.__cspViolations.some(x => x.directive==='connect-src')")
         assert all(url.startswith((origin + "/", "blob:" + origin + "/")) for url in requests), requests
         page.locator("#pick").set_input_files(str(FIXTURE))
-        page.wait_for_function("window.e2Debug.stage==='edit'")
+        wait_csp(page, "window.e2Debug.stage==='edit'")
         page.locator("#createMask").click()
         page.locator("#check").click()
-        page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
+        wait_csp(page, "window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
         assert not errors, errors
         evidence = {
             "policy":page.locator('meta[http-equiv="Content-Security-Policy"]').get_attribute("content"),
