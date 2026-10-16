@@ -12,6 +12,16 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import TimeoutError as PlaywrightTimeout, sync_playwright
 
+# CSP-safe test polling: no unsafe-eval in the real application policy.
+import time
+def wait_csp(page, expression, arg=None, timeout=30000):
+    until=time.monotonic()+timeout/1000
+    while time.monotonic()<until:
+        if page.evaluate(f"(value) => Boolean({expression})", arg):
+            return
+        page.wait_for_timeout(100)
+    raise AssertionError("CSP-safe browser condition timeout: "+expression)
+
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/research/fixtures/T01_CHAT.png"
 OUT = Path("/tmp/e2-browser-evidence")
@@ -42,14 +52,14 @@ with sync_playwright() as pw:
             page.on("pageerror", lambda error: failures.append(str(error)))
             page.on("request", lambda req: requests.append((req.method, req.url)))
             page.goto(origin + "/e2-workbench/index.html")
-            page.wait_for_function("window.e2Debug?.ready===true")
+            wait_csp(page, "window.e2Debug?.ready===true")
             page.locator("#pick").set_input_files(str(FIXTURE))
-            page.wait_for_function("window.e2Debug.stage==='edit'")
+            wait_csp(page, "window.e2Debug.stage==='edit'")
 
             cdp = ctx.new_cdp_session(page)
             # Real Chromium visual viewport scaling (CDP PageScaleFactor), not CSS zoom.
             cdp.send("Emulation.setPageScaleFactor", {"pageScaleFactor": page_scale})
-            page.wait_for_function("(scale)=>Math.abs(window.visualViewport.scale-scale)<0.05",
+            wait_csp(page, "Math.abs(window.visualViewport.scale-value)<0.05",
                                    arg=page_scale)
             actual_scale = page.evaluate("window.visualViewport.scale")
 
@@ -113,7 +123,7 @@ with sync_playwright() as pw:
             page.locator("#check").focus()
             assert page.evaluate("document.activeElement?.id") == "check"
             page.keyboard.press("Enter")
-            page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
+            wait_csp(page, "window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
             assert page.evaluate("document.activeElement?.id") == "back"
             assert page.evaluate("document.querySelector('.app').inert") is True
             # Browser-native visual page scaling and synthetic Playwright
@@ -158,14 +168,14 @@ with sync_playwright() as pw:
         ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=origin)
         page = ctx.new_page()
         page.goto(origin + "/e2-workbench/index.html")
-        page.wait_for_function("window.e2Debug?.ready===true")
+        wait_csp(page, "window.e2Debug?.ready===true")
         page.locator("#pick").set_input_files(str(FIXTURE))
-        page.wait_for_function("window.e2Debug.stage==='edit'")
+        wait_csp(page, "window.e2Debug.stage==='edit'")
         page.locator("#createMask").click()
         page.locator("#check").click()
-        page.wait_for_function("window.e2Debug.stage==='review'")
+        wait_csp(page, "window.e2Debug.stage==='review'")
         page.locator("#copy").click()
-        page.wait_for_function("window.e2Debug.copyState!=='not_attempted'")
+        wait_csp(page, "window.e2Debug.copyState!=='not_attempted'")
         copy_state = page.evaluate("window.e2Debug.copyState")
         assert copy_state == "write_succeeded_readback_unverified", copy_state
         page.evaluate("""() => {
@@ -207,7 +217,7 @@ with sync_playwright() as pw:
         page.keyboard.press("Control+v")
         paste_result = None
         try:
-            page.wait_for_function("window.__e23Paste?.state!=='pending'", timeout=7000)
+            wait_csp(page, "window.__e23Paste?.state!=='pending'", timeout=7000)
             paste_result = page.evaluate("window.__e23Paste")
         except PlaywrightTimeout:
             paste_result = {"state": "real_paste_not_observed"}
@@ -221,23 +231,23 @@ with sync_playwright() as pw:
         ctx = browser.new_context(viewport={"width": 1440, "height": 900})
         page = ctx.new_page()
         page.goto(origin + "/e2-workbench/index.html")
-        page.wait_for_function("window.e2Debug?.ready===true")
+        wait_csp(page, "window.e2Debug?.ready===true")
         page.locator("#pick").set_input_files(str(FIXTURE))
-        page.wait_for_function("window.e2Debug.stage==='edit'")
+        wait_csp(page, "window.e2Debug.stage==='edit'")
         page.locator("#createMask").click()
         page.locator("#check").click()
-        page.wait_for_function("window.e2Debug.stage==='review'")
+        wait_csp(page, "window.e2Debug.stage==='review'")
         page.evaluate("""() => {
           Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
             write:()=>new Promise(resolve=>window.__finishDelayedCopy=resolve)
           }});
         }""")
         page.locator("#copy").click()
-        page.wait_for_function("typeof window.__finishDelayedCopy==='function'")
+        wait_csp(page, "typeof window.__finishDelayedCopy==='function'")
         page.locator("#back").click()
         page.locator("#createMask").click()
         page.evaluate("window.__finishDelayedCopy()")
-        page.wait_for_function("window.e2Debug.copyState==='stale_during_copy'")
+        wait_csp(page, "window.e2Debug.copyState==='stale_during_copy'")
         assert "旧复制结果不可作为当前成品" in page.locator("#status").inner_text()
         assert page.evaluate("window.e2Debug.outputRevision") == -1
         observations.append({"delayed_clipboard_write": "stale_during_copy",
@@ -246,10 +256,10 @@ with sync_playwright() as pw:
         # Replacement from the review state must dismiss the modal, restore
         # editor focus and invalidate old PNG. No old review overlay may remain.
         page.locator("#check").click()
-        page.wait_for_function("window.e2Debug.stage==='review'")
+        wait_csp(page, "window.e2Debug.stage==='review'")
         page.once("dialog", lambda dialog: dialog.accept())
         page.locator("#pick").set_input_files(str(FIXTURE))
-        page.wait_for_function(
+        wait_csp(page, 
             "window.e2Debug.stage==='edit' && window.e2Debug.outputRevision===-1"
             " && window.e2Debug.regions.length===0"
         )
