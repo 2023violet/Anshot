@@ -92,6 +92,28 @@ with sync_playwright() as pw:
         page.keyboard.press("Control+z")
         assert len(page.evaluate("window.e2Debug.regions"))==1
         results.append({"case":"100% zoom / fit / clear-all cancel-confirm / undo restores mask"})
+        # Actual pixel-inspector coordinates must affect the exported Rust bytes,
+        # and each edit must participate in Undo/Redo history.
+        page.locator("#regionList .region").click()
+        assert page.locator("#precisionPanel").is_visible()
+        for field,value in [("precX","12"),("precY","18"),("precW","84"),("precH","37")]:
+            page.locator("#"+field).fill(value)
+            page.locator("#"+field).press("Tab")
+        region=page.evaluate("window.e2Debug.regions[0]")
+        assert [region[k] for k in ("x0","y0","x1","y1")]==[12,18,96,55],region
+        page.keyboard.press("Control+z")
+        assert page.evaluate("window.e2Debug.regions[0].y1")!=55
+        page.keyboard.press("Control+Shift+z")
+        assert page.evaluate("window.e2Debug.regions[0].y1")==55
+        # Zoom should preserve masks in image-space, not CSS-space.
+        page.keyboard.down("Control")
+        page.locator("#viewport").hover(position={"x":100,"y":100})
+        previous_zoom=page.evaluate("window.e2Debug.zoom")
+        page.mouse.wheel(0,-200)
+        page.keyboard.up("Control")
+        assert page.evaluate("window.e2Debug.zoom")>previous_zoom
+        assert page.evaluate("window.e2Debug.regions[0].x0")==12
+        results.append({"case":"numeric original-pixel inspector / undo redo / cursor wheel zoom"})
         rect=page.evaluate("window.e2Debug.regions[0]")
         page.locator("#check").click()
         wait(page,"window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
