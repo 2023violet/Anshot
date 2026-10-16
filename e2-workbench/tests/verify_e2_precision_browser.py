@@ -8,6 +8,19 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
+
+# CSP-friendly test polling: Playwright wait_for_function uses page-side eval,
+# which a correct strict script-src policy must block. CDP evaluate of this
+# trusted direct function avoids relaxing the production/script CSP.
+import time
+def wait_csp(page, expression, arg=None, timeout=30000):
+    until=time.monotonic()+timeout/1000
+    while time.monotonic()<until:
+        if page.evaluate(f"(value) => Boolean({expression})", arg):
+            return
+        page.wait_for_timeout(100)
+    raise AssertionError("CSP-safe browser condition timeout: "+expression)
+
 ROOT=Path(__file__).resolve().parents[2]
 FIX=ROOT/"docs/research/fixtures/T01_CHAT.png"
 OUT=Path("/tmp/e2-browser-evidence")
@@ -31,9 +44,9 @@ with sync_playwright() as pw:
    page.on("pageerror",lambda x:errors.append(str(x)))
    page.on("request",lambda r:network.append((r.method,r.url)))
    page.goto(f"http://127.0.0.1:{server.server_port}/e2-workbench/index.html")
-   page.wait_for_function("window.e2Debug?.ready===true")
+   wait_csp(page, "window.e2Debug?.ready===true")
    page.locator("#pick").set_input_files(str(FIX))
-   page.wait_for_function("window.e2Debug.stage==='edit'")
+   wait_csp(page, "window.e2Debug.stage==='edit'")
    page.evaluate("(z)=>document.documentElement.style.zoom=z",f"{int(csszoom*100)}%")
    page.locator("#frame").scroll_into_view_if_needed()
    box=page.locator("#frame").bounding_box()
@@ -71,7 +84,7 @@ with sync_playwright() as pw:
    page.keyboard.press("Control+Shift+z")
    assert page.evaluate("window.e2Debug.regions")[0]==resized,("resize redo",width)
    page.locator("#check").click()
-   page.wait_for_function("window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
+   wait_csp(page, "window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
    assert page.locator("#outputImage").evaluate("(img)=>img.complete && img.naturalWidth>0")
    with page.expect_download() as down:page.locator("#download").click()
    dest=OUT/f"T01_keyboard_{width}_dpr2.png"
