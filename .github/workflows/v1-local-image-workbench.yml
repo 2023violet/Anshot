@@ -1,8 +1,8 @@
-name: ShareReady V1 local editor (Rust WASM Chrome and package)
+name: ShareReady V1.1 one-click Windows launcher and editor
 
 on:
   push:
-    branches: [feature/v1-local-image-workbench]
+    branches: [feature/v1-1-windows-launcher-edit-ux]
     paths:
       - .github/workflows/v1-local-image-workbench.yml
       - e1-spike/**
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git branch --show-current)" = feature/v1-local-image-workbench
+          test "$(git branch --show-current)" = feature/v1-1-windows-launcher-edit-ux
           echo "PRODUCT_HEAD=$(git rev-parse HEAD)"
           node --check web-app/app.js
           python3 -m py_compile web-app/tests/test_local_app.py
@@ -66,19 +66,38 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/shareready-dist/ShareReady-V1/pkg
-          cp web-app/index.html web-app/app.js web-app/README.md /tmp/shareready-dist/ShareReady-V1/
+          cp web-app/index.html web-app/app.js web-app/README.md web-app/Start-ShareReady.cmd web-app/Start-ShareReady.ps1 /tmp/shareready-dist/ShareReady-V1/
           cp web-app/pkg/shareready_e1.js web-app/pkg/shareready_e1_bg.wasm /tmp/shareready-dist/ShareReady-V1/pkg/
           printf '%s\n' "$(git rev-parse HEAD)" > /tmp/shareready-dist/ShareReady-V1/COMMIT.txt
           cd /tmp/shareready-dist
-          zip -qr /tmp/ShareReady-V1-local-workbench.zip ShareReady-V1
-          sha256sum /tmp/ShareReady-V1-local-workbench.zip
+          zip -qr /tmp/ShareReady-V1.1-Windows-one-click.zip ShareReady-V1
+          sha256sum /tmp/ShareReady-V1.1-Windows-one-click.zip
       - name: Upload runnable editor and real Chrome evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: shareready-v1-local-app-and-chrome-evidence
           path: |
-            /tmp/ShareReady-V1-local-workbench.zip
+            /tmp/ShareReady-V1.1-Windows-one-click.zip
             /tmp/shareready-v1-browser/
           if-no-files-found: warn
           retention-days: 30
+
+  windows-localhost-launcher-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout one-click launcher sources
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test loopback-only server and HTTP security behavior on native Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "web-app/pkg" | Out-Null
+          Set-Content "web-app/pkg/shareready_e1.js" -Value "// smoke placeholder, real Rust WASM tested on Linux"
+          [IO.File]::WriteAllBytes((Join-Path (Get-Location) "web-app/pkg/shareready_e1_bg.wasm"), [byte[]](0,97,115,109,1,0,0,0))
+          & pwsh -NoProfile -File "web-app/tests/test_windows_launcher.ps1"
+          if ($LASTEXITCODE -ne 0) { throw "Windows launcher smoke failed ($LASTEXITCODE)" }
+          Write-Host "SHAREREADY_WINDOWS_ONE_CLICK_LOOPBACK_SMOKE_PASS"
