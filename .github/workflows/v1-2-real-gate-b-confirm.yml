@@ -50,7 +50,7 @@ jobs:
           gh run download 38849296325 --repo 2023violet/ShareReady --name v12-real-skill-gate-b-preview-not-confirmed --dir /tmp/shareready-approved-gate-b
           test "$(cat /tmp/shareready-approved-gate-b/v12-gate-b-source-head.txt)" = 4c1ce6d4146ee5cb638eecd09b9a43382d0d8eb1
           test "$(cat /tmp/shareready-approved-gate-b/v12-gate-b-plan-git-blob.txt)" = f15231cf01031c9fe5e1cc39801a3678c204ce75
-          test -s /tmp/shareready-approved-gate-b/v12-gate-b-preview-workspace-unconfirmed.tgz
+          test -s /tmp/shareready-approved-gate-b/v12-b-preview-workspace-unconfirmed.tgz
           test ! -e .decision
           tar -xzf /tmp/shareready-approved-gate-b/v12-b-preview-workspace-unconfirmed.tgz
           cmp docs/decisions/V1_2_SKILL_GATE_A_INPUT.md .decision/decision-card.md
