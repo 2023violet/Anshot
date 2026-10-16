@@ -133,3 +133,40 @@ fn malformed_image_decoder_and_pixel_limit_are_exercised() {
     let error = redact(&bomb, &mask).expect_err("36MP image must be refused before decode");
     assert!(error.contains("decoded pixel dimensions out of bounds"), "{error}");
 }
+
+#[test]
+fn output_png_has_only_required_chunks_and_no_trailing_payload() {
+    for (name, rect) in [
+        ("T01_CHAT.png", Region::new(84, 154, 166, 237)),
+        ("T05_JPEG_EXIF.jpg", Region::new(78, 539, 627, 588)),
+    ] {
+        let data = redact(&fixture(name), &[rect]).expect("new PNG");
+        assert!(data.starts_with(b"\x89PNG\r\n\x1a\n"), "{name}");
+        let mut offset: usize = 8;
+        let mut ihdr = 0;
+        let mut idat = 0;
+        let mut iend = 0;
+        while offset < data.len() {
+            assert!(offset.checked_add(12).is_some_and(|end| end <= data.len()), "{name}: chunk header truncated");
+            let length = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
+            let kind = &data[offset + 4..offset + 8];
+            let end = offset.checked_add(12).and_then(|n| n.checked_add(length))
+                .expect("PNG chunk length overflow");
+            assert!(end <= data.len(), "{name}: out-of-bounds PNG chunk");
+            match kind {
+                b"IHDR" => { ihdr += 1; assert_eq!(offset, 8, "{name}: IHDR must be first"); }
+                b"IDAT" => { idat += 1; }
+                b"IEND" => {
+                    iend += 1;
+                    assert_eq!(length, 0, "{name}: nonempty IEND");
+                    assert_eq!(end, data.len(), "{name}: trailing bytes after IEND");
+                }
+                _ => panic!("{name}: unexpected metadata/ancillary chunk {kind:?}"),
+            }
+            offset = end;
+        }
+        assert_eq!((ihdr, iend), (1, 1), "{name}");
+        assert!(idat >= 1, "{name}: missing IDAT");
+        assert_eq!(offset, data.len(), "{name}: trailing payload");
+    }
+}
