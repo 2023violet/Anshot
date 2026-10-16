@@ -140,7 +140,7 @@ async function decodeImage(url){
 }
 async function loadFile(file){
  if(!ready){status("Rust/WASM 尚未加载完成");return}
- if(stage==="edit"&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？"))return;
+ if((stage==="edit"||stage==="review")&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？"))return;
  const ticket=++loadTicket;
  try{
   const bytes=new Uint8Array(await file.arrayBuffer());
@@ -157,6 +157,11 @@ async function loadFile(file){
   if(!image.naturalWidth||!image.naturalHeight||image.naturalWidth*image.naturalHeight>24000000){
    URL.revokeObjectURL(url);throw Error("解码图像超限");
   }
+  const previousStage=stage;
+  // A new verified source invalidates the previous review surface, including
+  // its modal focus trap. Keep prior source/edit state when import rejects.
+  $("review").classList.remove("visible");
+  document.querySelector(".app").inert=false;
   if(sourceURL)URL.revokeObjectURL(sourceURL);
   sourceURL=url;sourceBytes=bytes;label=key;
   sourceW=image.naturalWidth;sourceH=image.naturalHeight;
@@ -166,6 +171,7 @@ async function loadFile(file){
   $("filename").textContent=key;$("imageName").textContent=key;
   $("dimensions").textContent=sourceW+" × "+sourceH;$("format").textContent=isPNG?"PNG":"JPEG";
   fit();status("已导入合成图片。请绘制需要遮挡的矩形。");
+  if(previousStage==="review")$("createMask").focus({preventScroll:true});
  }catch(e){status("导入失败："+String(e?.message||e))}
 }
 const frame=$("frame"),viewport=$("viewport");
@@ -315,7 +321,11 @@ async function enterReview(){
   document.querySelector(".app").inert=true;
   $("back").focus({preventScroll:true});
  }catch(e){
-  stage="edit";status("生成失败，拒绝导出原图："+String(e?.message||e));
+  // Late results must not replace a newer image/edit/review state.
+  if(stage==="render")stage="edit";
+  if(revision===v && loadTicket===ticket){
+   status("生成失败，拒绝导出原图："+String(e?.message||e));
+  }
  }finally{render()}
 }
 function back(){
