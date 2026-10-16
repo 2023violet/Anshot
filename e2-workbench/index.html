@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- E2 synthetic development boundary; production must additionally set an HTTP CSP header. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' blob:; img-src 'self' blob:; style-src 'unsafe-inline'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'">
 <title>ShareReady · E2 Rust 工作台</title>
 <style>
 :root{font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--ink:#1e293b;--muted:#64748b;--accent:#345cc7;--line:#dce3eb;--cover:#111827;color:var(--ink);background:#f8fafc}
