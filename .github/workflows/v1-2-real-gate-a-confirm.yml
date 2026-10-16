@@ -1,0 +1,128 @@
+name: V1.2 approved pinned Skill Gate A confirm ONLY
+
+on:
+  push:
+    branches: [docs/v1-2-localhost-security-gates]
+    paths:
+      - .github/workflows/v1-2-real-gate-a-confirm.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  approved-gate-a-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated V1.2 governance branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify no approved scope drift and load immutable Skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = docs/v1-2-localhost-security-gates
+          ORIGINAL=627262ba670cb00d8fdf2d7f629179e606e9e038
+          test "$(git diff --name-only "$ORIGINAL" HEAD)" = .github/workflows/v1-2-real-gate-a-confirm.yml
+          test "$(git hash-object docs/decisions/V1_2_SKILL_GATE_A_INPUT.md)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          test "$(git show "$ORIGINAL":docs/decisions/V1_2_SKILL_GATE_A_INPUT.md | git hash-object --stdin)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          git clone -q https://github.com/2023violet/deciding-and-executing.git /tmp/share-ready-pinned-skill
+          git -C /tmp/share-ready-pinned-skill checkout -q --detach 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          test "$(git -C /tmp/share-ready-pinned-skill rev-parse HEAD)" = 1eb9624ee2037e4a2b253ee8120fa274dad1ef21
+          grep -Fx '  version: "4.1.0"' /tmp/share-ready-pinned-skill/skills/deciding-and-executing/SKILL.md
+          printf '%s\n' "$(git rev-parse HEAD)" > /tmp/v12-confirm-source-head.txt
+          printf '%s\n' "$ORIGINAL" > /tmp/v12-approved-source-head.txt
+          sha256sum docs/decisions/V1_2_SKILL_GATE_A_INPUT.md > /tmp/v12-confirm-decision-sha256.txt
+          echo "V12_FIXED_SKILL_AND_APPROVED_CARD_VERIFIED"
+      - name: Restore original exact preview workspace and machine evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/v12-approved-preview
+          gh run download 38844139998 --repo 2023violet/ShareReady --name v12-gate-a-pinned-skill-preview-only-not-confirmed --dir /tmp/v12-approved-preview
+          test "$(cat /tmp/v12-approved-preview/v12-gate-source-head.txt)" = 627262ba670cb00d8fdf2d7f629179e606e9e038
+          test "$(cat /tmp/v12-approved-preview/v12-decision-blob.txt)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          test ! -e .decision
+          tar -xzf /tmp/v12-approved-preview/v12-gate-a-workspace-preview-only.tgz
+          test "$(git hash-object .decision/decision-card.md)" = d96c9c53c07eee9baecaea54acd1292d66f660d8
+          cmp docs/decisions/V1_2_SKILL_GATE_A_INPUT.md .decision/decision-card.md
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("/tmp/v12-approved-preview/v12-gate-a-preview.json").read_text())
+          status=json.loads(Path("/tmp/v12-approved-preview/v12-gate-status.json").read_text())
+          assert p["token"] == "1f4e00e52a" and p["needs_confirmation"],p
+          assert p["preview"]["warnings"] == [],p
+          assert status["gates"] == {"A":"missing","B":"missing"},status
+          assert json.loads(Path(".decision/plan.json").read_text()).get("gates",{}) == {}
+          print("V12_ORIGINAL_PREVIEW_WORKSPACE_RESTORED_AND_MATCHED")
+          PY
+      - name: Recompute genuine preview and validate EXACT approved token and full content
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/share-ready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" check card | tee /tmp/v12-confirm-card-check.json
+          python3 "$DE" preflight | tee /tmp/v12-confirm-preflight.json
+          set +e
+          python3 "$DE" gate A > /tmp/v12-confirm-repreview.json
+          RESULT=$?
+          set -e
+          test "$RESULT" -eq 3
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          old=json.loads(Path("/tmp/v12-approved-preview/v12-gate-a-preview.json").read_text())
+          new=json.loads(Path("/tmp/v12-confirm-repreview.json").read_text())
+          assert old["preview"] == new["preview"],"GATE_A_CONTENT_DRIFT"
+          assert old["token"] == new["token"] == "1f4e00e52a", "TOKEN_DRIFT"
+          assert new["needs_confirmation"] and not new["ok"]
+          check=json.loads(Path("/tmp/v12-confirm-card-check.json").read_text())
+          assert check["ok"] and not check["errors"] and not check["warnings"],check
+          print("V12_EXACT_APPROVED_TOKEN_AND_ALL_PREVIEW_CONTENT_MATCH_PASS")
+          PY
+      - name: Execute USER-APPROVED Gate A confirm ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          DE=/tmp/share-ready-pinned-skill/skills/deciding-and-executing/scripts/de.py
+          python3 "$DE" gate A --confirm 1f4e00e52a | tee /tmp/v12-gate-a-confirmation.json
+          python3 "$DE" status | tee /tmp/v12-gate-a-confirmed-status.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path("/tmp/v12-gate-a-confirmation.json").read_text())
+          s=json.loads(Path("/tmp/v12-gate-a-confirmed-status.json").read_text())
+          p=json.loads(Path(".decision/plan.json").read_text())
+          assert c.get("ok") is True and c.get("gate") == "A",c
+          assert s["gates"] == {"A":"valid","B":"missing"},s
+          assert s["stage"] == "plan" and s["risk"] == "high",s
+          assert "A" in p.get("gates",{}) and "B" not in p["gates"],p
+          assert all(step["status"]=="todo" for step in p["steps"]),"UNAUTHORIZED_STEP_PROGRESS"
+          assert not p.get("review"),"UNAUTHORIZED_REVIEW"
+          print("V12_REAL_SKILL_GATE_A_CONFIRMED_GATE_B_UNAPPROVED_NO_CODE_EXECUTION_PASS")
+          PY
+          tar -czf /tmp/v12-gate-a-confirmed-workspace.tgz .decision
+          sha256sum /tmp/v12-gate-a-confirmed-workspace.tgz /tmp/v12-gate-a-confirmation.json /tmp/v12-gate-a-confirmed-status.json | tee /tmp/v12-confirmed-artifact-sha256.txt
+      - name: Preserve genuine Gate A confirmation machine evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v12-approved-gate-a-confirmed-skill-evidence-no-gate-b
+          path: |
+            /tmp/v12-approved-source-head.txt
+            /tmp/v12-confirm-source-head.txt
+            /tmp/v12-confirm-decision-sha256.txt
+            /tmp/v12-confirm-card-check.json
+            /tmp/v12-confirm-preflight.json
+            /tmp/v12-confirm-repreview.json
+            /tmp/v12-gate-a-confirmation.json
+            /tmp/v12-gate-a-confirmed-status.json
+            /tmp/v12-gate-a-confirmed-workspace.tgz
+            /tmp/v12-confirmed-artifact-sha256.txt
+          if-no-files-found: warn
+          retention-days: 30
