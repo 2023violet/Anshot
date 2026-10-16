@@ -1,4 +1,4 @@
-use shareready_e1::{decode_source,redact,Region,COVER};
+use shareready_e1::{decode_source,preview_png,redact,Region,COVER};
 use image::ImageFormat;
 use std::{fs,path::PathBuf};
 fn fixture(name:&str)->Vec<u8>{
@@ -171,4 +171,21 @@ fn output_png_has_only_required_chunks_and_no_trailing_payload() {
         assert!(idat >= 1, "{name}: missing IDAT");
         assert_eq!(offset, data.len(), "{name}: trailing payload");
     }
+}
+
+#[test]
+fn v1_preview_is_normalized_png_with_same_source_pixels_as_export() {
+    for fixture_name in ["T01_CHAT.png", "T05_JPEG_EXIF.jpg"] {
+        let input=fixture(fixture_name);
+        let normalized=decode_source(&input).expect("source decoder");
+        let preview=preview_png(&input).expect("preview encoder");
+        assert!(preview.starts_with(b"\x89PNG\r\n\x1a\n"));
+        assert_eq!(image::load_from_memory_with_format(&preview,ImageFormat::Png)
+            .unwrap().to_rgba8(),normalized,"{fixture_name} orientation/preview drift");
+        for private in [b"Exif".as_slice(),b"GPSInfo".as_slice()] {
+            assert!(!preview.windows(private.len()).any(|w|w==private),"{fixture_name} metadata leaked");
+        }
+    }
+    assert!(preview_png(&[]).is_err(),"empty image must not preview");
+    assert!(preview_png(&vec![0u8;25*1024*1024+1]).is_err(),"oversized preview");
 }
