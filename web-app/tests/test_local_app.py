@@ -101,6 +101,9 @@ with sync_playwright() as pw:
             page.locator("#"+field).press("Tab")
         region=page.evaluate("window.e2Debug.regions[0]")
         assert [region[k] for k in ("x0","y0","x1","y1")]==[12,18,96,55],region
+        # While an HTML number input retains focus, Ctrl+Z belongs to text
+        # editing, not the global canvas history. Return focus to the stage.
+        page.locator("#stageLabel").click()
         page.keyboard.press("Control+z")
         assert page.evaluate("window.e2Debug.regions[0].y1")!=55
         page.keyboard.press("Control+Shift+z")
