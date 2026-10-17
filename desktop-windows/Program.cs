@@ -43,6 +43,7 @@ internal sealed class ShareReadyWindow : Form
     private readonly bool smokeMode;
     private string? sessionFolder;
     private string? smokeOutput;
+    private bool smokeCancelNextDownload;
     private bool webReady;
 
     internal ShareReadyWindow(bool smokeMode = false)
@@ -182,7 +183,15 @@ internal sealed class ShareReadyWindow : Form
         if (!uri.StartsWith("blob:https://" + AppHost + "/", StringComparison.OrdinalIgnoreCase))
         {
             e.Cancel = true;
-            NotifyDownload("blocked");
+            NotifyDownload("blocked", uri);
+            return;
+        }
+
+        if (smokeMode && smokeCancelNextDownload)
+        {
+            smokeCancelNextDownload = false;
+            e.Cancel = true;
+            NotifyDownload("canceled", uri);
             return;
         }
 
@@ -198,24 +207,34 @@ internal sealed class ShareReadyWindow : Form
         }
         else
         {
-            using var dialog = new SaveFileDialog
+            try
             {
-                Title = "保存隐私遮挡后的 PNG 图片",
-                Filter = "PNG 图片 (*.png)|*.png",
-                DefaultExt = "png",
-                AddExtension = true,
-                CheckPathExists = true,
-                OverwritePrompt = true,
-                FileName = filename
-            };
-            destination = dialog.ShowDialog(this) == DialogResult.OK
-                ? dialog.FileName : null;
+                using var dialog = new SaveFileDialog
+                {
+                    Title = "保存隐私遮挡后的 PNG 图片",
+                    Filter = "PNG 图片 (*.png)|*.png",
+                    DefaultExt = "png",
+                    AddExtension = true,
+                    CheckPathExists = true,
+                    OverwritePrompt = true,
+                    FileName = filename
+                };
+                destination = dialog.ShowDialog(this) == DialogResult.OK
+                    ? dialog.FileName : null;
+            }
+            catch (Exception error)
+            {
+                Debug.WriteLine("ShareReady save dialog failed: " + error.Message);
+                e.Cancel = true;
+                NotifyDownload("failed", uri);
+                return;
+            }
         }
 
         if (destination is null)
         {
             e.Cancel = true;
-            NotifyDownload("canceled");
+            NotifyDownload("canceled", uri);
             return;
         }
         e.ResultFilePath = destination;
@@ -223,17 +242,18 @@ internal sealed class ShareReadyWindow : Form
         operation.StateChanged += (_, _) =>
         {
             if (operation.State == CoreWebView2DownloadState.Completed)
-                NotifyDownload("saved");
+                NotifyDownload("saved", uri);
             else if (operation.State == CoreWebView2DownloadState.Interrupted)
-                NotifyDownload("failed");
+                NotifyDownload("failed", uri);
         };
     }
 
-    private void NotifyDownload(string state)
+    private void NotifyDownload(string state, string uri)
     {
         if (editor.IsDisposed || editor.CoreWebView2 is null) return;
-        // JSON encoding avoids injecting untrusted file/path data into JS.
-        var json = JsonSerializer.Serialize(new { type = "native-download", state });
+        // Bind the native response to the exact one-use blob URL. Late
+        // callbacks for a canceled/previous image cannot unlock a new export.
+        var json = JsonSerializer.Serialize(new { type = "native-download", state, uri });
         editor.CoreWebView2.PostWebMessageAsJson(json);
     }
 
@@ -339,6 +359,21 @@ internal sealed class ShareReadyWindow : Form
                 if (image.GetPixel(0, 0).ToArgb() == Color.FromArgb(255, 17, 24, 39).ToArgb())
                     throw new Exception("Unmasked source pixel was lost");
             }
+            // Exercise the same native download event cancellation branch
+            // as a user choosing Cancel in SaveFileDialog, then retry the
+            // identical, still-current Rust PNG without recomputing masks.
+            smokeCancelNextDownload = true;
+            await EvalAsync(@"document.getElementById('download').click()");
+            if (!await WaitAsync("window.__shareReadyNativeDownload==='canceled'"))
+                throw new Exception("Native save cancellation was not reported");
+            if (!await WaitAsync("!document.getElementById('download').disabled"))
+                throw new Exception("Save cancel did not restore retry button");
+            if (await EvalAsync("window.e2Debug?.stage") != "\"review\"")
+                throw new Exception("Native canceled save destroyed review");
+            await EvalAsync(@"document.getElementById('download').click()");
+            if (!await WaitAsync("window.__shareReadyNativeDownload==='saved'"))
+                throw new Exception("Native retry after cancel did not succeed");
+
             await EvalAsync(@"document.getElementById('copy').click()");
             if (!await WaitAsync("window.e2Debug?.copyState!=='not_attempted'"))
                 throw new Exception("Native clipboard operation neither succeeded nor returned a truthful failure");
