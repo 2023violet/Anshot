@@ -1,6 +1,6 @@
 # ShareReady — Rust-first image-sharing preparation tool (working title)
 
-> **STATUS: V1.3-03 ENGINEERING INTEGRATED / NOT RELEASED.** This repository contains a working Rust/WASM screenshot redaction editor and Windows WebView2 desktop host, alongside historical research records. Exact-code CI passed on 2026-10-17; this is not an independent security certification or human usability sign-off.
+> **STATUS: V2-02 RUST EDITOR DOMAIN ENGINEERING INTEGRATED / NOT RELEASED.** V1.3 remains the current user-facing Windows/Web edition. This repository contains a working Rust/WASM screenshot redaction editor and Windows WebView2 desktop host, alongside historical research records. Exact-code CI passed on 2026-10-17; this is not an independent security certification or human usability sign-off.
 
 ShareReady is a **temporary project code name**, not a cleared public-facing product name. An unrelated image-sharing product already uses the name; trademark/branding checks remain open.
 
@@ -17,12 +17,12 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 - **唯一正式开发和交付分支**：`main`。后续开发以 `main` 为基线；不要创建长期功能分支或将已实现功能留在 Draft PR 中。
 - **实际产品目录**：`crates/shareready-core/`（独立 Rust 图片核心）、`crates/shareready-editor/`（Rust 编辑状态机基础）、`e1-spike/`（V1 CLI/WASM 兼容层）、`web-app/`（当前 JS 编辑器）、`desktop-windows/`（Windows WebView2 宿主）。Windows 用户入口见 [desktop-windows/README.md](desktop-windows/README.md)。
-- **最新通过的原生/浏览器 CI**：[V1.3-03 source-matched run #38995384142](https://github.com/2023violet/ShareReady/actions/runs/38995384142)，对应提交 `0e9e50a780f74906937f177c403db5ee2bfe9ec2`；后续提交须重新验证。
+- **已完成 V2-02 功能提交的实测 CI**：[Run #39004861114](https://github.com/2023violet/ShareReady/actions/runs/39004861114)，对应 Rust 编辑领域实现 `cba5af81992ed49dabf8202fc4c52fb81a535d77`，Rust / Chrome / Windows 双作业 SUCCESS；本 README 文档后续提交需按其自身 SHA 重新验收。
 - **验收边界**：机器合成图片/Windows CI 不等于人工操作、跨设备 DPI、全面安全或正式发布验收；产品尚未发布。
 
 ## V2 Rust Native refactor (current planned track)
 
-V2-00: V1.3 source, five-image full-frame RGBA golden, F01-F12 migration matrix and native GUI POC contract; all staged in [docs/V2/](docs/V2/README.md). V1 Windows/WebView2 app is retained; no Rust-native GUI implementation or human Windows acceptance is claimed. Main remains the only development branch. The JPEG reference for T05 is the V1 Rust normalized preview rather than assuming Pillow JPEG decoding is byte-identical.
+V2-00 完成旧版基线与五张逐像素金样本冻结；V2-01 完成 Rust Workspace 和独立 Core；**V2-02 已实现 Rust Editor 完整领域层**，包括真实图片源字节、稳定遮挡 ID、八方向缩放、移动、手势一次提交、撤销重做、原图坐标、版本绑定的 Rust 新 PNG、旧异步结果失效。技术合同见 [docs/V2/](docs/V2/README.md)。**新 Rust Editor 尚未接入当前 JS UI；Windows 程序仍为 C# / WebView2，不是 Rust 原生 GUI。** 下一阶段 V2-03 验证 egui / iced。
 
 ## Historical Stage 01 research status / 历史研究阶段记录
 

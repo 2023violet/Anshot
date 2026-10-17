@@ -1,6 +1,6 @@
 # SR-V2-02｜Rust Editor 领域模型与真实图片闭环
 
-状态：IMPLEMENTED / FINAL CI PENDING。本文件描述实际源代码边界；只有相同 HEAD 的 Rust、Chrome、Windows CI 通过后，才可以报告工程 PASS。
+状态：ENGINEERING_INTEGRATED / RUST_CHROME_WINDOWS_CI_PASS（功能源码提交 cba5af81992ed49dabf8202fc4c52fb81a535d77，Actions Run #39004861114，两个作业 SUCCESS）。文档更新提交需重新进行其自身 CI，但未修改任何产品实现。不是人工 Windows / 安全认证。
 
 ## 一、功能与架构
 
@@ -38,3 +38,11 @@ R09 独立审查最终 main SHA、唯一分支、无无关删除。
 ## 四、下一步
 
 SR-V2-03：用 egui/eframe 首先做可运行的 Windows 原生图像画布和平台功能 POC，按照既定 G01–G10 测试；如果关键要求不能通过，比较 iced。此阶段不删除 V1 JS/C# 运行链路，不发布 Rust-only 产品。
+
+## 五、真实机器证据
+
+- [Rust/Chrome/Windows 双成功 Run #39004861114](https://github.com/2023violet/ShareReady/actions/runs/39004861114)，测试代码 SHA cba5af81992ed49dabf8202fc4c52fb81a535d77。
+- Core 单测 5、旧 Codec 集成 9、Editor 单测 17、跨 Core 集成 2，合计 33 项通过。其余二进制/文档测试为 0 的 crate 不计入通过数量。
+- V2-00 全图像素五个 golden 严格匹配，输出 SR_V2_00_FROZEN_GOLDEN_VERIFIED。
+- Linux 合成资源与依赖盘点成功；该结果不是全面漏洞安全审核。
+- 真实 Chrome 产品恢复/像素回归通过；Windows CI 运行原 WebView2 桌面 smoke 并生成未签名 x64 便携包，不能替代 Windows 物理鼠标、Explorer、DPI、Narrator 和跨应用剪贴板验收。

@@ -1,6 +1,6 @@
 # ShareReady V2 — Rust Native development baseline
 
-Current phase: SR-V2-02 / Rust Editor complete domain model and Rust source-to-PNG output lifecycle. The V1.3 JS/WebView2 application remains the current user-facing product; no Rust GUI exists yet.
+Current phase: SR-V2-02 ENGINEERING INTEGRATED. Rust domain tested against five frozen pixel goldens; existing V1.3 JS/WebView2 remains the end-user product. Native Rust GUI is the next POC, not yet delivered.
 
 - [V2_02_EDITOR_DOMAIN.md](V2_02_EDITOR_DOMAIN.md): source bytes, selection, eight handles, gestures, history, versioned Rust PNG artifacts and OS ticket boundaries.
 - [V2_01_WORKSPACE_MIGRATION.md](V2_01_WORKSPACE_MIGRATION.md): Rust Core/Editor integration, code ownership and verification.
