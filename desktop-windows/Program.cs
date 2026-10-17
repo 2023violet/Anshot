@@ -180,6 +180,8 @@ internal sealed class ShareReadyWindow : Form
         // Only a current local-blob PNG can enter the native Save File workflow.
         e.Handled = true;
         var uri = e.DownloadOperation.Uri;
+        if (smokeMode) Console.WriteLine("NATIVE_DOWNLOAD_START requested_cancel="
+            + smokeCancelNextDownload + " uri=" + uri);
         if (!uri.StartsWith("blob:https://" + AppHost + "/", StringComparison.OrdinalIgnoreCase))
         {
             e.Cancel = true;
@@ -253,6 +255,7 @@ internal sealed class ShareReadyWindow : Form
         if (editor.IsDisposed || editor.CoreWebView2 is null) return;
         // Bind the native response to the exact one-use blob URL. Late
         // callbacks for a canceled/previous image cannot unlock a new export.
+        if (smokeMode) Console.WriteLine("NATIVE_DOWNLOAD_NOTIFY state=" + state);
         var json = JsonSerializer.Serialize(new { type = "native-download", state, uri });
         editor.CoreWebView2.PostWebMessageAsJson(json);
     }
@@ -344,6 +347,18 @@ internal sealed class ShareReadyWindow : Form
             })()");
             if (!await WaitAsync("window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0"))
                 throw new Exception("Windows WebView2 Rust PNG review failed");
+            // Exercise cancel first, then immediately retry the very same
+            // verified PNG. The test invokes WebView2's actual DownloadStarting
+            // cancellation branch rather than faking a host status message.
+            smokeCancelNextDownload = true;
+            await EvalAsync(@"document.getElementById('download').click()");
+            if (!await WaitAsync("window.__shareReadyNativeDownload==='canceled'"))
+                throw new Exception("Native save cancellation was not reported; state="
+                    + await EvalAsync("window.e2Debug?.nativeDownloadState"));
+            if (!await WaitAsync("!document.getElementById('download').disabled"))
+                throw new Exception("Save cancel did not restore retry button");
+            if (await EvalAsync("window.e2Debug?.stage") != "\"review\"")
+                throw new Exception("Native canceled save destroyed review");
             await EvalAsync(@"document.getElementById('download').click()");
             if (!await WaitAsync("Boolean(window.__shareReadyNativeDownload==='saved')", 20000)
                 || smokeOutput is null
@@ -359,21 +374,6 @@ internal sealed class ShareReadyWindow : Form
                 if (image.GetPixel(0, 0).ToArgb() == Color.FromArgb(255, 17, 24, 39).ToArgb())
                     throw new Exception("Unmasked source pixel was lost");
             }
-            // Exercise the same native download event cancellation branch
-            // as a user choosing Cancel in SaveFileDialog, then retry the
-            // identical, still-current Rust PNG without recomputing masks.
-            smokeCancelNextDownload = true;
-            await EvalAsync(@"document.getElementById('download').click()");
-            if (!await WaitAsync("window.__shareReadyNativeDownload==='canceled'"))
-                throw new Exception("Native save cancellation was not reported");
-            if (!await WaitAsync("!document.getElementById('download').disabled"))
-                throw new Exception("Save cancel did not restore retry button");
-            if (await EvalAsync("window.e2Debug?.stage") != "\"review\"")
-                throw new Exception("Native canceled save destroyed review");
-            await EvalAsync(@"document.getElementById('download').click()");
-            if (!await WaitAsync("window.__shareReadyNativeDownload==='saved'"))
-                throw new Exception("Native retry after cancel did not succeed");
-
             await EvalAsync(@"document.getElementById('copy').click()");
             if (!await WaitAsync("window.e2Debug?.copyState!=='not_attempted'"))
                 throw new Exception("Native clipboard operation neither succeeded nor returned a truthful failure");
