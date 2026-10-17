@@ -47,8 +47,24 @@ def main(args):
             assert m["file"]==e["input"] and hash_(src)==e["sha256"]==m["sha256"]
             assert e["dimensions"]==[m["width"],m["height"]]
             assert e["masks"]==[r["rect_px"] for r in m["sensitive_regions"]]
-            norm=ImageOps.exif_transpose(Image.open(io.BytesIO(src))).convert("RGBA")
-            assert list(norm.size)==e["dimensions"]
+            pillow_normalized=ImageOps.exif_transpose(Image.open(io.BytesIO(src))).convert("RGBA")
+            assert list(pillow_normalized.size)==e["dimensions"]
+            oracle_source="PILLOW_FOR_LOSSLESS_SOURCE"
+            norm=pillow_normalized
+            if e["input"].lower().endswith((".jpg",".jpeg")):
+                # JPEG decoders can differ by rounding and IDCT/color conversion.
+                # Freeze V1 Rust's EXIF-normalized source pixels; Pillow still independently
+                # composes mask truth and decodes/compares every output pixel.
+                preview_bin=ROOT/"e1-spike/target/release/examples/v1_baseline_preview"
+                assert preview_bin.is_file(),"Build V1 Rust preview example first"
+                preview=Path(out)/(n+"-normalized.png")
+                p0=subprocess.run([str(preview_bin),str(path),str(preview)],capture_output=True,text=True,timeout=120)
+                assert p0.returncode==0,(n,"preview failed",p0.stderr[-350:])
+                png_chunks(preview.read_bytes(),n+"-normalized")
+                norm=Image.open(io.BytesIO(preview.read_bytes())).convert("RGBA")
+                assert list(norm.size)==e["dimensions"]
+                oracle_source="RUST_V1_NORMALIZED_JPEG_PREVIEW_PLUS_INDEPENDENT_PILLOW_COMPOSITOR"
+                print("SR_V2_00_JPEG_DECODER_DIFF",n,"PILLOW_SOURCE_RGBA_SHA256="+hash_(pillow_normalized.tobytes()),"RUST_PREVIEW_RGBA_SHA256="+hash_(norm.tobytes()),"EQUAL="+str(pillow_normalized.tobytes()==norm.tobytes()),flush=True)
             oracle=norm.copy()
             for l,t,r,b in e["masks"]:
                 assert 0<=l<r<=oracle.width and 0<=t<b<=oracle.height
@@ -65,7 +81,7 @@ def main(args):
             assert decoded.size==oracle.size
             assert decoded.tobytes()==oracle.tobytes(),(n,"full image pixels mismatch")
             assert hash_(path.read_bytes())==e["sha256"],(n,"source modified")
-            rec=dict(id=n,rgba_sha256=expected_hash,png_sha256=hash_(png),png_bytes=len(png),chunks=chunks)
+            rec=dict(id=n,rgba_sha256=expected_hash,png_sha256=hash_(png),png_bytes=len(png),chunks=chunks,oracle_source=oracle_source)
             results.append(rec)
             print("SR_V2_00_CASE",n,"RGBA_SHA256="+expected_hash,"PNG_SHA256="+rec["png_sha256"],"FULL_IMAGE_PASS",flush=True)
     status="CAPTURE_ONLY_NOT_FROZEN" if args.capture else "FROZEN_GOLDEN_VERIFIED"
