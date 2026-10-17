@@ -258,10 +258,15 @@ async function loadFile(file){
   }
   // Validate the replacement before asking the user to discard old masks.
   // A bad/corrupted file must not trigger a destructive confirmation dialog.
-  if((stage==="edit"||stage==="review")&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？")){
+  if((stage==="edit"||stage==="review"||stage==="render")&&regions.length&&!confirm("更换图片会清空当前遮挡。是否继续？")){
    URL.revokeObjectURL(url);return;
   }
   const previousStage=stage;
+  // A source replacement must also terminate a pointer gesture that may have
+  // been captured on the old image; otherwise identical mask IDs can collide.
+  if(pointer?.pointerId!=null && frame.hasPointerCapture(pointer.pointerId))
+   frame.releasePointerCapture(pointer.pointerId);
+  pointer=null;spaceHeld=false;updatePanCursor();
   // A new verified source invalidates the previous review surface, including
   // its modal focus trap. Keep prior source/edit state when import rejects.
   $("review").classList.remove("visible");
