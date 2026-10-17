@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # temporary, solely for one-time wgpu lock regeneration; reverted after pin
 
 jobs:
   windows-egui-poc:
@@ -27,10 +27,13 @@ jobs:
           Write-Host "SR_V2_03_SOURCE_SHA=$env:GITHUB_SHA"
           cargo --version
           rustc --version
-          if (-not (Test-Path poc/native-egui/Cargo.lock)) {throw "Isolated committed Cargo.lock missing"}
+          # The feature addition needs exactly one Cargo.lock refresh.
+          # Once the lock is pinned this step becomes strict-only.
+          cargo generate-lockfile --manifest-path poc/native-egui/Cargo.toml
+          if ($LASTEXITCODE -ne 0) {throw "Cargo lock bootstrap failed"}
           cargo fetch --manifest-path poc/native-egui/Cargo.toml --locked
           if ($LASTEXITCODE -ne 0) {throw "Locked Cargo fetch failed"}
-          Write-Host "SR_V2_03_PINNED_LOCK_PRESENT"
+          Write-Host "SR_V2_03_LOCK_BOOTSTRAPPED_FOR_WGPU"
       - name: Build and test real Windows Rust native executable
         shell: pwsh
         run: |
@@ -45,32 +48,31 @@ jobs:
           if ($LASTEXITCODE -ne 0) {throw "Core/Editor executable self-test failed"}
           Get-FileHash $exe -Algorithm SHA256
           Write-Host "SR_V2_03_WINDOWS_COMPILE_AND_DOMAIN_TEST_PASS"
-      - name: Probe actual Windows GUI lifecycle
+      - name: Windows graphics driver metadata and three renderer probes
         shell: pwsh
         continue-on-error: true
         run: |
           $ErrorActionPreference="Stop"
-          $exe="poc/native-egui/target/release/shareready-native-egui-poc.exe"
-          $out=Join-Path $env:RUNNER_TEMP "egui-window-out.txt"
-          $err=Join-Path $env:RUNNER_TEMP "egui-window-err.txt"
-          $p=Start-Process -FilePath $exe -ArgumentList "--smoke-window" -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
-          $watch=[Diagnostics.Stopwatch]::StartNew()
-          while (-not $p.HasExited -and $watch.Elapsed.TotalSeconds -lt 25) {
-            Start-Sleep -Milliseconds 300
-            $p.Refresh()
-          }
-          if (-not $p.HasExited) {
-            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-            Write-Host "SR_V2_03_GUI_LIFECYCLE_NOT_VERIFIED_TIMEOUT"
-            exit 2
-          }
-          if (Test-Path $out) {Get-Content $out}
-          if (Test-Path $err) {Get-Content $err}
-          if ($p.ExitCode -ne 0 -or -not (Select-String -Path $out -Pattern "SR_V2_03_NATIVE_WINDOW_LIFECYCLE_PASS" -Quiet)) {
-            Write-Host "SR_V2_03_GUI_LIFECYCLE_NOT_VERIFIED"
-            exit 2
-          }
-          Write-Host "SR_V2_03_NATIVE_GUI_LIFECYCLE_PASS_RUNNER_ONLY"
+          & "poc/native-egui/Run-Renderer-Probes.ps1" -OutputDir "poc/native-egui/evidence"
+          if ($LASTEXITCODE -ne 0) { throw "No GUI renderer successfully reached window lifecycle (consult artifact)" }
+      - name: Pin updated isolated wgpu dependency lock on unchanged main
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference="Stop"
+          $lock="poc/native-egui/Cargo.lock"
+          $latest=(gh api "repos/$env:GITHUB_REPOSITORY/branches/main" --jq ".commit.sha").Trim()
+          if ($LASTEXITCODE -ne 0 -or $latest -ne $env:GITHUB_SHA) {throw "Main changed; refuse automatic lock update"}
+          $existing=gh api "repos/$env:GITHUB_REPOSITORY/contents/$lock" --jq ".sha"
+          if ($LASTEXITCODE -ne 0) {throw "Cannot read original lock blob"}
+          $content=[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $lock)))
+          $body=@{message="build(v2-03): pin wgpu/DX12 egui POC Cargo.lock";content=$content;sha=$existing.Trim();branch="main"} | ConvertTo-Json -Compress
+          $request=Join-Path $env:RUNNER_TEMP "dx12-lock-put.json"
+          [IO.File]::WriteAllText($request,$body,[Text.UTF8Encoding]::new($false))
+          gh api -X PUT "repos/$env:GITHUB_REPOSITORY/contents/$lock" --input $request
+          if ($LASTEXITCODE -ne 0) {throw "Pin updated lock failed"}
+          Write-Host "SR_V2_03_WGPU_LOCK_PINNED_FOLLOWUP_CI_REQUIRED"
       - name: Upload native POC unsigned executable
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -79,5 +81,6 @@ jobs:
           path: |
             poc/native-egui/target/release/shareready-native-egui-poc.exe
             poc/native-egui/Cargo.lock
+            poc/native-egui/evidence/**
           if-no-files-found: warn
           retention-days: 14

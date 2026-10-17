@@ -37,7 +37,24 @@ fn main()->eframe::Result {
         }
     }
     let smoke=args.iter().any(|a|a=="--smoke-window");
+    let selected=match args.iter().position(|a|a=="--renderer") {
+        Some(i)=>match args.get(i+1).map(String::as_str){
+            Some("glow")=>eframe::Renderer::Glow,
+            Some("wgpu")=>eframe::Renderer::Wgpu,
+            _=>{eprintln!("Usage: --renderer glow|wgpu");std::process::exit(2)}
+        },
+        None=>eframe::Renderer::Wgpu,
+    };
+    // WGPU_BACKEND=dx12 selects Direct3D 12 for the wgpu probe. It is not
+    // assumed to exist in a Windows CI VM; failure is reported, never waived.
+    let renderer_name=match selected {
+        eframe::Renderer::Glow=>"glow",
+        eframe::Renderer::Wgpu=>"wgpu",
+    };
+    println!("SR_V2_03_RENDERER_SELECTED={renderer_name} WGPU_BACKEND={}",
+        std::env::var("WGPU_BACKEND").unwrap_or_else(|_|"auto".into()));
     let native=eframe::NativeOptions{
+        renderer:selected,
         viewport:eframe::egui::ViewportBuilder::default().with_inner_size([1120.0,760.0])
             .with_min_inner_size([700.0,480.0]).with_title("ShareReady · Rust Native POC"),
         ..Default::default()

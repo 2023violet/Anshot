@@ -45,6 +45,14 @@ fn display_texture(ctx:&egui::Context,bytes:&[u8],label:&str)->Result<TextureHan
 
 impl NativeApp {
     pub fn new(cc:&eframe::CreationContext<'_>,smoke:bool)->Self {
+        if let Some(ref rs)=cc.wgpu_render_state {
+            let info=rs.adapter.get_info();
+            let lim=rs.adapter.limits();
+            println!("SR_V2_03_GPU_ADAPTER backend={:?} type={:?} name={:?} vendor={} device={} max_texture_dimension_2d={}",
+                info.backend,info.device_type,info.name,info.vendor,info.device,lim.max_texture_dimension_2d);
+        } else {
+            println!("SR_V2_03_GPU_ADAPTER wgpu_render_state=absent (glow or unavailable)");
+        }
         let editor=Editor::from_source(DEMO.to_vec()).expect("bundled synthetic PNG must decode");
         let texture=display_texture(&cc.egui_ctx,DEMO,"synthetic-source").ok();
         Self {
