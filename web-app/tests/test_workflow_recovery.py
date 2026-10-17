@@ -44,6 +44,13 @@ def wait(page,expr,timeout=20000):
         page.wait_for_timeout(100)
     raise AssertionError("Timed out: "+expr)
 
+def wait_dialog(page,choice,target,timeout=15000):
+    end=time.monotonic()+timeout/1000
+    while time.monotonic()<end:
+        if choice["seen"]>=target:return
+        page.wait_for_timeout(80)
+    raise AssertionError("Expected confirmation dialog not delivered")
+
 with sync_playwright() as pw:
     browser=pw.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox"])
     try:
@@ -65,6 +72,12 @@ with sync_playwright() as pw:
         page=context.new_page()
         errors=[]
         page.on("pageerror",lambda e:errors.append(str(e)))
+        dialog_choice={"accept":False,"seen":0}
+        def on_dialog(dialog):
+            dialog_choice["seen"]+=1
+            if dialog_choice["accept"]:dialog.accept()
+            else:dialog.dismiss()
+        page.on("dialog",on_dialog)
         page.goto(url+"/web-app/index.html")
         wait(page,"window.e2Debug?.ready===true")
         page.locator("#pick").set_input_files(str(first))
@@ -84,8 +97,10 @@ with sync_playwright() as pw:
         cases.append("invalid and oversized PNG preserve full edit/revision")
 
         # Decode valid replacement and cancel *after* validating candidate:
-        page.once("dialog",lambda dialog:dialog.dismiss())
+        dialog_choice["accept"]=False
+        prior=dialog_choice["seen"]
         page.locator("#pick").set_input_files(str(second))
+        wait_dialog(page,dialog_choice,prior+1)
         assert page.evaluate("window.e2Debug.sourceSize")==[480,320]
         assert page.evaluate("window.e2Debug.regions")==old_mask
         cases.append("cancel replacement preserves source and masks")
@@ -185,12 +200,16 @@ with sync_playwright() as pw:
 
         # Replacement while review is open (simulated file event) preserves
         # old image on cancel and invalidates all previous revisions on accept.
-        page.once("dialog",lambda dialog:dialog.dismiss())
+        dialog_choice["accept"]=False
+        prior=dialog_choice["seen"]
         page.locator("#pick").set_input_files(str(second))
+        wait_dialog(page,dialog_choice,prior+1)
         assert page.evaluate("window.e2Debug.stage")=="review"
         assert page.evaluate("window.e2Debug.outputUrl")==current_url
-        page.once("dialog",lambda dialog:dialog.accept())
+        dialog_choice["accept"]=True
+        prior=dialog_choice["seen"]
         page.locator("#pick").set_input_files(str(second))
+        wait_dialog(page,dialog_choice,prior+1)
         wait(page,"window.e2Debug.stage==='edit' && window.e2Debug.sourceSize[0]===360")
         assert page.evaluate("window.e2Debug.regions")==[]
         assert page.evaluate("window.e2Debug.outputRevision")==-1
