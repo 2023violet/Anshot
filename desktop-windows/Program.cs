@@ -263,6 +263,34 @@ internal sealed class ShareReadyWindow : Form
     private async Task<string> EvalAsync(string script) =>
         await editor.CoreWebView2.ExecuteScriptAsync(script);
 
+    private async Task ClickAsRealMouseAsync(string selector)
+    {
+        // Download throttling deliberately distinguishes script-triggered
+        // automatic downloads from user-initiated clicks. CDP mouse events
+        // travel through Chromium's actual input routing and allow us to
+        // test the real Windows button path, not HTMLElement.click().
+        var script = "(() => { const r = document.querySelector(" +
+            JsonSerializer.Serialize(selector) +
+            ").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()";
+        using var bounds = JsonDocument.Parse(await EvalAsync(script));
+        var x = bounds.RootElement.GetProperty("x").GetDouble();
+        var y = bounds.RootElement.GetProperty("y").GetDouble();
+        var core = editor.CoreWebView2;
+        await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",
+            JsonSerializer.Serialize(new {
+                type = "mouseMoved", x, y
+            }));
+        await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",
+            JsonSerializer.Serialize(new {
+                type = "mousePressed", x, y, button = "left", clickCount = 1
+            }));
+        await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",
+            JsonSerializer.Serialize(new {
+                type = "mouseReleased", x, y, button = "left", clickCount = 1
+            }));
+        if (smokeMode) Console.WriteLine("NATIVE_TRUSTED_MOUSE_CLICK " + selector);
+    }
+
     private async Task<bool> WaitAsync(string script, int timeoutMs = 20000)
     {
         var clock = Stopwatch.StartNew();
@@ -351,7 +379,7 @@ internal sealed class ShareReadyWindow : Form
             // verified PNG. The test invokes WebView2's actual DownloadStarting
             // cancellation branch rather than faking a host status message.
             smokeCancelNextDownload = true;
-            await EvalAsync(@"document.getElementById('download').click()");
+            await ClickAsRealMouseAsync("#download");
             if (!await WaitAsync("window.__shareReadyNativeDownload==='canceled'"))
                 throw new Exception("Native save cancellation was not reported; state="
                     + await EvalAsync("window.e2Debug?.nativeDownloadState"));
@@ -359,7 +387,7 @@ internal sealed class ShareReadyWindow : Form
                 throw new Exception("Save cancel did not restore retry button");
             if (await EvalAsync("window.e2Debug?.stage") != "\"review\"")
                 throw new Exception("Native canceled save destroyed review");
-            await EvalAsync(@"document.getElementById('download').click()");
+            await ClickAsRealMouseAsync("#download");
             if (!await WaitAsync("Boolean(window.__shareReadyNativeDownload==='saved')", 20000)
                 || smokeOutput is null
                 || !File.Exists(smokeOutput))
