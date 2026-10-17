@@ -486,7 +486,7 @@ document.addEventListener("drop",e=>{
  }
 });
 document.addEventListener("paste",e=>{
- if(e.target.closest("input,textarea,[contenteditable]"))return;
+ if(e.target instanceof Element && e.target.closest("input,textarea,[contenteditable]"))return;
  const item=Array.from(e.clipboardData?.items||[]).find(x=>x.type.startsWith("image/"));
  if(!item)return;e.preventDefault();
  const file=item.getAsFile();if(file)loadFile(file);
