@@ -6,7 +6,7 @@ import json, os, resource, struct, subprocess, tempfile, time, zlib
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
-BIN=ROOT/"e1-spike/target/release/shareready-e1"
+BIN=ROOT/"target/release/shareready-e1"
 OUT=Path("/tmp/e1-security-depth")
 OUT.mkdir(exist_ok=True,parents=True)
 assert BIN.is_file(), BIN

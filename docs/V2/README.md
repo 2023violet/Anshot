@@ -1,7 +1,8 @@
 # ShareReady V2 — Rust Native development baseline
 
-Current phase: SR-V2-00 / V1.3 freeze and native GUI POC contract. No Rust V2 GUI code is implemented.
+Current phase: SR-V2-01 / Rust Workspace + Core/Editor foundation. Existing V1.3 is still the shipped program; no Rust GUI exists yet.
 
+- [V2_01_WORKSPACE_MIGRATION.md](V2_01_WORKSPACE_MIGRATION.md): Rust Core/Editor integration, code ownership and verification.
 - [V1_BASELINE.md](V1_BASELINE.md): exact product SHA, CI and Windows artifact evidence, rollback boundary, golden fixtures.
 - [MIGRATION_MATRIX.md](MIGRATION_MATRIX.md): F01–F12 and regression scenarios, future Rust ownership.
 - [GUI_POC_CONTRACT.md](GUI_POC_CONTRACT.md): egui/eframe versus iced verification and STOP criteria.

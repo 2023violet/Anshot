@@ -8,6 +8,9 @@ on:
       - e1-spike/**
       - web-app/**
       - desktop-windows/**
+      - Cargo.toml
+      - Cargo.lock
+      - crates/**
       - docs/V2/**
       - tests/golden/**
 
@@ -30,14 +33,16 @@ jobs:
           echo "PRODUCT_COMMIT=$(git rev-parse HEAD)"
           node --check web-app/app.js
           python3 -m py_compile web-app/tests/test_local_app.py web-app/tests/test_canvas_interaction.py web-app/tests/test_workflow_recovery.py
+          test -s Cargo.lock
           test -s e1-spike/Cargo.lock
       - name: Verify Rust actual codec and preview
         shell: bash
         run: |
           set -euo pipefail
-          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
-          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
-          git diff --exit-code -- e1-spike/Cargo.lock
+          cargo fetch --manifest-path Cargo.toml --locked
+          cargo test --workspace --locked --offline
+          cargo check --workspace --all-targets --locked --offline
+          git diff --exit-code -- Cargo.lock e1-spike/Cargo.lock
       - name: Validate carried-forward synthetic resource and dependency security checks
         shell: bash
         run: |
@@ -57,7 +62,7 @@ jobs:
           cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
           cargo install wasm-bindgen-cli --version 0.2.105 --locked
           mkdir -p web-app/pkg
-          wasm-bindgen --target web --out-name shareready_e1 --out-dir web-app/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir web-app/pkg target/wasm32-unknown-unknown/release/shareready_e1.wasm
           test -s web-app/pkg/shareready_e1_bg.wasm
           sha256sum web-app/pkg/shareready_e1_bg.wasm
       - name: Real Chrome product and pixel-geometry regression

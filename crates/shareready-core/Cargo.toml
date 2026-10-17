@@ -1,0 +1,11 @@
+[package]
+name = "shareready-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Headless deterministic image decoding, redaction and PNG export."
+
+[dependencies]
+image = { version = "=0.25.8", default-features = false, features = ["png", "jpeg"] }

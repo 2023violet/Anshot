@@ -16,7 +16,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 ## Current engineering baseline / 当前工程基线
 
 - **唯一正式开发和交付分支**：`main`。后续开发以 `main` 为基线；不要创建长期功能分支或将已实现功能留在 Draft PR 中。
-- **实际产品目录**：`e1-spike/`（Rust 核心与测试）、`web-app/`（编辑器与浏览器测试）、`desktop-windows/`（Windows WebView2 原生宿主）。Windows 用户入口见 [desktop-windows/README.md](desktop-windows/README.md)。
+- **实际产品目录**：`crates/shareready-core/`（独立 Rust 图片核心）、`crates/shareready-editor/`（Rust 编辑状态机基础）、`e1-spike/`（V1 CLI/WASM 兼容层）、`web-app/`（当前 JS 编辑器）、`desktop-windows/`（Windows WebView2 宿主）。Windows 用户入口见 [desktop-windows/README.md](desktop-windows/README.md)。
 - **最新通过的原生/浏览器 CI**：[V1.3-03 source-matched run #38995384142](https://github.com/2023violet/ShareReady/actions/runs/38995384142)，对应提交 `0e9e50a780f74906937f177c403db5ee2bfe9ec2`；后续提交须重新验证。
 - **验收边界**：机器合成图片/Windows CI 不等于人工操作、跨设备 DPI、全面安全或正式发布验收；产品尚未发布。
 

@@ -7,3 +7,5 @@ e1-spike/target/
 e1-spike/web/pkg/
 __pycache__/
 *.pyc
+# Unified Rust Workspace compilation artifacts
+target/

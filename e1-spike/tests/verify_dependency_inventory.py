@@ -6,7 +6,7 @@ import hashlib, json, subprocess, tomllib
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 MANIFEST=ROOT/"e1-spike/Cargo.toml"
-LOCK=ROOT/"e1-spike/Cargo.lock"
+LOCK=ROOT/"Cargo.lock"
 OUT=Path("/tmp/e1-security-depth")
 OUT.mkdir(parents=True,exist_ok=True)
 before=hashlib.sha256(LOCK.read_bytes()).hexdigest()
@@ -37,6 +37,7 @@ missing=[f"{p['name']}@{p['version']}" for p in items if not p["license_declared
 report={
  "scope":"All packages in exact locked native+web cargo dependency graph",
  "manifest":"e1-spike/Cargo.toml",
+ "workspace_lock":"Cargo.lock",
  "cargo_lock_sha256":after,
  "package_count":len(items),
  "packages":sorted(items,key=lambda x:(x["name"],x["version"])),
