@@ -68,7 +68,7 @@ jobs:
           /tmp/share-ready-tests/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
           google-chrome --version
           cargo build --release --locked --offline --manifest-path e1-spike/Cargo.toml --example v1_baseline_preview
-          /tmp/share-ready-tests/bin/python tests/golden/verify_v1_baseline.py --capture
+          /tmp/share-ready-tests/bin/python tests/golden/verify_v1_baseline.py
           /tmp/share-ready-tests/bin/python web-app/tests/test_local_app.py
           /tmp/share-ready-tests/bin/python web-app/tests/test_canvas_interaction.py
           /tmp/share-ready-tests/bin/python web-app/tests/test_workflow_recovery.py

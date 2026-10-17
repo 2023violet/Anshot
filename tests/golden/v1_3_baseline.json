@@ -1,6 +1,6 @@
 {
   "schema": "shareready.v1-golden/1",
-  "status": "CAPTURE_PENDING_PIN",
+  "status": "FROZEN",
   "provenance": {
     "source_repository": "2023violet/ShareReady",
     "baseline_main_commit": "0e6eb1c258c3564f90ca663aa01de5c9a935c147",
@@ -47,7 +47,7 @@
           262
         ]
       ],
-      "expected_pixel_sha256": null
+      "expected_pixel_sha256": "18ee911240bc7f9c9cf96f391f37754f978fdac44c1572d7bbdba6c00de7d2e2"
     },
     {
       "id": "T02_ORDER",
@@ -77,7 +77,7 @@
           654
         ]
       ],
-      "expected_pixel_sha256": null
+      "expected_pixel_sha256": "8784c831bd13dba7c98437ca05d1d409a0527b3a09aaf9505a284ef77e2b88a4"
     },
     {
       "id": "T03_SUPPORT",
@@ -107,7 +107,7 @@
           549
         ]
       ],
-      "expected_pixel_sha256": null
+      "expected_pixel_sha256": "e5dda96c65f72dc1b55fb4294ba0edfcfbdb1205277d7b90fce525ffe45e141a"
     },
     {
       "id": "T04_EDGES",
@@ -143,7 +143,7 @@
           1595
         ]
       ],
-      "expected_pixel_sha256": null
+      "expected_pixel_sha256": "554f68cc5c99577fd621cb894d535a38c44565a347ef4e1e00bd89e4d04daafc"
     },
     {
       "id": "T05_JPEG_EXIF",
@@ -167,7 +167,8 @@
           664
         ]
       ],
-      "expected_pixel_sha256": null
+      "expected_pixel_sha256": "d2d6586997927592c77ee7c96529d58901f529deb1a649804a55e25a6e0d49b5",
+      "decoder_anchor": "V1_RUST_NORMALIZED_PREVIEW_NOT_INDEPENDENT_PILLOW_JPEG"
     }
   ]
 }

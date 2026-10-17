@@ -20,6 +20,10 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 - **最新通过的原生/浏览器 CI**：[V1.3-03 source-matched run #38995384142](https://github.com/2023violet/ShareReady/actions/runs/38995384142)，对应提交 `0e9e50a780f74906937f177c403db5ee2bfe9ec2`；后续提交须重新验证。
 - **验收边界**：机器合成图片/Windows CI 不等于人工操作、跨设备 DPI、全面安全或正式发布验收；产品尚未发布。
 
+## V2 Rust Native refactor (current planned track)
+
+V2-00: V1.3 source, five-image full-frame RGBA golden, F01-F12 migration matrix and native GUI POC contract; all staged in [docs/V2/](docs/V2/README.md). V1 Windows/WebView2 app is retained; no Rust-native GUI implementation or human Windows acceptance is claimed. Main remains the only development branch. The JPEG reference for T05 is the V1 Rust normalized preview rather than assuming Pillow JPEG decoding is byte-identical.
+
 ## Historical Stage 01 research status / 历史研究阶段记录
 
 `Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S04 DONE / S05a BLOCKED_BY_RECRUITMENT / A1 NOT_VERIFIED`.
