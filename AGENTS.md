@@ -2,11 +2,11 @@
 
 ## Project truth and scope
 
-- The project is in **product discovery**; do not present designs, Rust code, deployments or user tests as complete before independently verified.
+- The project has a real V1.3-03 Rust/WASM editor and Windows desktop host on `main`, plus historical research drafts. Do not present release, security audit or human usability testing as independently complete when they are not.
 - The name **ShareReady is temporary** due to an existing product with a similar name and scope. Do not assert brand clearance.
-- **Rust is mandatory for safety-critical image transformation and export.** Rust+WASM browser UI is a candidate, not a frozen architecture.
+- **Rust is mandatory for safety-critical image transformation and export.** Implemented delivery uses Rust/WASM for image transformation and WinForms + WebView2 for the Windows desktop host.
 - All product work is governed by Stage 00–07 evidence gates. Primary artifacts are `README.md` and the linked documents under `docs/`. No nonessential framework or dependency should be added.
-- No product code should be started before Gate A and Gate B have genuine authorization under the workflow.
+- Historical Stage 00/01 gate records remain evidence of past decisions, not a statement that the existing product implementation is absent. Maintain explicit authorization and verifiable evidence for future high-risk changes.
 
 ## Required decision-to-execution workflow
 
@@ -26,7 +26,7 @@ At initial adoption, inspected upstream repository main commit: `1eb9624ee2037e4
 
 ## Change safety and review
 
-Use a new branch and a draft PR for candidate decisions. Preserve `main` until review gates are satisfied. Do not rewrite history, force-push, delete files, change secrets/auth/permissions or deploy without separately surfaced impact and express confirmation. Never bypass safety gates due to general repository write authorization.
+**Main-only repository policy:** use `main` as the sole development, test and delivery branch; do not create additional long-lived branches or Draft PRs for routine changes. Make focused changes with expected-HEAD checks, exact-code tests and review evidence. Do not rewrite history, force-push, delete files, change secrets/auth/permissions or deploy without separately surfaced impact and express confirmation. Never bypass safety gates due to general repository write authorization.
 
 Product privacy baseline: local image processing, opaque pixel replacement for private areas, new-image export without original source layers/metadata, synthetic test fixtures, and honest limitation wording. None are verified until tests are run.
 

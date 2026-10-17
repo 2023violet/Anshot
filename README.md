@@ -1,6 +1,6 @@
 # ShareReady — Rust-first image-sharing preparation tool (working title)
 
-> **STATUS: PRODUCT DISCOVERY / NOT RELEASED.** This repository currently contains product-governance and research drafts, **not an application**. 中文见下。
+> **STATUS: V1.3-03 ENGINEERING INTEGRATED / NOT RELEASED.** This repository contains a working Rust/WASM screenshot redaction editor and Windows WebView2 desktop host, alongside historical research records. Exact-code CI passed on 2026-10-17; this is not an independent security certification or human usability sign-off.
 
 ShareReady is a **temporary project code name**, not a cleared public-facing product name. An unrelated image-sharing product already uses the name; trademark/branding checks remain open.
 
@@ -8,16 +8,23 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 我们正在验证：普通人在分享截图前，能否比使用已有截图工具更快、更准确地遮挡自己不想公开的信息，并检查**实际导出的图像**。目前没有证据证明我们已优于 Redacted、ShareX 或系统截图工具。
 
-- **Rust-first**: Rust 将负责图片处理与安全关键逻辑。Rust/WASM 浏览器端为推荐候选，**尚未冻结具体 UI 框架**。
+- **Rust-first**: 已实现 Rust 图片解码、实心遮挡与 PNG 输出；浏览器使用 Rust/WASM，Windows 桌面使用 WinForms + WebView2 承载同一编辑器。
 - **Free and open source**: repository currently licensed under [MIT](LICENSE); no paid tier planned for MVP.
 - **Local by default**: 不上传用户图片、不依赖账号；安全承诺必须经过后续测试才可发布。
 - **No false safety claim**: 我们不会承诺自动发现所有私人信息或“绝对匿名”。
 
-## Current stage / 当前阶段
+## Current engineering baseline / 当前工程基线
+
+- **唯一正式开发和交付分支**：`main`。后续开发以 `main` 为基线；不要创建长期功能分支或将已实现功能留在 Draft PR 中。
+- **实际产品目录**：`e1-spike/`（Rust 核心与测试）、`web-app/`（编辑器与浏览器测试）、`desktop-windows/`（Windows WebView2 原生宿主）。Windows 用户入口见 [desktop-windows/README.md](desktop-windows/README.md)。
+- **最新通过的原生/浏览器 CI**：[V1.3-03 source-matched run #38995384142](https://github.com/2023violet/ShareReady/actions/runs/38995384142)，对应提交 `0e9e50a780f74906937f177c403db5ee2bfe9ec2`；后续提交须重新验证。
+- **验收边界**：机器合成图片/Windows CI 不等于人工操作、跨设备 DPI、全面安全或正式发布验收；产品尚未发布。
+
+## Historical Stage 01 research status / 历史研究阶段记录
 
 `Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S04 DONE / S05a BLOCKED_BY_RECRUITMENT / A1 NOT_VERIFIED`.
 
-**No Rust application code, human usability benchmarks, user interviews, deployment or release is claimed.** We do have scripted third-party browser results, which are not human performance claims.
+这些是历史研究门禁和仍未完成的真人用户验证，不代表当前仓库没有产品实现。已存在 Rust 应用代码，但没有以此声称真人用户测试、部署或正式发布。
 
 | Document | Purpose |
 | --- | --- |
@@ -46,9 +53,9 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 | [Skill CLI gate runbook](docs/governance/STAGE01_GATE_RUNBOOK.md) | How to complete real Gate A/B in executable checkout |
 | [Competitor test contract](docs/research/COMPETITOR_TEST_CONTRACT.md) | Reproducible comparative UX/safety research protocol |
 
-## V1 product scope and UX/UI candidates (review only)
+## Historical V1 product scope and UX/UI candidates (review only)
 
-The user-requested product-design track now has concrete reviewable candidates. **These are not a frozen Stage 01 PRD, production app or evidence of A1 user demand.** Original Skill Gate A/B card and machine plan are unchanged, S05a remains BLOCKED_BY_RECRUITMENT.
+The design candidates below document the historical planning baseline. They are **not the current implementation status, security certification, or evidence of A1 user demand**. The historical Stage 01 research obligations remain unverified where indicated.
 
 | Design artifact | What to review |
 | --- | --- |
@@ -61,13 +68,13 @@ The HTML uses no CDN, account, real image import, real copy/download or Rust ima
 
 ## Design-to-delivery route / 交付顺序
 
-Stage 00 research → Stage 01 PRD → Stage 02 UX → Stage 03 visual exploration → Stage 04 design system → Stage 05 high fidelity → Stage 06 Rust engineering → Stage 07 verified open-source release.
+The historical plan was Stage 00 research → Stage 01 PRD → Stage 02 UX → Stage 03 visual exploration → Stage 04 design system → Stage 05 high fidelity → Stage 06 Rust engineering → Stage 07 verified open-source release. Implementation has now reached V1.3-03; this does **not** imply all prior research and release conditions passed.
 
-Each stage needs evidence and an explicit exit decision. Product discovery is not a license to implement. Stage 01 work is governed by the linked decision card and the authors' [deciding-and-executing](https://github.com/2023violet/deciding-and-executing) skill.
+Changes should carry exact-code test evidence. High-risk security changes and any public release require an explicit review decision. Project governance references the authors' [deciding-and-executing](https://github.com/2023violet/deciding-and-executing) skill.
 
 ## Contributing / 参与
 
-At present, reproducible task scenarios, references to competitor behavior, and consent-based usability research feedback are more valuable than feature pull requests. **Use invented/synthetic screenshots only; never publish real private screenshot data in an issue.**
+Develop and verify against `main` only; do not create long-lived feature branches for routine development. Keep security-sensitive changes reviewable and use synthetic test fixtures. **Never publish real private screenshot data in an issue.**
 
 ## License
 

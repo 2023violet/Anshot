@@ -2,7 +2,7 @@ name: ShareReady V1.3 03 workflow stability and native failure recovery
 
 on:
   push:
-    branches: [feature/v1-3-03-workflow-stability]
+    branches: [main]
     paths:
       - .github/workflows/v1-3-03-workflow-stability.yml
       - e1-spike/**
@@ -36,6 +36,17 @@ jobs:
           cargo fetch --manifest-path e1-spike/Cargo.toml --locked
           cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
           git diff --exit-code -- e1-spike/Cargo.lock
+      - name: Validate carried-forward synthetic resource and dependency security checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile e1-spike/tests/verify_adversarial_resources.py e1-spike/tests/verify_dependency_inventory.py e1-spike/tests/verify_osv_advisories.py
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release
+          python3 e1-spike/tests/verify_adversarial_resources.py
+          python3 e1-spike/tests/verify_dependency_inventory.py
+          test -s /tmp/e1-security-depth/r04-native-resource-report.json
+          test -s /tmp/e1-security-depth/r09-locked-dependency-inventory.json
+          echo "SYNTHETIC_RESOURCE_AND_DEPENDENCY_INVENTORY_PASS_NOT_SECURITY_CERTIFICATION"
       - name: Compile distributable Rust WASM from this exact commit
         shell: bash
         run: |
