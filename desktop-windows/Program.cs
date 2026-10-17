@@ -306,6 +306,14 @@ internal sealed class ShareReadyWindow : Form
             await EvalAsync(@"document.getElementById('createMask').click()");
             if (!await WaitAsync("window.e2Debug?.regions.length===1"))
                 throw new Exception("Windows editor unable to create mask");
+            // The same compiled desktop UI must expose the 8-point geometry
+            // controls, not an older one-corner demo asset.
+            if (!await WaitAsync("document.querySelectorAll('.mask.selected .handle[data-dir]').length===8"))
+                throw new Exception("Windows editor missing V1.3-02 eight-direction handles");
+            await EvalAsync("document.getElementById('zoomIn').click()");
+            if (!await WaitAsync("window.e2Debug?.zoom > 1"))
+                throw new Exception("Native image zoom does not update");
+            await EvalAsync("document.getElementById('zoomFit').click()");
             await EvalAsync(@"(()=>{
                 for(const [key,value] of [['precX','6'],['precY','8'],['precW','20'],['precH','11']]){
                     const field=document.getElementById(key);
