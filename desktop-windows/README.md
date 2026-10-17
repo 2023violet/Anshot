@@ -1,32 +1,16 @@
-# ShareReady V1.2 — Windows 桌面便携版
+# ShareReady V1.3-01 — Windows 原生运行体验
 
-这是一个真正的 Windows 窗口程序（ShareReady.exe），不是 CMD 启动本地服务器。
+解压便携包，直接双击 `ShareReady.exe`，使用 Windows 原生窗口处理图片。保留原有 Rust/WASM 新 PNG 像素重编码，不依赖 Python/浏览器标签页/HTTP 本地服务器。
 
-- 原生窗口框架：.NET 8 WinForms + Microsoft Edge WebView2 1.0.4258.31。
-- 图片像素处理：继续复用原有 Rust/WASM；没有把遮挡改成容易泄露原图的 CSS 模拟。
-- Web 资源：从随应用分发的 `www/` 文件夹以内部虚拟 HTTPS 域映射加载，不需要 Python、PowerShell 服务或浏览器标签页。
-- 运行时联网：宿主阻断非 `https://shareready.local/` 的 HTTP(S) 请求，网页本身仍启用 CSP。不存在图片上传或用户账户功能。
-- 只允许访问 `www/` 中打包的编辑器资源；关闭新窗口/外站导航。
-- 启动时为 WebView2 创建隔离的临时用户数据文件夹，关闭时尝试清理；**无法担保操作系统级彻底擦除**。
-- Windows 端当前自包含 .NET Runtime，但需要电脑安装 **Microsoft Edge WebView2 Runtime**（Windows 11 一般具备）。
+**Windows 用户工作流：** 选择 PNG/JPEG（系统文件选择器）→ 拖入或 Ctrl+V 粘贴（WebView2 文件事件）→ 画出实心遮挡→成品复核→选择保存路径并确认或复制 PNG。关闭原生窗口即结束本次任务。
 
-## 使用
+本阶段新增：
+- 使用 WebView2 内置选择图片和操作系统拖放入口，不需要把本地图像传给云服务；
+- 下载 PNG 时由 Windows `SaveFileDialog` 选择保存位置，支持取消与覆盖确认，拒绝非本地 PNG 下载；网页状态与真实保存结果同步，不再把“点击下载”误报成保存成功；
+- 阻止任何未经许可的对外 HTTP(S) 请求、新窗口、外站导航和无手势读取系统剪贴板，使用每次启动隔离的 WebView2 浏览器数据目录；
+- 窗口尺寸遵循 Windows DPI；网页使用图像自身的像素坐标，避免显示缩放引起遮挡输出漂移；
+- 缺少 WebView2 Runtime 和丢失资源时给出启动错误说明。
 
-1. 解压整个 `ShareReady-Desktop-Windows-x64` ZIP。
-2. 在解压的文件夹内直接双击 `ShareReady.exe`。
-3. 选择、拖放或粘贴 PNG/JPEG；手动框选需要遮挡的区域。
-4. 在右侧选择区域，可输入 X/Y/宽/高四项原图像素坐标，支持撤销。
-5. 检查 Rust 重新编码的成品 PNG，再复制或另存。
+**测试边界：** CI 使用 Windows 原生 `ShareReady.exe --smoke-native` 打开 WebView2 并执行由合成 PNG 驱动的文件输入、DOM 拖放、DOM 粘贴、Rust 遮挡、成品下载和剪贴板成功/明确失败检测。该自动化不是物理 Windows 文件选择器手动点击、系统资源管理器真实拖拽或普通用户机器多屏幕 DPI 迁移的全面实机验收。
 
-需 Windows 10/11 x64。若系统缺少 WebView2 Runtime，程序会提示安装。该程序目前没有代码签名、自动更新及 Windows 安装器；**不要误认为已经过外部安全认证**。
-
-## 开发与测试
-
-```powershell
-dotnet publish desktop-windows/ShareReady.Desktop.csproj -c Release -r win-x64 --self-contained true
-```
-
-发布文件夹还需要一个 `www` 子目录，至少包含 `index.html`、`app.js`、`pkg/shareready_e1.js`、`pkg/shareready_e1_bg.wasm`。
-CI 使用 **同一提交**重新编译 Rust/WASM、运行真实 Google Chrome 图片测试、再将生成的 JS/WASM 放入原生 Windows 包。
-
-注意：CI 中可验证 .NET 编译及打包文件完整性，但不能把它当作 Windows 用户桌面上真实的 GUI、剪贴板和安装环境的全面验收。
+**需要环境：** Windows 10/11 x64，已安装 Microsoft Edge WebView2 Runtime。当前为未签名便携软件，非安装器。检查来源并完整解压，不运行来历不明的文件。
