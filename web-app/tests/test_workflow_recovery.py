@@ -49,7 +49,7 @@ with sync_playwright() as pw:
     try:
         context=browser.new_context(viewport={"width":1440,"height":900},accept_downloads=True)
         # Simulated messages test only the JS side of the Windows host protocol.
-        context.add_init_script("""() => {
+        context.add_init_script("""(() => {
           window.__shareReadyHostHandler=null;
           window.chrome=window.chrome||{};
           Object.defineProperty(window.chrome,"webview",{
@@ -61,7 +61,7 @@ with sync_playwright() as pw:
           window.__hostReply=(state,uri)=>window.__shareReadyHostHandler({
             data:{type:"native-download",state,uri}
           });
-        }""")
+        })();""")
         page=context.new_page()
         errors=[]
         page.on("pageerror",lambda e:errors.append(str(e)))
