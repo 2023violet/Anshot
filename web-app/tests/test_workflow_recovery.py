@@ -94,31 +94,39 @@ with sync_playwright() as pw:
         wait(page,"window.e2Debug.stage==='review' && window.e2Debug.outputBytes>0")
         active_url=page.evaluate("window.e2Debug.outputUrl")
         assert active_url.startswith("blob:")
-        # Exact URI binding: stale or unrelated host replies cannot mark the
-        # current image saved, or re-enable an in-flight save.
+        # Each click must use a fresh, single-use blob URL (WebView2 does
+        # not reliably re-download an already-canceled blob address).
         with page.expect_download():
             page.locator("#download").click()
+        first_attempt=page.evaluate("window.e2Debug.pendingDownloadUrl")
+        assert first_attempt.startswith("blob:") and first_attempt!=active_url
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="pending"
         assert page.locator("#download").is_disabled()
-        page.evaluate("uri => window.__hostReply('saved',uri)",active_url+"-old")
+        page.evaluate("uri => window.__hostReply('saved',uri)",first_attempt+"-old")
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="pending"
-        page.evaluate("uri => window.__hostReply('failed',uri)",active_url)
+        page.evaluate("uri => window.__hostReply('failed',uri)",first_attempt)
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="failed"
+        assert page.evaluate("window.e2Debug.pendingDownloadUrl")==None
         assert page.locator("#download").is_enabled()
         assert "保存失败" in page.locator("#reviewStatus").inner_text()
         with page.expect_download():
             page.locator("#download").click()
+        canceled_attempt=page.evaluate("window.e2Debug.pendingDownloadUrl")
+        assert canceled_attempt!=first_attempt
         assert page.locator("#download").is_disabled()
-        page.evaluate("uri => window.__hostReply('canceled',uri)",active_url)
+        page.evaluate("uri => window.__hostReply('canceled',uri)",canceled_attempt)
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="canceled"
+        assert page.evaluate("window.e2Debug.pendingDownloadUrl")==None
         assert page.locator("#download").is_enabled()
         assert "取消" in page.locator("#reviewStatus").inner_text()
         with page.expect_download():
             page.locator("#download").click()
-        page.evaluate("uri => window.__hostReply('saved',uri)",active_url)
+        saved_attempt=page.evaluate("window.e2Debug.pendingDownloadUrl")
+        assert saved_attempt not in (first_attempt,canceled_attempt,active_url)
+        page.evaluate("uri => window.__hostReply('saved',uri)",saved_attempt)
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="saved"
         assert "已保存" in page.locator("#reviewStatus").inner_text()
-        cases.append("native save wrong URL ignored; failure/cancel recover; success bound")
+        cases.append("unique blob on retry; wrong URL ignored; failure/cancel recover")
 
         # Clipboard failure never triggers PNG downgrade to original file.
         page.evaluate("""() => {
@@ -151,7 +159,7 @@ with sync_playwright() as pw:
         page.locator("#precX").press("Tab")
         assert page.evaluate("window.e2Debug.outputRevision")==-1
         assert page.evaluate("window.e2Debug.revision")>old_revision
-        page.evaluate("uri => window.__hostReply('saved',uri)",active_url)
+        page.evaluate("uri => window.__hostReply('saved',uri)",saved_attempt)
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="not_attempted"
         assert page.locator("#download").is_disabled()
         page.evaluate("window.__resolveLateClipboard()")
@@ -168,9 +176,11 @@ with sync_playwright() as pw:
         assert current_url!=active_url
         with page.expect_download():page.locator("#download").click()
         assert page.locator("#download").is_disabled()
-        page.evaluate("uri => window.__hostReply('canceled',uri)",active_url)
+        current_attempt=page.evaluate("window.e2Debug.pendingDownloadUrl")
+        assert current_attempt not in (first_attempt,canceled_attempt,saved_attempt)
+        page.evaluate("uri => window.__hostReply('canceled',uri)",saved_attempt)
         assert page.locator("#download").is_disabled()
-        page.evaluate("uri => window.__hostReply('canceled',uri)",current_url)
+        page.evaluate("uri => window.__hostReply('canceled',uri)",current_attempt)
         assert page.locator("#download").is_enabled()
 
         # Replacement while review is open (simulated file event) preserves
@@ -187,7 +197,7 @@ with sync_playwright() as pw:
         assert page.locator("#check").is_disabled()
         assert page.locator("#download").is_disabled()
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="not_attempted"
-        page.evaluate("uri => window.__hostReply('saved',uri)",current_url)
+        page.evaluate("uri => window.__hostReply('saved',uri)",current_attempt)
         assert page.evaluate("window.e2Debug.nativeDownloadState")=="not_attempted"
         cases.append("review replacement cancel/accept and late native completion are fail-closed")
 
