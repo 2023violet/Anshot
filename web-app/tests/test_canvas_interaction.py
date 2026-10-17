@@ -153,6 +153,7 @@ with sync_playwright() as pw:
             assert page.evaluate("window.e2Debug.regions")==before_regions
             records.append({"dpr":dpr,"case":"pan off-canvas with H tool"})
             page.locator("#selectTool").click()
+            page.locator("#stageLabel").click()
             vp.evaluate("(e)=>{e.scrollLeft=210;e.scrollTop=150}")
             scroll1=vp.evaluate("(e)=>[e.scrollLeft,e.scrollTop]")
             mask=page.locator(".mask").first.bounding_box()
