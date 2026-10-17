@@ -90,6 +90,14 @@ with sync_playwright() as pw:
                 scale_y=frame["height"]/400
                 dx=(-18 if "w" in direction else 18 if "e" in direction else 0)
                 dy=(-12 if "n" in direction else 12 if "s" in direction else 0)
+                if direction=="nw":
+                    print("CANVAS_PRE_DRAG_DEBUG",json.dumps({
+                        "dpr":dpr,"zoom":page.evaluate("window.e2Debug.zoom"),
+                        "rect":get_rect(page),"handle":handle.bounding_box(),
+                        "mask":page.locator(".mask").first.bounding_box(),
+                        "frame":frame,"scale_x":scale_x,"scale_y":scale_y,
+                        "start":[sx,sy],"target":[sx+dx*scale_x,sy+dy*scale_y]
+                    }),flush=True)
                 move_mouse(page,(sx,sy),(sx+dx*scale_x,sy+dy*scale_y))
                 expected=[
                     140+dx if "w" in direction else 140,
