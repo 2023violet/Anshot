@@ -296,7 +296,7 @@ internal sealed class ShareReadyWindow : Form
             await EvalAsync(@"(async()=>{
                 const file=await (" + makePng + @")(76,56);
                 const data=new DataTransfer();data.items.add(file);
-                document.dispatchEvent(new ClipboardEvent('paste',{
+                document.body.dispatchEvent(new ClipboardEvent('paste',{
                     clipboardData:data,bubbles:true,cancelable:true
                 }));
             })()");
