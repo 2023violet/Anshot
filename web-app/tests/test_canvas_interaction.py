@@ -4,6 +4,7 @@ import io
 import json
 import http.server
 import threading
+import time
 from pathlib import Path
 from PIL import Image
 from playwright.sync_api import sync_playwright
@@ -24,6 +25,14 @@ server=http.server.ThreadingHTTPServer(("127.0.0.1",0),Handler)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 origin=f"http://127.0.0.1:{server.server_port}"
 records=[]
+
+def wait(page,expression,timeout=30000):
+    # CSP forbids unsafe evaluation; call a trusted JavaScript function.
+    end=time.monotonic()+timeout/1000
+    while time.monotonic()<end:
+        if page.evaluate(f"() => Boolean({expression})"):return
+        page.wait_for_timeout(100)
+    raise AssertionError("Timed out: "+expression)
 
 def get_rect(page):
     r=page.evaluate("window.e2Debug.regions[0]")
@@ -59,9 +68,9 @@ with sync_playwright() as pw:
             errors=[]
             page.on("pageerror",lambda e:errors.append(str(e)))
             page.goto(origin+"/web-app/index.html")
-            page.wait_for_function("window.e2Debug?.ready === true")
+            wait(page,"window.e2Debug?.ready === true")
             page.locator("#pick").set_input_files(str(fixture))
-            page.wait_for_function("window.e2Debug?.stage==='edit'")
+            wait(page,"window.e2Debug?.stage==='edit'")
             page.locator("#createMask").click()
             assert len(page.locator(".mask").all())==1
             # Real eight-direction handles have distinct direction markers.
@@ -168,7 +177,7 @@ with sync_playwright() as pw:
 
             # Export and verify actual Rust pixel buffer instead of a CSS layer.
             page.locator("#check").click()
-            page.wait_for_function("window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0")
+            wait(page,"window.e2Debug?.stage==='review' && window.e2Debug.outputBytes>0")
             with page.expect_download() as dl:page.locator("#download").click()
             saved=OUT/f"canvas-dpr-{dpr}-real-redaction.png"
             dl.value.save_as(saved)
