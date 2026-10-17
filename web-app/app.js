@@ -7,6 +7,22 @@ let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
 let regions=[],selected=null,history=[],future=[],mode="mask",zoom=1;
 let revision=0,output=null,stage="empty",pointer=null,nextID=1,loadTicket=0;
 let copyState="not_attempted";
+// Desktop host reports the *actual* native Save File dialog and disk-write
+// outcome. Never show "saved" when the user canceled or WebView2 interrupted.
+window.__shareReadyNativeDownload="not_attempted";
+if(window.chrome?.webview?.addEventListener){
+ window.chrome.webview.addEventListener("message",event=>{
+  const data=event.data;
+  if(!data||data.type!=="native-download")return;
+  const result=String(data.state||"failed");
+  window.__shareReadyNativeDownload=result;
+  if(stage!=="review")return;
+  if(result==="saved")status("Windows 已将遮挡后的 PNG 保存至所选位置。");
+  else if(result==="canceled")status("已取消保存；当前成品仍可继续复核或保存。");
+  else if(result==="blocked")status("已阻止非本地 PNG 下载。");
+  else status("Windows 保存失败；请换一个有效位置重试。");
+ });
+}
 
 window.e2Debug={
  get ready(){return ready},get stage(){return stage},
@@ -394,10 +410,14 @@ function download(){
  if(stage!=="review"||!output||output.revision!==revision){
   status("输出已过期，请重新检查");return;
  }
+ window.__shareReadyNativeDownload="pending";
  const a=document.createElement("a");
  const stem=label.replace(/\.(png|jpe?g)$/i,"").replace(/[^\w\u4e00-\u9fff-]+/g,"_").slice(0,60)||"image";
  a.href=output.url;a.download=stem+"_share_ready.png";
- a.click();status("已请求浏览器下载当前 Rust PNG。");
+ a.click();
+ status(window.chrome?.webview?
+  "Windows 正在打开保存对话框；取消保存不会影响当前成品。":
+  "已请求浏览器下载当前 Rust PNG。");
 }
 async function copy(){
  if(stage!=="review"||!output||output.revision!==revision){
