@@ -190,11 +190,15 @@ function setZoom(value,anchorX=null,anchorY=null,preserveFit=false){
  const relativeY=rect.height>0?(ay-rect.top)/rect.height:0.5;
  const next=clamp(value,.08,2.5);
  zoomMode=preserveFit?"fit":"manual";
- if(Math.abs(next-zoom)<1e-9){render();return}
+ const unchanged=Math.abs(next-zoom)<1e-9;
  zoom=next;
+ // Always initialize both dimensions. The very first imported image often
+ // fits at 100%; skipping styles for an unchanged zoom leaves an auto-sized
+ // frame stretched to the viewport and destroys source-pixel hit testing.
  frame.style.width=sourceW*zoom+"px";
  frame.style.height=sourceH*zoom+"px";
  render();
+ if(unchanged)return;
  const after=frame.getBoundingClientRect();
  vp.scrollLeft+=after.left+relativeX*after.width-ax;
  vp.scrollTop+=after.top+relativeY*after.height-ay;
