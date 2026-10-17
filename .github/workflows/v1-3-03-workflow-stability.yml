@@ -1,0 +1,162 @@
+name: ShareReady V1.3 03 workflow stability and native failure recovery
+
+on:
+  push:
+    branches: [feature/v1-3-03-workflow-stability]
+    paths:
+      - .github/workflows/v1-3-03-workflow-stability.yml
+      - e1-spike/**
+      - web-app/**
+      - desktop-windows/**
+
+permissions:
+  contents: read
+
+jobs:
+  rust-wasm-real-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout immutable product revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate product sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PRODUCT_COMMIT=$(git rev-parse HEAD)"
+          node --check web-app/app.js
+          python3 -m py_compile web-app/tests/test_local_app.py web-app/tests/test_canvas_interaction.py web-app/tests/test_workflow_recovery.py
+          test -s e1-spike/Cargo.lock
+      - name: Verify Rust actual codec and preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fetch --manifest-path e1-spike/Cargo.toml --locked
+          cargo test --manifest-path e1-spike/Cargo.toml --locked --offline
+          git diff --exit-code -- e1-spike/Cargo.lock
+      - name: Compile distributable Rust WASM from this exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          cargo build --manifest-path e1-spike/Cargo.toml --locked --offline --release --target wasm32-unknown-unknown --features web
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
+          mkdir -p web-app/pkg
+          wasm-bindgen --target web --out-name shareready_e1 --out-dir web-app/pkg e1-spike/target/wasm32-unknown-unknown/release/shareready_e1.wasm
+          test -s web-app/pkg/shareready_e1_bg.wasm
+          sha256sum web-app/pkg/shareready_e1_bg.wasm
+      - name: Real Chrome product and pixel-geometry regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/share-ready-tests
+          /tmp/share-ready-tests/bin/python -m pip install --disable-pip-version-check Pillow==12.3.0 playwright==1.55.0
+          google-chrome --version
+          /tmp/share-ready-tests/bin/python web-app/tests/test_local_app.py
+          /tmp/share-ready-tests/bin/python web-app/tests/test_canvas_interaction.py
+          /tmp/share-ready-tests/bin/python web-app/tests/test_workflow_recovery.py
+          test -s /tmp/shareready-v1-browser/v1-results.json
+          test -s /tmp/shareready-canvas-v1302/canvas-results.json
+          test -s /tmp/shareready-workflow-v1303/workflow-results.json
+          echo "SHAREREADY_V1303_FULL_NEGATIVE_WORKFLOW_PASS"
+          echo SHAREREADY_V13_RUST_CHROME_PRECISION_PASS
+      - name: Upload actual WASM and editor resources for Windows desktop build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shareready-v1303-source-matched-web-assets
+          path: |
+            web-app/index.html
+            web-app/app.js
+            web-app/pkg/shareready_e1.js
+            web-app/pkg/shareready_e1_bg.wasm
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload real Chrome screenshots and pixel verification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shareready-v1303-chrome-verification
+          path: |
+            /tmp/shareready-v1-browser/
+            /tmp/shareready-canvas-v1302/
+            /tmp/shareready-workflow-v1303/
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows-native-desktop:
+    needs: rust-wasm-real-chrome
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout same product commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Download compiled WASM and exact editor UI
+        uses: actions/download-artifact@v4
+        with:
+          name: shareready-v1303-source-matched-web-assets
+          path: desktop-windows/www
+      - name: Compile self-contained Windows x64 GUI executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference="Stop"
+          Write-Host "DESKTOP_PRODUCT_HEAD=$env:GITHUB_SHA"
+          dotnet --version
+          $publish=Join-Path $env:RUNNER_TEMP "ShareReady-Desktop-Windows-x64"
+          dotnet publish desktop-windows/ShareReady.Desktop.csproj -c Release -r win-x64 --self-contained true --output $publish -p:PublishTrimmed=false
+          if ($LASTEXITCODE -ne 0) {throw "Native Windows build failed"}
+          Copy-Item desktop-windows/www -Destination (Join-Path $publish "www") -Recurse -Force
+          Copy-Item desktop-windows/README.md -Destination (Join-Path $publish "README.md")
+          Set-Content -Encoding ascii (Join-Path $publish "COMMIT.txt") $env:GITHUB_SHA
+          $files=@(
+            "ShareReady.exe","Microsoft.Web.WebView2.Core.dll",
+            "www/index.html","www/app.js",
+            "www/pkg/shareready_e1.js","www/pkg/shareready_e1_bg.wasm"
+          )
+          foreach ($rel in $files) {
+            $f=Join-Path $publish $rel
+            if (-not (Test-Path $f -PathType Leaf)) {throw "Missing product file: $rel"}
+            if ((Get-Item $f).Length -eq 0) {throw "Empty product file: $rel"}
+          }
+          & (Join-Path $publish "ShareReady.exe") --verify-package
+          if ($LASTEXITCODE -ne 0) {throw "Native package probe failed: $LASTEXITCODE"}
+          # Actual Windows WebView2 lifecycle and Rust/WASM user flow, not
+          # just static EXE package integrity. The smoke app creates synthetic
+          # images and does not read any private user material.
+          $exe=Join-Path $publish "ShareReady.exe"
+          $stdOut=Join-Path $env:RUNNER_TEMP "native-runtime-stdout.txt"
+          $stdErr=Join-Path $env:RUNNER_TEMP "native-runtime-stderr.txt"
+          $proc=Start-Process -FilePath $exe -ArgumentList "--smoke-native" -PassThru -RedirectStandardOutput $stdOut -RedirectStandardError $stdErr
+          $watch=[Diagnostics.Stopwatch]::StartNew()
+          while (-not $proc.HasExited -and $watch.Elapsed.TotalSeconds -lt 90) {
+            Start-Sleep -Milliseconds 300
+            $proc.Refresh()
+          }
+          if (-not $proc.HasExited) {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            throw "WebView2 native GUI smoke timed out after 90 seconds"
+          }
+          if (Test-Path $stdOut) { Get-Content $stdOut }
+          if (Test-Path $stdErr) { Get-Content $stdErr }
+          if ($proc.ExitCode -ne 0) { throw "WebView2 native GUI smoke failed: $($proc.ExitCode)" }
+          Write-Host "SHAREREADY_V13_NATIVE_GUI_SMOKE_PASS"
+          Get-FileHash (Join-Path $publish "www/pkg/shareready_e1_bg.wasm") -Algorithm SHA256
+          Write-Host "SHAREREADY_V13_WINDOWS_NATIVE_EXE_BUNDLE_PASS"
+          $zip=Join-Path $env:RUNNER_TEMP "ShareReady-V1.3-03-Windows-Native-x64.zip"
+          Compress-Archive -Path $publish -DestinationPath $zip -Force -CompressionLevel Optimal
+          if (-not (Test-Path $zip)) {throw "Missing ZIP"}
+          Get-FileHash $zip -Algorithm SHA256
+      - name: Upload actual Windows desktop application
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shareready-v1303-windows-native-x64
+          path: ${{ runner.temp }}/ShareReady-V1.3-03-Windows-Native-x64.zip
+          if-no-files-found: error
+          retention-days: 30
