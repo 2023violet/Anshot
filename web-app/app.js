@@ -7,6 +7,11 @@ let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
 let regions=[],selected=null,history=[],future=[],mode="mask",zoom=1;
 let revision=0,output=null,stage="empty",pointer=null,nextID=1,loadTicket=0;
 let copyState="not_attempted";
+let spaceHeld=false, zoomMode="fit";
+const HANDLE_DIRECTIONS=["nw","n","ne","e","se","s","sw","w"];
+const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+const edges=r=>({left:Math.floor(Math.min(r.x0,r.x1)),top:Math.floor(Math.min(r.y0,r.y1)),
+ right:Math.ceil(Math.max(r.x0,r.x1)),bottom:Math.ceil(Math.max(r.y0,r.y1))});
 // Desktop host reports the *actual* native Save File dialog and disk-write
 // outcome. Never show "saved" when the user canceled or WebView2 interrupted.
 window.__shareReadyNativeDownload="not_attempted";
@@ -124,8 +129,14 @@ function render(){
    height:Math.max(1,Math.abs(r.y1-r.y0)*zoom)+"px"
   });
   if(r.id===selected){
-   const grip=document.createElement("span");grip.className="handle";
-   grip.title="拖动调整矩形大小";item.append(grip);
+   for(const dir of HANDLE_DIRECTIONS){
+    const grip=document.createElement("span");
+    grip.className="handle handle-"+dir;
+    grip.dataset.dir=dir;
+    grip.setAttribute("aria-hidden","true");
+    grip.title="拖动 "+dir.toUpperCase()+" 手柄调整遮挡边界";
+    item.append(grip);
+   }
   }
   layer.append(item);
  }
@@ -153,6 +164,12 @@ function commitPrecision(){
   status("已精确设置遮挡位置："+x+", "+y+" · "+width+" × "+height+" 像素");
  }else render();
 }
+function updatePanCursor(){
+ const panning=mode==="pan"||spaceHeld;
+ $("viewport").classList.toggle("can-pan",panning);
+ $("viewport").classList.toggle("is-panning",pointer?.kind==="pan");
+ $("frame").style.cursor=panning?"grab":mode==="select"?"default":"crosshair";
+}
 function setMode(newMode){
  mode=newMode;
  for(const b of document.querySelectorAll("[data-tool]")){
@@ -160,20 +177,36 @@ function setMode(newMode){
   b.classList.toggle("active",active);
   b.setAttribute("aria-pressed",String(active));
  }
- $("frame").style.cursor=mode==="pan"?"grab":mode==="select"?"default":"crosshair";
+ updatePanCursor();
 }
-function setZoom(value){
+function setZoom(value,anchorX=null,anchorY=null,preserveFit=false){
  if(!sourceW)return;
- zoom=Math.max(.08,Math.min(2.5,value));
- $("frame").style.width=sourceW*zoom+"px";
- $("frame").style.height=sourceH*zoom+"px";
+ const vp=$("viewport"),frame=$("frame");
+ const rect=frame.getBoundingClientRect();
+ const vrect=vp.getBoundingClientRect();
+ const ax=anchorX??vrect.left+vrect.width/2;
+ const ay=anchorY??vrect.top+vrect.height/2;
+ const relativeX=rect.width>0?(ax-rect.left)/rect.width:0.5;
+ const relativeY=rect.height>0?(ay-rect.top)/rect.height:0.5;
+ const next=clamp(value,.08,2.5);
+ zoomMode=preserveFit?"fit":"manual";
+ if(Math.abs(next-zoom)<1e-9){render();return}
+ zoom=next;
+ frame.style.width=sourceW*zoom+"px";
+ frame.style.height=sourceH*zoom+"px";
  render();
+ const after=frame.getBoundingClientRect();
+ vp.scrollLeft+=after.left+relativeX*after.width-ax;
+ vp.scrollTop+=after.top+relativeY*after.height-ay;
 }
 function fit(){
  if(!sourceW)return;
  const vp=$("viewport");
- setZoom(Math.min(1,Math.max(.08,(vp.clientWidth-100)/sourceW),Math.max(.08,(vp.clientHeight-120)/sourceH)));
+ setZoom(Math.min(1,Math.max(.08,(vp.clientWidth-100)/sourceW),Math.max(.08,(vp.clientHeight-120)/sourceH)),null,null,true);
 }
+new ResizeObserver(()=>{
+ if(zoomMode==="fit"&&sourceW&&stage==="edit")fit();
+}).observe($("viewport"));
 async function decodeImage(url){
  const image=new Image();image.src=url;await image.decode();return image;
 }
@@ -224,20 +257,11 @@ async function loadFile(file){
  }catch(e){if(ticket===loadTicket)status("导入失败（原有编辑已保留）："+String(e?.message||e))}
 }
 const frame=$("frame"),viewport=$("viewport");
-// Ctrl/Cmd + wheel zooms around the cursor without moving the edit coordinate.
+// Ctrl/Cmd+wheel zooms around the pointer in original image coordinates.
 viewport.addEventListener("wheel",e=>{
  if(stage!=="edit"||!sourceW||!(e.ctrlKey||e.metaKey))return;
  e.preventDefault();
- const before=frame.getBoundingClientRect();
- if(before.width<=0||before.height<=0)return;
- const px=(e.clientX-before.left)/before.width;
- const py=(e.clientY-before.top)/before.height;
- const oldZoom=zoom;
- setZoom(zoom*(e.deltaY<0?1.12:1/1.12));
- if(oldZoom===zoom)return;
- const after=frame.getBoundingClientRect();
- viewport.scrollLeft+=after.left+px*after.width-e.clientX;
- viewport.scrollTop+=after.top+py*after.height-e.clientY;
+ setZoom(zoom*(e.deltaY<0?1.12:1/1.12),e.clientX,e.clientY);
 },{passive:false});
 function coordinates(e){
  const box=frame.getBoundingClientRect();
@@ -247,58 +271,95 @@ function coordinates(e){
  return {x:Math.max(0,Math.min(sourceW,(e.clientX-box.left)/sx)),
          y:Math.max(0,Math.min(sourceH,(e.clientY-box.top)/sy))};
 }
+// Pan can start on the checkerboard OUTSIDE the image. Middle-mouse, H
+// and held Space temporarily pan without modifying pixel masks.
+viewport.addEventListener("pointerdown",e=>{
+ if(stage!=="edit"||!sourceW||pointer)return;
+ if(!(e.button===1||(e.button===0&&(mode==="pan"||spaceHeld))))return;
+ e.preventDefault();e.stopPropagation();
+ pointer={kind:"pan",pointerId:e.pointerId,clientX:e.clientX,clientY:e.clientY,
+          left:viewport.scrollLeft,top:viewport.scrollTop};
+ viewport.setPointerCapture(e.pointerId);
+ updatePanCursor();
+},true);
+viewport.addEventListener("pointermove",e=>{
+ if(pointer?.kind!=="pan"||pointer.pointerId!==e.pointerId)return;
+ e.preventDefault();e.stopPropagation();
+ viewport.scrollLeft=pointer.left-(e.clientX-pointer.clientX);
+ viewport.scrollTop=pointer.top-(e.clientY-pointer.clientY);
+},true);
+function finishPan(e){
+ if(pointer?.kind!=="pan"||pointer.pointerId!==e.pointerId)return;
+ e.stopPropagation();
+ pointer=null;
+ if(viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId);
+ updatePanCursor();
+}
+viewport.addEventListener("pointerup",finishPan,true);
+viewport.addEventListener("pointercancel",finishPan,true);
+function assignEdges(r,left,top,right,bottom){
+ // Never flip or create zero-pixel masks: Rust export always receives a
+ // rectangle with >=1 source pixel in both directions.
+ Object.assign(r,{x0:left,y0:top,x1:right,y1:bottom});
+}
 frame.addEventListener("pointerdown",e=>{
- if(stage!=="edit"||e.button!==0)return;
+ if(stage!=="edit"||e.button!==0||pointer||mode==="pan"||spaceHeld)return;
  e.preventDefault();
- const p=coordinates(e);
- if(mode==="pan"){
-  pointer={kind:"pan",clientX:e.clientX,clientY:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};
-  frame.setPointerCapture(e.pointerId);return;
- }
- const box=e.target.closest(".mask"),before=snapshot();
- if(box){
-  const id=Number(box.dataset.id),r=regions.find(x=>x.id===id);
+ const p=coordinates(e),target=e.target.closest(".mask"),before=snapshot();
+ if(target){
+  const id=Number(target.dataset.id),r=regions.find(x=>x.id===id);
+  if(!r)return;
   selected=id;
-  pointer={kind:e.target.classList.contains("handle")?"resize":"move",id,from:p,original:{...r},before};
+  const dir=e.target.closest(".handle")?.dataset.dir;
+  pointer={kind:dir?"resize":"move",dir:dir||null,id,pointerId:e.pointerId,
+           from:p,original:edges(r),before};
  }else if(mode==="mask"){
-  const r={id:nextID++,x0:p.x,y0:p.y,x1:p.x,y1:p.y};
+  const x=Math.round(p.x),y=Math.round(p.y);
+  const r={id:nextID++,x0:x,y0:y,x1:x,y1:y};
   regions.push(r);selected=r.id;
-  pointer={kind:"draw",id:r.id,from:p,original:{...r},before};
+  pointer={kind:"draw",id:r.id,pointerId:e.pointerId,from:p,original:{...r},before};
  }else{
   selected=null;render();return;
  }
  frame.setPointerCapture(e.pointerId);render();
 });
 frame.addEventListener("pointermove",e=>{
- if(!pointer||stage!=="edit")return;
- if(pointer.kind==="pan"){
-  viewport.scrollLeft=pointer.left-(e.clientX-pointer.clientX);
-  viewport.scrollTop=pointer.top-(e.clientY-pointer.clientY);return;
- }
+ if(!pointer||pointer.kind==="pan"||pointer.pointerId!==e.pointerId||stage!=="edit")return;
  const p=coordinates(e),r=regions.find(x=>x.id===pointer.id);
  if(!r)return;
  const o=pointer.original;
- if(pointer.kind==="draw"){r.x1=p.x;r.y1=p.y}
- else if(pointer.kind==="resize"){r.x1=p.x;r.y1=p.y}
- else if(pointer.kind==="move"){
-  const w=Math.abs(o.x1-o.x0),h=Math.abs(o.y1-o.y0);
-  const x=Math.max(0,Math.min(sourceW-w,Math.min(o.x0,o.x1)+p.x-pointer.from.x));
-  const y=Math.max(0,Math.min(sourceH-h,Math.min(o.y0,o.y1)+p.y-pointer.from.y));
-  r.x0=x;r.y0=y;r.x1=x+w;r.y1=y+h;
+ if(pointer.kind==="draw"){
+  r.x1=Math.round(p.x);r.y1=Math.round(p.y);
+ }else if(pointer.kind==="resize"){
+  let {left,top,right,bottom}=o;
+  const dir=pointer.dir;
+  const x=clamp(Math.round(p.x),0,sourceW),y=clamp(Math.round(p.y),0,sourceH);
+  if(dir.includes("w"))left=clamp(x,0,right-1);
+  if(dir.includes("e"))right=clamp(x,left+1,sourceW);
+  if(dir.includes("n"))top=clamp(y,0,bottom-1);
+  if(dir.includes("s"))bottom=clamp(y,top+1,sourceH);
+  assignEdges(r,left,top,right,bottom);
+ }else if(pointer.kind==="move"){
+  const w=o.right-o.left,h=o.bottom-o.top;
+  const dx=Math.round(p.x-pointer.from.x),dy=Math.round(p.y-pointer.from.y);
+  const left=clamp(o.left+dx,0,sourceW-w);
+  const top=clamp(o.top+dy,0,sourceH-h);
+  assignEdges(r,left,top,left+w,top+h);
  }
  render();
 });
-frame.addEventListener("pointerup",()=>{
- if(!pointer)return;const g=pointer;pointer=null;
- if(g.kind==="pan")return;
+frame.addEventListener("pointerup",e=>{
+ if(!pointer||pointer.kind==="pan"||pointer.pointerId!==e.pointerId)return;
+ const g=pointer;pointer=null;
  const r=regions.find(x=>x.id===g.id);
- if(g.kind==="draw"&&r&&(Math.abs(r.x1-r.x0)<.5||Math.abs(r.y1-r.y0)<.5)){
+ if(g.kind==="draw"&&r&&(!Math.abs(r.x1-r.x0)||!Math.abs(r.y1-r.y0))){
   regions=JSON.parse(g.before);selected=null;render();return;
  }
  saveAction(g.before);
 });
-frame.addEventListener("pointercancel",()=>{
- if(pointer?.before)regions=JSON.parse(pointer.before);
+frame.addEventListener("pointercancel",e=>{
+ if(!pointer||pointer.kind==="pan"||pointer.pointerId!==e.pointerId)return;
+ if(pointer.before)regions=JSON.parse(pointer.before);
  pointer=null;render();
 });
 function nudgeSelected(key,resize){
@@ -493,6 +554,9 @@ document.addEventListener("paste",e=>{
 });
 document.addEventListener("keydown",e=>{
  if(e.target.closest("input,textarea,[contenteditable]"))return;
+ if(e.code==="Space"&&stage==="edit"&&!e.target.closest("button,[role=button]")){
+  e.preventDefault();spaceHeld=true;updatePanCursor();return;
+ }
  const k=e.key.toLowerCase();
  if(e.key==="Escape"&&stage==="review"){back();return}
  if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();if(e.shiftKey)redoAction();else undoAction();return}
@@ -520,6 +584,10 @@ document.addEventListener("keydown",e=>{
  if(k==="1"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey)setZoom(1);
  if(e.key==="Delete"||e.key==="Backspace")deleteSelected();
 });
+document.addEventListener("keyup",e=>{
+ if(e.code==="Space"&&spaceHeld){spaceHeld=false;updatePanCursor()}
+});
+window.addEventListener("blur",()=>{spaceHeld=false;updatePanCursor()});
 try{
  await init();ready=true;
  status("ShareReady 已就绪，选择、拖放或粘贴本地 PNG/JPEG 开始。");
