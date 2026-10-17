@@ -238,13 +238,16 @@ impl NativeApp {
         }
     }
     fn render_canvas(&mut self,ui:&mut egui::Ui){
-        let Some(texture)=self.texture.as_ref() else{ui.label("No image loaded");return};
+        let Some(source)=self.texture.as_ref() else{ui.label("No image loaded");return};
         let (w,h)=self.editor.dimensions();
         let shown=self.review_view && self.editor.is_reviewed();
-        let tex=if shown{self.review_texture.as_ref().unwrap_or(texture)}else{texture};
+        let (texture_id,texture_size)={
+            let tex=if shown{self.review_texture.as_ref().unwrap_or(source)}else{source};
+            (tex.id(),tex.size_vec2())
+        };
         let size=Vec2::new(w as f32*self.zoom,h as f32*self.zoom);
         egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
-            let response=ui.add(egui::Image::new((tex.id(),tex.size_vec2()))
+            let response=ui.add(egui::Image::new((texture_id,texture_size))
                 .fit_to_exact_size(size).sense(Sense::click_and_drag()));
             if let Some(view)=Self::frame_view(w,h,response.rect){
                 if !shown {self.update_pointer(&response,view);}
@@ -290,10 +293,10 @@ impl eframe::App for NativeApp {
             else {ctx.request_repaint();}
         }
         self.keyboard(&ctx);
-        for path in ctx.input(|i|i.raw.dropped_files.iter().filter_map(|f|f.path.clone()).collect::<Vec<_>>()){
+        for path in ctx.input(|i|i.raw.dropped_files.iter().map(|f|f.path().to_path_buf()).collect::<Vec<_>>()){
             self.load_source(&ctx,&path);
         }
-        egui::TopBottomPanel::top("toolbar").show_inside(ui,|ui|{
+        ui.group(|ui|{
             ui.horizontal_wrapped(|ui|{
                 ui.heading("ShareReady · Rust Native");
                 ui.separator();
@@ -311,7 +314,7 @@ impl eframe::App for NativeApp {
             });
             ui.label(&self.status);
         });
-        egui::SidePanel::right("inspect").resizable(true).min_width(200.0).show_inside(ui,|ui|{
+        egui::Window::new("Inspector").default_width(270.0).resizable(true).show(&ctx,|ui|{
             ui.heading("Inspector");
             ui.label(&self.source_label);
             ui.label(format!("Source: {}×{}",self.editor.dimensions().0,self.editor.dimensions().1));
@@ -351,6 +354,6 @@ impl eframe::App for NativeApp {
             ui.separator();
             ui.small("This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.");
         });
-        egui::CentralPanel::default().show_inside(ui,|ui|{self.render_canvas(ui);});
+        self.render_canvas(ui);
     }
 }
