@@ -9,3 +9,7 @@ Open synthetic T04 image on startup. Draw, move and resize masks, review generat
 After the isolated Cargo.lock is committed: cargo build --release --locked --manifest-path poc/native-egui/Cargo.toml. Run its EXE or EXE --self-test (only Core/Editor non-GUI evidence).
 
 The physical Windows GUI acceptance contract is docs/V2/V2_03_NATIVE_GUI_POC.md.
+
+## CI results and important runtime limit
+
+Run #39006084786: Windows EXE compilation and synthetic Rust PNG self-test PASS; GUI smoke NOT_VERIFIED because the hosted Windows runner reports egui_glow requires OpenGL 2.0+. This is an environment capability failure, not proof about an end-user Windows GPU. G01-G10 physical acceptance remains open. Cargo.lock was committed separately; later jobs use only locked dependencies and read-only repository permissions.
