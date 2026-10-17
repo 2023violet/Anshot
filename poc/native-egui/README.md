@@ -13,3 +13,16 @@ The physical Windows GUI acceptance contract is docs/V2/V2_03_NATIVE_GUI_POC.md.
 ## CI results and important runtime limit
 
 Run #39006084786: Windows EXE compilation and synthetic Rust PNG self-test PASS; GUI smoke NOT_VERIFIED because the hosted Windows runner reports egui_glow requires OpenGL 2.0+. This is an environment capability failure, not proof about an end-user Windows GPU. G01-G10 physical acceptance remains open. Cargo.lock was committed separately; later jobs use only locked dependencies and read-only repository permissions.
+
+## DX12 verification update
+
+The strict Windows CI run [#39010280165](https://github.com/2023violet/ShareReady/actions/runs/39010280165) verified an actual multi-frame native egui window using **wgpu + DX12** and wgpu auto (both PASS). OpenGL glow still fails on the hosted Windows runner. The wgpu adapter reported `Dx12 / Cpu / Microsoft Basic Render Driver`, so this is a **software-rendered CI proof**, not physical GPU or G01–G10 human acceptance.
+
+`--renderer wgpu` is now the default; to test with Direct3D 12 specifically on Windows:
+
+```powershell
+$env:WGPU_BACKEND="dx12"
+.\shareready-native-egui-poc.exe --renderer wgpu
+```
+
+For isolated compare with the local build, run `poc/native-egui/Run-Renderer-Probes.ps1` from the repo root. Do not submit personal screenshots or sensitive clipboard contents.

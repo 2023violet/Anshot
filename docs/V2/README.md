@@ -1,7 +1,8 @@
 # ShareReady V2 — Rust Native development baseline
 
-Current phase: SR-V2-03 isolated all-Rust egui Windows POC in implementation/verification. V1.3 JS/WebView2 remains current shipping UI; no native GUI selection is frozen without G01–G10 evidence.
+Current phase: SR-V2-03 egui wgpu/DX12 **Windows CI software-adapter window PASS**, but physical Windows G01–G10 acceptance remains open. The V1.3 JS/WebView2 app remains the shipping implementation; no GUI candidate is finally frozen.
 
+- [V2_03_RENDERER_VALIDATION.md](V2_03_RENDERER_VALIDATION.md): source-matched glow/DX12/auto Windows renderer matrix, precise CI evidence and human validation limits.
 - [V2_03_NATIVE_GUI_POC.md](V2_03_NATIVE_GUI_POC.md): true Rust GUI source, Windows POC evidence and outstanding physical acceptance.
 - [V2_02_EDITOR_DOMAIN.md](V2_02_EDITOR_DOMAIN.md): source bytes, selection, eight handles, gestures, history, versioned Rust PNG artifacts and OS ticket boundaries.
 - [V2_01_WORKSPACE_MIGRATION.md](V2_01_WORKSPACE_MIGRATION.md): Rust Core/Editor integration, code ownership and verification.

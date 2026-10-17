@@ -1,6 +1,6 @@
 # SR-V2-03B｜egui Windows OpenGL 与 wgpu/DX12 可用性对照
 
-状态：STRICT_WGPU_LOCK_PINNED / RENDERER_RUNTIME_RECHECK_PENDING / PHYSICAL_WINDOWS_QA_NOT_RUN。
+状态：EGUI_WGPU_DX12_RUNNER_BOOTSTRAP_PASS / PHYSICAL_WINDOWS_QA_NOT_RUN。
 
 ## 技术结论与边界
 
@@ -35,3 +35,31 @@
 5. 现有 Windows C#/WebView2 V1.3 是正式产品，不移除也不发布 egui 为成品。
 
 所有 CI 仅验证其源提交对应的结果；独立 G01–G10 人工签署缺失一律标 NOT_VERIFIED。
+
+## 严格验证的最终机器结论（2026-10-16 America/Los_Angeles）
+
+**源提交**：`59885912745863a468aa02de8d8b6ab4e6e74580`；[Windows Renderer CI #39010280165](https://github.com/2023violet/ShareReady/actions/runs/39010280165) 完成 SUCCESS。新依赖锁文件只读且无漂移，Rust 原生 EXE Release 构建、自检均成功，三个独立窗口探针全部运行并正确记录结论。
+
+| 路径 | 退出码 | 窗口多帧 | 实际适配器/说明 |
+|---|---:|---|---|
+| glow | 1 | FAIL | `egui_glow requires opengl 2.0+` |
+| wgpu, `WGPU_BACKEND=dx12` | 0 | **PASS** | `backend=Dx12 type=Cpu`，Microsoft Basic Render Driver |
+| wgpu, Auto | 0 | **PASS** | 自动选择 `backend=Dx12 type=Cpu`，Microsoft Basic Render Driver |
+
+CI 记录明确输出 `SR_V2_03_RENDERER_MATRIX_COMPLETE supported_runner=2/3`。适配器 `max_texture_dimension_2d=16384`；这只是 wgpu 暴露的上限，**不是** 24MP 编辑性能已验收。EXE 为未签名原生 POC，[CI Artifact #12092761405](https://github.com/2023violet/ShareReady/actions/runs/39010280165)，仅作验证样机、存在 Actions 保留期限制。当前 CI 图形环境使用软件渲染，并非真实用户物理 GPU。
+
+**裁决**：`KEEP_EGUI_PRIMARY / PREFER_WGPU_ON_WINDOWS / NO_ICED_YET`。egui 的原生窗口与 Rust 工作台主路线继续；不因 glow 的 CI OpenGL 受限而直接转 iced。最终 `GO_EGUI` 严格等待 G01–G10 设备测试，尤其 Windows 独显/核显 GPU、混合 DPI、多屏、24MP RSS/GPU、Clipboard Paint 与第二应用回贴、Narrator 和原生保存失败恢复。
+
+### 可复现实机指令
+
+在真正 Windows 10/11 x64 用户桌面会话中，先下载上述 POC EXE 或在固定源码 SHA 重新构建，打开 PowerShell：
+
+```powershell
+# EXE 无参数：默认 wgpu 自动后端；记录实际 adapter
+.\shareready-native-egui-poc.exe --renderer wgpu
+$env:WGPU_BACKEND = "dx12"
+.\shareready-native-egui-poc.exe --renderer wgpu --smoke-window
+Remove-Item Env:WGPU_BACKEND -ErrorAction SilentlyContinue
+```
+
+如在源码仓库中执行完整三路检测，可使用 `poc/native-egui/Run-Renderer-Probes.ps1` 并检查 `renderer-matrix.json` 与三个 stdout/stderr 文件。完成 G01–G10 需要真实人工操作、设备元数据和像素证据；无人值守脚本不能签署此部分。数据仅保留在本地或 GitHub Actions 工件，不上传私人图片。

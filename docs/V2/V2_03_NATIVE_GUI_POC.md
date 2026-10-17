@@ -1,6 +1,6 @@
 # SR-V2-03｜Rust 原生 Windows GUI 样机与技术验收
 
-状态：WINDOWS_BINARY_AND_DOMAIN_TEST_PASS / NATIVE_GUI_RUNTIME_BLOCKED_OPENGL / G01-G10_ACCEPTANCE_PENDING（不可提前宣布 GO_EGUI）。
+状态：WINDOWS_EGUI_WGPU_DX12_RUNNER_PASS / G01-G10_PHYSICAL_ACCEPTANCE_PENDING（不可提前宣布 GO_EGUI）。
 
 ## 工程方案
 
@@ -41,3 +41,9 @@ Windows 安装 stable Rust、MSVC Build Tools；首先确认独立 Cargo.lock �
 - Windows GUI 启动尝试输出：OpenGL(PainterError("egui_glow requires opengl 2.0+. "))。因此 Windows runner 图形环境不足，G01-G08 真实桌面证据仍 NOT_VERIFIED；不应臆测正常 Windows 主机一定失败。
 - 隔离 Cargo.lock 已由 GitHub Actions 以非强推方式写到唯一 main，SHA 6159c18c14b33cc49b4355d0eb451f2a0820d74b。现在起 CI 只读并严格使用 --locked；不可再将自动生成的未锁版本当成最终通过。
 - 下一正式判断：在具备 Windows 10/11 GUI 会话及真实 GPU/DPI 的设备运行 G01–G10；如 glow 不适合目标设备，再有边界地验证 wgpu（DX12）后端，而不是直接宣布更换 iced 或反向宣称 egui 已通过。
+
+## 2026-10-16 / Windows 渲染后端最新结果
+
+本页之前描述的 glow runner 失败仍属准确历史记录，但并非当前的完整状态。**同一 egui Rust 原生程序已新增 wgpu/DX12 后端并在 Windows runner 成功启动多帧窗口**；Auto 模式同样成功。OpenGL 路径继续在该 runner 失败。详见 [V2_03_RENDERER_VALIDATION.md](V2_03_RENDERER_VALIDATION.md) 及 [source-matched CI #39010280165](https://github.com/2023violet/ShareReady/actions/runs/39010280165)。
+
+实际适配器为 `Microsoft Basic Render Driver`（`Dx12/Cpu` 软件渲染）。因此这一结果不能代替真实显卡、多屏 DPI、24MP GPU 和原生 OS 交互 G01–G10；GUI 最终选型仍为 CANDIDATE，**不启动 iced**。
