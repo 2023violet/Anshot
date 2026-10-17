@@ -47,8 +47,10 @@ foreach ($case in @(
       Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
       $proc.WaitForExit()
     }
-    $stdout = if (Test-Path $out) {Get-Content $out -Raw} else {""}
-    $stderr = if (Test-Path $err) {Get-Content $err -Raw} else {""}
+    # ReadAllText always produces a non-null string even for empty redirected files.
+    # Get-Content -Raw returned $null on CI, causing two false DX12 probe errors.
+    $stdout = if (Test-Path $out) {[IO.File]::ReadAllText($out)} else {""}
+    $stderr = if (Test-Path $err) {[IO.File]::ReadAllText($err)} else {""}
     $passed = (-not $timedOut) -and $proc.ExitCode -eq 0 -and $stdout.Contains("SR_V2_03_NATIVE_WINDOW_LIFECYCLE_PASS")
     $result = @{
       name=$case.name; renderer=$case.renderer; requested_backend=$case.backend
@@ -56,17 +58,27 @@ foreach ($case in @(
       wall_ms=[int]$watch.ElapsedMilliseconds
       adapter_line=@($stdout -split "\r?\n" | Where-Object {$_ -like "SR_V2_03_GPU_ADAPTER*" })
       stdout_file=[IO.Path]::GetFileName($out); stderr_file=[IO.Path]::GetFileName($err)
-      error_excerpt=($stderr.Trim() | Select-Object -First 1)
+      error_excerpt=($stderr -split "\r?\n" | Select-Object -First 1)
     }
     $results += $result
     Write-Host "SR_V2_03_RENDERER_PROBE name=$($case.name) passed=$passed exit=$($proc.ExitCode) timeout=$timedOut"
     if ($stdout.Contains("SR_V2_03_GPU_ADAPTER")) {
       ($stdout -split "\r?\n" | Where-Object {$_ -like "SR_V2_03_GPU_ADAPTER*" }) | ForEach-Object { Write-Host $_ }
     }
-    if (-not $passed -and $stderr.Trim()) {Write-Host "SR_V2_03_PROBE_ERROR $($case.name): $($stderr.Trim().Split([Environment]::NewLine)[0])"}
+    if (-not $passed) {
+      $excerpt=($stderr -split "\r?\n" | Where-Object { $_.Trim() } | Select-Object -First 3) -join " | "
+      if ($excerpt) {Write-Host "SR_V2_03_PROBE_ERROR $($case.name): $excerpt"}
+      else {Write-Host "SR_V2_03_PROBE_ERROR $($case.name): no stderr (examine stdout and exit code)"}
+    }
   } catch {
-    $results += @{ name=$case.name; renderer=$case.renderer; requested_backend=$case.backend; passed=$false; error=$_.Exception.Message }
-    Write-Host "SR_V2_03_RENDERER_PROBE name=$($case.name) passed=false error=$($_.Exception.Message)"
+    $outText=if(Test-Path $out){[IO.File]::ReadAllText($out)}else{""}
+    $errText=if(Test-Path $err){[IO.File]::ReadAllText($err)}else{""}
+    $results += @{ name=$case.name; renderer=$case.renderer; requested_backend=$case.backend; passed=$false; error=$_.Exception.Message;
+      stdout_excerpt=($outText -split "\r?\n" | Select-Object -First 3) -join " | ";
+      stderr_excerpt=($errText -split "\r?\n" | Select-Object -First 3) -join " | "
+    }
+    Write-Host "SR_V2_03_RENDERER_PROBE name=$($case.name) passed=false harness_error=$($_.Exception.Message)"
+    if($errText){Write-Host "SR_V2_03_PROCESS_STDERR $($case.name): $(($errText -split "\r?\n" | Select-Object -First 3) -join ' | ')"}
   } finally {
     if ($null -eq $prior) {Remove-Item Env:WGPU_BACKEND -ErrorAction SilentlyContinue}
     else {$env:WGPU_BACKEND = $prior}

@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # temporary, solely for one-time wgpu lock regeneration; reverted after pin
+  contents: read
 
 jobs:
   windows-egui-poc:
@@ -27,13 +27,10 @@ jobs:
           Write-Host "SR_V2_03_SOURCE_SHA=$env:GITHUB_SHA"
           cargo --version
           rustc --version
-          # The feature addition needs exactly one Cargo.lock refresh.
-          # Once the lock is pinned this step becomes strict-only.
-          cargo generate-lockfile --manifest-path poc/native-egui/Cargo.toml
-          if ($LASTEXITCODE -ne 0) {throw "Cargo lock bootstrap failed"}
+          if (-not (Test-Path poc/native-egui/Cargo.lock)) {throw "Pinned Cargo.lock missing"}
           cargo fetch --manifest-path poc/native-egui/Cargo.toml --locked
-          if ($LASTEXITCODE -ne 0) {throw "Locked Cargo fetch failed"}
-          Write-Host "SR_V2_03_LOCK_BOOTSTRAPPED_FOR_WGPU"
+          if ($LASTEXITCODE -ne 0) {throw "Strict locked Cargo fetch failed"}
+          Write-Host "SR_V2_03_WGPU_LOCKED_FETCH_PASS"
       - name: Build and test real Windows Rust native executable
         shell: pwsh
         run: |
@@ -47,32 +44,16 @@ jobs:
           & $exe --self-test
           if ($LASTEXITCODE -ne 0) {throw "Core/Editor executable self-test failed"}
           Get-FileHash $exe -Algorithm SHA256
+          git diff --exit-code -- poc/native-egui/Cargo.lock
+          if ($LASTEXITCODE -ne 0) {throw "Cargo.lock drift after strict build"}
           Write-Host "SR_V2_03_WINDOWS_COMPILE_AND_DOMAIN_TEST_PASS"
       - name: Windows graphics driver metadata and three renderer probes
         shell: pwsh
         continue-on-error: true
         run: |
           $ErrorActionPreference="Stop"
-          & "poc/native-egui/Run-Renderer-Probes.ps1" -OutputDir "poc/native-egui/evidence"
-          if ($LASTEXITCODE -ne 0) { throw "No GUI renderer successfully reached window lifecycle (consult artifact)" }
-      - name: Pin updated isolated wgpu dependency lock on unchanged main
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $ErrorActionPreference="Stop"
-          $lock="poc/native-egui/Cargo.lock"
-          $latest=(gh api "repos/$env:GITHUB_REPOSITORY/branches/main" --jq ".commit.sha").Trim()
-          if ($LASTEXITCODE -ne 0 -or $latest -ne $env:GITHUB_SHA) {throw "Main changed; refuse automatic lock update"}
-          $existing=gh api "repos/$env:GITHUB_REPOSITORY/contents/$lock" --jq ".sha"
-          if ($LASTEXITCODE -ne 0) {throw "Cannot read original lock blob"}
-          $content=[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $lock)))
-          $body=@{message="build(v2-03): pin wgpu/DX12 egui POC Cargo.lock";content=$content;sha=$existing.Trim();branch="main"} | ConvertTo-Json -Compress
-          $request=Join-Path $env:RUNNER_TEMP "dx12-lock-put.json"
-          [IO.File]::WriteAllText($request,$body,[Text.UTF8Encoding]::new($false))
-          gh api -X PUT "repos/$env:GITHUB_REPOSITORY/contents/$lock" --input $request
-          if ($LASTEXITCODE -ne 0) {throw "Pin updated lock failed"}
-          Write-Host "SR_V2_03_WGPU_LOCK_PINNED_FOLLOWUP_CI_REQUIRED"
+          & pwsh -NoProfile -File "poc/native-egui/Run-Renderer-Probes.ps1" -OutputDir "poc/native-egui/evidence"
+          if ($LASTEXITCODE -ne 0) { throw "Renderer matrix 0/3 or probe error; see uploaded JSON and streams" }
       - name: Upload native POC unsigned executable
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
