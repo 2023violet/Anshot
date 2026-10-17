@@ -7,6 +7,7 @@ let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
 let regions=[],selected=null,history=[],future=[],mode="mask",zoom=1;
 let revision=0,output=null,stage="empty",pointer=null,nextID=1,loadTicket=0;
 let copyState="not_attempted";
+let nativeDownloadState="not_attempted";
 let spaceHeld=false, zoomMode="fit";
 const HANDLE_DIRECTIONS=["nw","n","ne","e","se","s","sw","w"];
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -19,13 +20,20 @@ if(window.chrome?.webview?.addEventListener){
  window.chrome.webview.addEventListener("message",event=>{
   const data=event.data;
   if(!data||data.type!=="native-download")return;
+  // WebView2 downloads can finish after the user has returned to editing,
+  // imported a replacement source, or started a newer PNG download. Match
+  // both the specific Rust-created blob URL and the active pending request.
+  if(stage!=="review"||!output||output.revision!==revision||
+     nativeDownloadState!=="pending"||data.uri!==output.url)return;
   const result=String(data.state||"failed");
+  if(!["saved","canceled","blocked","failed"].includes(result))return;
+  nativeDownloadState=result;
   window.__shareReadyNativeDownload=result;
-  if(stage!=="review")return;
-  if(result==="saved")status("Windows 已将遮挡后的 PNG 保存至所选位置。");
-  else if(result==="canceled")status("已取消保存；当前成品仍可继续复核或保存。");
-  else if(result==="blocked")status("已阻止非本地 PNG 下载。");
-  else status("Windows 保存失败；请换一个有效位置重试。");
+  $("download").disabled=false;
+  if(result==="saved")status("Windows 已保存当前复核的 PNG。");
+  else if(result==="canceled")status("保存已取消，当前成品仍可重新保存。");
+  else if(result==="blocked")status("拒绝下载非本地成品；请重新检查并导出 PNG。");
+  else status("保存失败：请检查路径、权限或磁盘容量后重试。");
  });
 }
 
@@ -36,7 +44,9 @@ window.e2Debug={
  get regions(){return regions.map(r=>({...r}))},
  get sourceSize(){return [sourceW,sourceH]},
  get outputBytes(){return output?.bytes.byteLength??0},
- get fixture(){return label},get copyState(){return copyState}
+ get fixture(){return label},get copyState(){return copyState},
+ get nativeDownloadState(){return nativeDownloadState},
+ get outputUrl(){return output?.url??null}
 };
 function status(message){
  $("status").textContent=message;
@@ -45,7 +55,9 @@ function status(message){
 function snapshot(){return JSON.stringify(regions)}
 function clearOutput(){
  if(output?.url)URL.revokeObjectURL(output.url);
- output=null;copyState="not_attempted";$("copy").disabled=true;$("download").disabled=true;
+ output=null;copyState="not_attempted";nativeDownloadState="not_attempted";
+ window.__shareReadyNativeDownload="not_attempted";
+ $("copy").disabled=true;$("download").disabled=true;
  $("outputImage").removeAttribute("src");
 }
 function edited(){
@@ -475,14 +487,28 @@ function download(){
  if(stage!=="review"||!output||output.revision!==revision){
   status("输出已过期，请重新检查");return;
  }
- window.__shareReadyNativeDownload="pending";
+ const inDesktop=Boolean(window.chrome?.webview);
+ if(inDesktop&&nativeDownloadState==="pending")return;
  const a=document.createElement("a");
  const stem=label.replace(/\.(png|jpe?g)$/i,"").replace(/[^\w\u4e00-\u9fff-]+/g,"_").slice(0,60)||"image";
  a.href=output.url;a.download=stem+"_share_ready.png";
- a.click();
- status(window.chrome?.webview?
-  "Windows 正在打开保存对话框；取消保存不会影响当前成品。":
-  "已请求浏览器下载当前 Rust PNG。");
+ if(inDesktop){
+  nativeDownloadState="pending";
+  window.__shareReadyNativeDownload="pending";
+  $("download").disabled=true;
+ }
+ try{
+  a.click();
+  status(inDesktop?
+   "Windows 正在等待保存结果；取消或失败后可以重试。":
+   "已请求浏览器下载当前 Rust PNG。");
+ }catch(e){
+  if(inDesktop){
+   nativeDownloadState="failed";window.__shareReadyNativeDownload="failed";
+   $("download").disabled=false;
+  }
+  status("无法启动保存："+String(e?.message||e)+"。请重试。");
+ }
 }
 async function copy(){
  if(stage!=="review"||!output||output.revision!==revision){
@@ -495,19 +521,11 @@ async function copy(){
  try{
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error("不支持 PNG Clipboard API");
   await navigator.clipboard.write([new ClipboardItem({"image/png":source.blob})]);
-  if(stale()){
-   copyState="stale_during_copy";
-   status("复制过程中图片或复核状态已变化；旧复制结果不可作为当前成品。请重新生成。");
-   return;
-  }
+  if(stale())return; // Never overwrite a newer review's state or UI.
   copyState="write_succeeded_readback_unverified";
   status("PNG 写入剪贴板成功；尚未验证实际粘贴回读。");
  }catch(e){
-  if(stale()){
-   copyState="stale_during_copy";
-   status("复制过程中图片或复核状态已变化；请重新生成，不可使用旧复制结果。");
-   return;
-  }
+  if(stale())return; // A failed old copy must not taint the current image.
   copyState="denied_or_unavailable";
   status("复制失败："+String(e?.message||e)+"。请下载 PNG。");
  }finally{
