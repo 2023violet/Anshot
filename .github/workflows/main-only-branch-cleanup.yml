@@ -1,0 +1,75 @@
+name: ONE-TIME main-only branch cleanup (approved 2026-10-17)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/main-only-branch-cleanup.yml'
+permissions: {}
+jobs:
+  delete-obsolete-refs:
+    if: ${{ github.event.before == '9f49a09c3fe1d1977d9a024ced548990c16dbe75' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout all main ancestry (no persisted credentials)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify complete main ancestry and exact obsolete branch heads
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          cat > /tmp/obsolete-branches <<'BRANCHES'
+          docs/stage01-direction-skill-gates 97904074110c0f7e98b8584f9d0c5ca7b50e57d7
+          docs/v1-2-localhost-security-gates 7a071d7a5ebeb6e9bed1c2fce83727ed94971db1
+          feature/e2-workbench-integration a1e41f6e264ccfd7138cfca87baeea9c1085032e
+          feature/v1-1-windows-launcher-edit-ux c16b0953a4705a36b5c93a1645704ebd7a4cde7e
+          feature/v1-2-native-desktop-precision 91daa84ef8d631edae1e7437e3c33b33c5bb518c
+          feature/v1-3-01-windows-native-runtime 14fc614501b377c5b0e3df1deb963018bb2f9d6f
+          feature/v1-3-02-canvas-interactions bb8ac44d86bf8cca6fe8c24f39699cb79593b575
+          feature/v1-3-03-workflow-stability 0e9e50a780f74906937f177c403db5ee2bfe9ec2
+          feature/v1-local-image-workbench 3eec75cc5aa4cfd70ed9529f8115ef4046261874
+          spike/e1-rust-wasm-feasibility 5985db57c38ecf4cc152d2dcb5893dd57dddaa01
+          test/v12-01-win-raw-tcp-red f82437c8be03ad4bfa87ccf64481fac7a7134109
+          BRANCHES
+          test "$(wc -l < /tmp/obsolete-branches)" -eq 11
+          while read -r branch expected_sha; do
+            test "$branch" != main
+            actual_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq '.object.sha')
+            if [[ "$actual_sha" != "$expected_sha" ]]; then
+              echo "::error::Branch $branch moved; refusing all deletions"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$expected_sha" HEAD; then
+              echo "::error::Unmerged branch history: $branch; refusing all deletions"
+              exit 1
+            fi
+            echo "VERIFIED_ANCESTOR $branch $expected_sha"
+          done < /tmp/obsolete-branches
+          echo "EXACT_11_BRANCH_PREFLIGHT_PASS"
+      - name: Delete exactly the eleven approved refs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          while read -r branch expected_sha; do
+            actual_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq '.object.sha')
+            test "$actual_sha" = "$expected_sha"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch" >/dev/null
+            echo "DELETED $branch"
+            echo "- Deleted \`$branch\` at \`$expected_sha\`" >> "$GITHUB_STEP_SUMMARY"
+          done < /tmp/obsolete-branches
+          remaining=$(gh api "repos/$GITHUB_REPOSITORY/branches?per_page=100" --jq '.[].name')
+          if [[ "$remaining" != main ]]; then
+            echo "::error::Unexpected branches remain: $remaining"
+            exit 1
+          fi
+          echo "ONE_BRANCH_ONLY_MAIN_PASS"
+          echo "- Verified sole remaining branch: \`main\`" >> "$GITHUB_STEP_SUMMARY"
