@@ -1,0 +1,173 @@
+{
+  "schema": "shareready.v1-golden/1",
+  "status": "CAPTURE_PENDING_PIN",
+  "provenance": {
+    "source_repository": "2023violet/ShareReady",
+    "baseline_main_commit": "0e6eb1c258c3564f90ca663aa01de5c9a935c147",
+    "source_manifest": "docs/research/fixtures/manifest.json",
+    "trusted_cover_rgba": [
+      17,
+      24,
+      39,
+      255
+    ]
+  },
+  "cases": [
+    {
+      "id": "T01_CHAT",
+      "input": "T01_CHAT.png",
+      "sha256": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          84,
+          154,
+          166,
+          237
+        ],
+        [
+          184,
+          154,
+          387,
+          197
+        ],
+        [
+          184,
+          205,
+          379,
+          249
+        ],
+        [
+          858,
+          148,
+          1119,
+          262
+        ]
+      ],
+      "expected_pixel_sha256": null
+    },
+    {
+      "id": "T02_ORDER",
+      "input": "T02_ORDER.png",
+      "sha256": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          105,
+          469,
+          568,
+          518
+        ],
+        [
+          105,
+          536,
+          508,
+          586
+        ],
+        [
+          105,
+          604,
+          679,
+          654
+        ]
+      ],
+      "expected_pixel_sha256": null
+    },
+    {
+      "id": "T03_SUPPORT",
+      "input": "T03_SUPPORT.png",
+      "sha256": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+      "dimensions": [
+        1400,
+        900
+      ],
+      "masks": [
+        [
+          90,
+          332,
+          545,
+          385
+        ],
+        [
+          90,
+          413,
+          942,
+          467
+        ],
+        [
+          90,
+          494,
+          1045,
+          549
+        ]
+      ],
+      "expected_pixel_sha256": null
+    },
+    {
+      "id": "T04_EDGES",
+      "input": "T04_EDGES.png",
+      "sha256": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "masks": [
+        [
+          15,
+          12,
+          950,
+          90
+        ],
+        [
+          1550,
+          12,
+          2394,
+          90
+        ],
+        [
+          8,
+          1497,
+          905,
+          1595
+        ],
+        [
+          1490,
+          1497,
+          2398,
+          1595
+        ]
+      ],
+      "expected_pixel_sha256": null
+    },
+    {
+      "id": "T05_JPEG_EXIF",
+      "input": "T05_JPEG_EXIF.jpg",
+      "sha256": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          78,
+          539,
+          627,
+          588
+        ],
+        [
+          78,
+          612,
+          675,
+          664
+        ]
+      ],
+      "expected_pixel_sha256": null
+    }
+  ]
+}
