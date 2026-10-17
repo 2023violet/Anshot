@@ -7,7 +7,11 @@ let ready=false,sourceBytes=null,sourceURL=null,label="",sourceW=0,sourceH=0;
 let regions=[],selected=null,history=[],future=[],mode="mask",zoom=1;
 let revision=0,output=null,stage="empty",pointer=null,nextID=1,loadTicket=0;
 let copyState="not_attempted";
-let nativeDownloadState="not_attempted";
+let nativeDownloadState="not_attempted",nativePendingUrl=null;
+function revokeNativePendingUrl(){
+ if(nativePendingUrl)URL.revokeObjectURL(nativePendingUrl);
+ nativePendingUrl=null;
+}
 let spaceHeld=false, zoomMode="fit";
 const HANDLE_DIRECTIONS=["nw","n","ne","e","se","s","sw","w"];
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -24,11 +28,12 @@ if(window.chrome?.webview?.addEventListener){
   // imported a replacement source, or started a newer PNG download. Match
   // both the specific Rust-created blob URL and the active pending request.
   if(stage!=="review"||!output||output.revision!==revision||
-     nativeDownloadState!=="pending"||data.uri!==output.url)return;
+     nativeDownloadState!=="pending"||data.uri!==nativePendingUrl)return;
   const result=String(data.state||"failed");
   if(!["saved","canceled","blocked","failed"].includes(result))return;
   nativeDownloadState=result;
   window.__shareReadyNativeDownload=result;
+  revokeNativePendingUrl();
   $("download").disabled=false;
   if(result==="saved")status("Windows 已保存当前复核的 PNG。");
   else if(result==="canceled")status("保存已取消，当前成品仍可重新保存。");
@@ -46,6 +51,7 @@ window.e2Debug={
  get outputBytes(){return output?.bytes.byteLength??0},
  get fixture(){return label},get copyState(){return copyState},
  get nativeDownloadState(){return nativeDownloadState},
+ get pendingDownloadUrl(){return nativePendingUrl},
  get outputUrl(){return output?.url??null}
 };
 function status(message){
@@ -54,6 +60,7 @@ function status(message){
 }
 function snapshot(){return JSON.stringify(regions)}
 function clearOutput(){
+ revokeNativePendingUrl();
  if(output?.url)URL.revokeObjectURL(output.url);
  output=null;copyState="not_attempted";nativeDownloadState="not_attempted";
  window.__shareReadyNativeDownload="not_attempted";
@@ -489,24 +496,31 @@ function download(){
  }
  const inDesktop=Boolean(window.chrome?.webview);
  if(inDesktop&&nativeDownloadState==="pending")return;
+ // WebView2 can suppress a second download of a previously canceled
+ // blob: URL. Each attempt gets a NEW one-use URL pointing at the same
+ // already-reviewed Rust-generated PNG bytes. No re-encoding or raw fallback.
+ const attemptUrl=URL.createObjectURL(output.blob);
  const a=document.createElement("a");
  const stem=label.replace(/\.(png|jpe?g)$/i,"").replace(/[^\w\u4e00-\u9fff-]+/g,"_").slice(0,60)||"image";
- a.href=output.url;a.download=stem+"_share_ready.png";
+ a.href=attemptUrl;a.download=stem+"_share_ready.png";
  if(inDesktop){
+  nativePendingUrl=attemptUrl;
   nativeDownloadState="pending";
   window.__shareReadyNativeDownload="pending";
   $("download").disabled=true;
  }
  try{
   a.click();
+  if(!inDesktop)setTimeout(()=>URL.revokeObjectURL(attemptUrl),60000);
   status(inDesktop?
    "Windows 正在等待保存结果；取消或失败后可以重试。":
    "已请求浏览器下载当前 Rust PNG。");
  }catch(e){
   if(inDesktop){
+   revokeNativePendingUrl();
    nativeDownloadState="failed";window.__shareReadyNativeDownload="failed";
    $("download").disabled=false;
-  }
+  }else URL.revokeObjectURL(attemptUrl);
   status("无法启动保存："+String(e?.message||e)+"。请重试。");
  }
 }
