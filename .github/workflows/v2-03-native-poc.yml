@@ -1,0 +1,112 @@
+name: SR-V2-03 Rust native Windows egui feasibility
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/v2-03-native-poc.yml
+      - poc/native-egui/**
+      - crates/shareready-core/**
+      - crates/shareready-editor/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-egui-poc:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Resolve isolated Cargo dependency lock
+        shell: pwsh
+        run: |
+          $ErrorActionPreference="Stop"
+          Write-Host "SR_V2_03_SOURCE_SHA=$env:GITHUB_SHA"
+          cargo --version
+          rustc --version
+          if (Test-Path poc/native-egui/Cargo.lock) {
+            cargo fetch --manifest-path poc/native-egui/Cargo.toml --locked
+            if ($LASTEXITCODE -ne 0) {throw "Locked Cargo fetch failed"}
+            Write-Host "SR_V2_03_PINNED_LOCK_PRESENT"
+          } else {
+            cargo generate-lockfile --manifest-path poc/native-egui/Cargo.toml
+            if ($LASTEXITCODE -ne 0) {throw "Generate lock failed"}
+            Write-Host "SR_V2_03_LOCK_GENERATED_NOT_PINNED"
+          }
+      - name: Build and test real Windows Rust native executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference="Stop"
+          cargo test --manifest-path poc/native-egui/Cargo.toml --locked
+          if ($LASTEXITCODE -ne 0) {throw "Rust tests failed"}
+          cargo build --manifest-path poc/native-egui/Cargo.toml --locked --release
+          if ($LASTEXITCODE -ne 0) {throw "Native GUI build failed"}
+          $exe="poc/native-egui/target/release/shareready-native-egui-poc.exe"
+          if (-not (Test-Path $exe)) {throw "Missing EXE"}
+          & $exe --self-test
+          if ($LASTEXITCODE -ne 0) {throw "Core/Editor executable self-test failed"}
+          Get-FileHash $exe -Algorithm SHA256
+          Write-Host "SR_V2_03_WINDOWS_COMPILE_AND_DOMAIN_TEST_PASS"
+      - name: Probe actual Windows GUI lifecycle
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference="Stop"
+          $exe="poc/native-egui/target/release/shareready-native-egui-poc.exe"
+          $out=Join-Path $env:RUNNER_TEMP "egui-window-out.txt"
+          $err=Join-Path $env:RUNNER_TEMP "egui-window-err.txt"
+          $p=Start-Process -FilePath $exe -ArgumentList "--smoke-window" -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+          $watch=[Diagnostics.Stopwatch]::StartNew()
+          while (-not $p.HasExited -and $watch.Elapsed.TotalSeconds -lt 25) {
+            Start-Sleep -Milliseconds 300
+            $p.Refresh()
+          }
+          if (-not $p.HasExited) {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            Write-Host "SR_V2_03_GUI_LIFECYCLE_NOT_VERIFIED_TIMEOUT"
+            exit 2
+          }
+          if (Test-Path $out) {Get-Content $out}
+          if (Test-Path $err) {Get-Content $err}
+          if ($p.ExitCode -ne 0 -or -not (Select-String -Path $out -Pattern "SR_V2_03_NATIVE_WINDOW_LIFECYCLE_PASS" -Quiet)) {
+            Write-Host "SR_V2_03_GUI_LIFECYCLE_NOT_VERIFIED"
+            exit 2
+          }
+          Write-Host "SR_V2_03_NATIVE_GUI_LIFECYCLE_PASS_RUNNER_ONLY"
+      - name: Pin isolated lock to unchanged main
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference="Stop"
+          $lock="poc/native-egui/Cargo.lock"
+          if (-not (Test-Path $lock)) {throw "Missing lock"}
+          git ls-files --error-unmatch $lock 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            git diff --exit-code -- $lock
+            if ($LASTEXITCODE -ne 0) {throw "Committed lock drift"}
+            Write-Host "SR_V2_03_PINNED_LOCK_VERIFIED"
+            exit 0
+          }
+          $latest=(gh api "repos/$env:GITHUB_REPOSITORY/branches/main" --jq ".commit.sha").Trim()
+          if ($latest -ne $env:GITHUB_SHA) {throw "Main changed; refuse pin"}
+          $content=[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $lock)))
+          $body=@{message="build(v2-03): pin isolated egui POC Cargo.lock";content=$content;branch="main"} | ConvertTo-Json -Compress
+          $file=Join-Path $env:RUNNER_TEMP "isolated-lock.json"
+          [IO.File]::WriteAllText($file,$body,[Text.UTF8Encoding]::new($false))
+          gh api -X PUT "repos/$env:GITHUB_REPOSITORY/contents/poc/native-egui/Cargo.lock" --input $file
+          if ($LASTEXITCODE -ne 0) {throw "Lock pin failed"}
+          Write-Host "SR_V2_03_LOCK_COMMITTED_SECOND_CI_REQUIRED"
+      - name: Upload native POC unsigned executable
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: shareready-v2-03-egui-windows-poc
+          path: |
+            poc/native-egui/target/release/shareready-native-egui-poc.exe
+            poc/native-egui/Cargo.lock
+          if-no-files-found: warn
+          retention-days: 14

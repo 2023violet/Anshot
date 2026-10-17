@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 # Unified Rust Workspace compilation artifacts
 target/
+
+# Isolated egui POC compilation output
+poc/native-egui/target/

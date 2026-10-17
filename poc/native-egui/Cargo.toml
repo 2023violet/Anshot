@@ -1,0 +1,23 @@
+[package]
+name = "shareready-native-egui-poc"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+publish = false
+license = "MIT"
+description = "Isolated Windows-first all-Rust native GUI feasibility probe; not a V2 product release."
+
+[workspace]
+resolver = "2"
+
+[dependencies]
+shareready-core = { path = "../../crates/shareready-core" }
+shareready-editor = { path = "../../crates/shareready-editor" }
+eframe = { version = "=0.36.2", default-features = false, features = ["glow", "accesskit", "default_fonts"] }
+rfd = { version = "=0.15.4", default-features = false }
+arboard = { version = "=3.6.1", default-features = false, features = ["image-data"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
