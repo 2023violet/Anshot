@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>低保真线框</title>
+<style>
+  :root { --bg:#f4f4f2; --ink:#222; --mute:#777; --line:#999; --soft:#ddd; --fill:#e9e9e6; --pane:#fff; --hi:#222; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif; }
+  header { padding:24px 16px 8px; max-width:1100px; margin:auto; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  header p { margin:0; color:var(--mute); }
+  nav { max-width:1100px; margin:8px auto 0; padding:0 16px; display:flex; flex-wrap:wrap; gap:6px; }
+  nav a { color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:2px 8px; text-decoration:none; font-size:12px; background:var(--pane); }
+  main { max-width:1100px; margin:auto; padding:16px; display:grid; gap:28px; }
+  section h2 { font-size:15px; margin:0 0 2px; }
+  section .note { color:var(--mute); font-size:12px; margin:0 0 8px; }
+  .frame { border:2px solid var(--ink); background:var(--pane); border-radius:6px; overflow:hidden; position:relative; }
+  .win { display:flex; flex-direction:column; height:420px; }
+  .title { height:28px; border-bottom:1px solid var(--line); display:flex; align-items:center; padding:0 10px; font-size:12px; color:var(--mute); justify-content:space-between; }
+  .bar { display:flex; align-items:center; gap:4px; padding:6px 8px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .btn { border:1px solid var(--line); border-radius:4px; padding:2px 8px; font-size:12px; background:var(--pane); white-space:nowrap; }
+  .btn.on { background:var(--hi); color:#fff; border-color:var(--hi); }
+  .btn.primary { border:2px solid var(--ink); font-weight:bold; }
+  .btn.dis { color:#bbb; border-color:var(--soft); }
+  .sep { width:1px; height:20px; background:var(--line); margin:0 4px; }
+  .grow { flex:1; }
+  .prop { background:var(--fill); font-size:12px; gap:10px; }
+  .dot { width:14px; height:14px; border-radius:50%; border:1px solid var(--ink); display:inline-block; }
+  .dot.sel { outline:2px solid var(--ink); outline-offset:2px; }
+  .canvas { flex:1; background:repeating-linear-gradient(45deg,#f7f7f5 0 10px,#efefec 10px 20px); position:relative; overflow:hidden; }
+  .img { position:absolute; left:8%; top:8%; right:8%; bottom:8%; background:var(--pane); border:1px solid var(--line); }
+  .ph { position:absolute; background:var(--soft); border-radius:2px; }
+  .status { height:28px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; padding:0 10px; font-size:12px; color:var(--mute); }
+  .solid { position:absolute; background:#333; }
+  .mosaic { position:absolute; background:conic-gradient(#666 25%,#999 0 50%,#666 0 75%,#999 0) 0 0/10px 10px; }
+  .handles { position:absolute; border:1.5px dashed var(--ink); }
+  .handles i { position:absolute; width:8px; height:8px; background:#fff; border:1.5px solid var(--ink); }
+  .arrow { position:absolute; height:3px; background:var(--ink); transform-origin:left center; }
+  .arrow::after { content:""; position:absolute; right:-2px; top:-5px; border-left:10px solid var(--ink); border-top:6.5px solid transparent; border-bottom:6.5px solid transparent; }
+  .rect { position:absolute; border:3px solid var(--ink); }
+  .num { position:absolute; width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font-size:12px; display:grid; place-items:center; }
+  .txt { position:absolute; font-size:14px; font-weight:bold; }
+  .label { position:absolute; font-size:11px; background:var(--ink); color:#fff; padding:1px 5px; border-radius:3px; }
+  .callout { position:absolute; font-size:11px; color:#b00; border:1px dashed #b00; padding:1px 4px; background:#fff8; }
+  .overlay { height:360px; background:#555; position:relative; overflow:hidden; }
+  .overlay .shade { position:absolute; inset:0; background:repeating-linear-gradient(0deg,#666 0 24px,#5a5a5a 24px 48px); }
+  .overlay .sel { position:absolute; left:30%; top:22%; width:38%; height:46%; background:#fff; border:2px solid #fff; outline:1px dashed #000; }
+  .mag { position:absolute; left:70%; top:70%; width:90px; height:90px; border:2px solid #fff; background:#888; display:grid; place-items:center; color:#fff; font-size:11px; }
+  .hint { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); background:#000c; color:#fff; font-size:12px; padding:4px 10px; border-radius:4px; white-space:nowrap; }
+  .toast { position:absolute; right:14px; bottom:14px; background:var(--ink); color:#fff; padding:8px 12px; border-radius:6px; font-size:13px; display:flex; gap:10px; align-items:center; }
+  .toast .btn { background:transparent; color:#fff; border-color:#fff; }
+  .dialog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(360px,90%); background:var(--pane); border:2px solid var(--ink); border-radius:6px; padding:14px; box-shadow:0 6px 0 #0002; }
+  .dialog .row { display:flex; gap:6px; justify-content:flex-end; margin-top:12px; flex-wrap:wrap; }
+  .dim { position:absolute; inset:0; background:#0004; }
+  .empty { display:grid; place-items:center; height:100%; text-align:center; gap:10px; }
+  .big { border:2px solid var(--ink); border-radius:6px; padding:14px 18px; min-width:120px; background:var(--pane); }
+  .drop { border:2px dashed var(--line); border-radius:8px; padding:30px 40px; color:var(--mute); }
+  .menu { width:200px; border:2px solid var(--ink); background:var(--pane); border-radius:6px; padding:4px 0; }
+  .menu div { padding:6px 12px; font-size:13px; display:flex; justify-content:space-between; }
+  .menu div:hover { background:var(--fill); }
+  .menu hr { border:0; border-top:1px solid var(--soft); margin:4px 0; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .narrow { max-width:520px; }
+  .crop-dark { position:absolute; background:#0006; }
+  @media (max-width:760px) { .two { grid-template-columns:1fr; } .win { height:380px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>ShareReady 低保真线框 v0.1</h1>
+  <p>对应 02_UX_ARCHITECTURE.md。灰度、无视觉风格，只表达布局、层级与流程。红色虚线框为说明标注。</p>
+</header>
+<nav>
+  <a href="#s1">S1 截图覆盖层</a><a href="#s2a">S2 编辑</a><a href="#s2b">S2 选中对象</a><a href="#s2c">S2 文字编辑</a><a href="#s2d">S2 裁剪</a><a href="#s2e">S2 窄窗口</a><a href="#s3">S3 空状态</a><a href="#s4">S4 提示</a><a href="#s5">S5 确认</a><a href="#s0">S0 托盘</a>
+</nav>
+<main>
+
+<section id="s1">
+  <h2>S1 截图覆盖层 · 拖拽选区中</h2>
+  <p class="note">屏幕冻结后变暗；选区内保持原亮度。左上角尺寸标签，指针旁放大镜。单击 = 吸附窗口；Enter 无选区 = 全屏；Esc / 右键取消。</p>
+  <div class="frame overlay">
+    <div class="shade"></div>
+    <div class="sel"></div>
+    <span class="label" style="left:30%;top:calc(22% - 22px)">812 × 466</span>
+    <div class="mag">放大镜<br>x 1204 y 688</div>
+    <div class="hint">拖拽选区 · 单击选窗口 · Enter 全屏 · Esc 取消</div>
+  </div>
+</section>
+
+<section id="s2a">
+  <h2>S2 编辑窗口 · 箭头工具（创建后空闲）</h2>
+  <p class="note">打开时 100%，尽量放在原截图位置。工具三组：标注 ｜ 遮挡 ｜ 画布。复制是唯一主按钮。属性条随当前工具变化。</p>
+  <div class="frame win">
+    <div class="title"><span>截图 2026-10-19 14:32 — ShareReady</span><span>— ▢ ✕</span></div>
+    <div class="bar">
+      <span class="btn">选择 V</span><span class="btn on">箭头 A</span><span class="btn">框 R</span><span class="btn">文字 T</span><span class="btn">序号 N</span><span class="btn">高亮 H</span>
+      <span class="sep"></span><span class="btn">遮挡 B</span><span class="btn">马赛克 M</span>
+      <span class="sep"></span><span class="btn">裁剪 C</span>
+      <span class="sep"></span><span class="btn">↶</span><span class="btn dis">↷</span>
+      <span class="grow"></span><span class="btn">保存</span><span class="btn primary">复制</span>
+    </div>
+    <div class="bar prop">颜色 <span class="dot sel" style="background:#d33"></span><span class="dot" style="background:#e90"></span><span class="dot" style="background:#3a3"></span><span class="dot" style="background:#36c"></span><span class="dot" style="background:#222"></span><span class="dot" style="background:#fff"></span><span class="sep"></span>粗细 <span class="btn">细</span><span class="btn on">中</span><span class="btn">粗</span></div>
+    <div class="canvas">
+      <div class="img">
+        <div class="ph" style="left:5%;top:8%;width:40%;height:8%"></div>
+        <div class="ph" style="left:5%;top:22%;width:60%;height:6%"></div>
+        <div class="ph" style="left:5%;top:34%;width:52%;height:6%"></div>
+        <div class="ph" style="left:5%;top:52%;width:70%;height:20%"></div>
+        <div class="solid" style="left:55%;top:21%;width:22%;height:8%"></div>
+        <div class="mosaic" style="left:5%;top:78%;width:30%;height:10%"></div>
+        <div class="arrow" style="left:30%;top:46%;width:22%;transform:rotate(-22deg)"></div>
+        <div class="num" style="left:52%;top:10%">1</div>
+        <div class="rect" style="left:62%;top:50%;width:26%;height:26%"></div>
+      </div>
+    </div>
+    <div class="status"><span>1624 × 932</span><span>已遮挡 2 处</span><span class="grow"></span><span class="btn">适应</span><span class="btn on">1:1</span><span class="btn">−</span><span>100%</span><span class="btn">+</span></div>
+  </div>
+</section>
+
+<section id="s2b">
+  <h2>S2 · 选中一个遮挡对象</h2>
+  <p class="note">任何工具下单击对象即选中；8 个手柄。属性条换成对象属性：遮挡样式切换 + 删除。方向键 1px / Shift 10px。</p>
+  <div class="frame win">
+    <div class="title"><span>截图 — ShareReady</span><span>— ▢ ✕</span></div>
+    <div class="bar"><span class="btn on">选择 V</span><span class="btn">箭头 A</span><span class="btn">框 R</span><span class="btn">文字 T</span><span class="btn">序号 N</span><span class="btn">高亮 H</span><span class="sep"></span><span class="btn">遮挡 B</span><span class="btn">马赛克 M</span><span class="sep"></span><span class="btn">裁剪 C</span><span class="sep"></span><span class="btn">↶</span><span class="btn dis">↷</span><span class="grow"></span><span class="btn">保存</span><span class="btn primary">复制</span></div>
+    <div class="bar prop">遮挡样式 <span class="btn on">实心</span><span class="btn">安全马赛克</span><span class="sep"></span>颜色 <span class="dot sel" style="background:#222"></span><span class="dot" style="background:#fff"></span><span class="sep"></span>X 892 Y 196 W 356 H 74<span class="grow"></span><span class="btn">删除 Del</span></div>
+    <div class="canvas">
+      <div class="img">
+        <div class="ph" style="left:5%;top:8%;width:40%;height:8%"></div>
+        <div class="ph" style="left:5%;top:22%;width:60%;height:6%"></div>
+        <div class="ph" style="left:5%;top:52%;width:70%;height:20%"></div>
+        <div class="solid" style="left:55%;top:21%;width:22%;height:8%"></div>
+        <div class="handles" style="left:55%;top:21%;width:22%;height:8%">
+          <i style="left:-5px;top:-5px"></i><i style="left:calc(50% - 4px);top:-5px"></i><i style="right:-5px;top:-5px"></i>
+          <i style="left:-5px;top:calc(50% - 4px)"></i><i style="right:-5px;top:calc(50% - 4px)"></i>
+          <i style="left:-5px;bottom:-5px"></i><i style="left:calc(50% - 4px);bottom:-5px"></i><i style="right:-5px;bottom:-5px"></i>
+        </div>
+        <span class="callout" style="left:55%;top:33%">遮挡层永远在标注之下、原图之上</span>
+      </div>
+    </div>
+    <div class="status"><span>1624 × 932</span><span>已遮挡 2 处</span><span class="grow"></span><span>100%</span></div>
+  </div>
+</section>
+
+<div class="two">
+<section id="s2c">
+  <h2>S2 · 文字编辑中</h2>
+  <p class="note">双击或用文字工具单击进入。IME 组字期间暂停全部单键快捷键。Enter 完成，Shift+Enter 换行，Esc 退出。</p>
+  <div class="frame win" style="height:300px">
+    <div class="bar prop">颜色 <span class="dot sel" style="background:#d33"></span><span class="dot" style="background:#222"></span><span class="sep"></span>字号 <span class="btn">18 ▾</span><span class="btn">背景底色</span></div>
+    <div class="canvas">
+      <div class="img">
+        <div class="ph" style="left:5%;top:10%;width:60%;height:10%"></div>
+        <div class="txt" style="left:12%;top:40%;border:1.5px dashed var(--ink);padding:2px 6px">点这里修改密码|</div>
+        <span class="callout" style="left:12%;top:62%">输入法候选框跟随光标</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s2d">
+  <h2>S2 · 裁剪模式</h2>
+  <p class="note">外部变暗，8 手柄；属性条可直接输入尺寸。Enter 确认、Esc 取消；可撤销。</p>
+  <div class="frame win" style="height:300px">
+    <div class="bar prop">宽 <span class="btn">1200</span> 高 <span class="btn">640</span><span class="btn">锁定比例</span><span class="grow"></span><span class="btn">取消 Esc</span><span class="btn primary">确认 Enter</span></div>
+    <div class="canvas">
+      <div class="img">
+        <div class="ph" style="left:5%;top:10%;width:60%;height:10%"></div>
+        <div class="ph" style="left:5%;top:40%;width:80%;height:30%"></div>
+        <div class="crop-dark" style="left:0;top:0;right:0;height:18%"></div>
+        <div class="crop-dark" style="left:0;bottom:0;right:0;height:14%"></div>
+        <div class="crop-dark" style="left:0;top:18%;bottom:14%;width:10%"></div>
+        <div class="crop-dark" style="right:0;top:18%;bottom:14%;width:8%"></div>
+        <div class="handles" style="left:10%;top:18%;right:8%;bottom:14%;border-style:solid">
+          <i style="left:-5px;top:-5px"></i><i style="right:-5px;top:-5px"></i><i style="left:-5px;bottom:-5px"></i><i style="right:-5px;bottom:-5px"></i>
+          <i style="left:calc(50% - 4px);top:-5px"></i><i style="left:calc(50% - 4px);bottom:-5px"></i><i style="left:-5px;top:calc(50% - 4px)"></i><i style="right:-5px;top:calc(50% - 4px)"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<section id="s2e" class="narrow">
+  <h2>S2 · 窄窗口（宽 &lt; 900）</h2>
+  <p class="note">工具栏只留图标，属性条横向滚动；复制始终可见。最小 640×420。</p>
+  <div class="frame win" style="height:300px">
+    <div class="bar"><span class="btn on">↖</span><span class="btn">➚</span><span class="btn">▭</span><span class="btn">T</span><span class="btn">①</span><span class="btn">▨</span><span class="sep"></span><span class="btn">■</span><span class="btn">▦</span><span class="sep"></span><span class="btn">⌗</span><span class="grow"></span><span class="btn">↶</span><span class="btn">💾</span><span class="btn primary">复制</span></div>
+    <div class="canvas"><div class="img"><div class="ph" style="left:6%;top:10%;width:60%;height:10%"></div></div></div>
+    <div class="status"><span>已遮挡 0 处</span><span class="grow"></span><span>适应 62%</span></div>
+  </div>
+</section>
+
+<div class="two">
+<section id="s3">
+  <h2>S3 启动空状态</h2>
+  <p class="note">从开始菜单启动、无图片时出现。三个入口 + 拖放区。</p>
+  <div class="frame win" style="height:320px">
+    <div class="title"><span>ShareReady</span><span>— ▢ ✕</span></div>
+    <div class="canvas" style="background:var(--pane)">
+      <div class="empty">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          <div class="big"><b>截图</b><br><small>Ctrl+Shift+A</small></div>
+          <div class="big"><b>打开图片</b><br><small>Ctrl+O</small></div>
+          <div class="big"><b>粘贴</b><br><small>Ctrl+V</small></div>
+        </div>
+        <div class="drop">或把 PNG / JPEG 拖到这里</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2>S4 轻提示</h2>
+  <p class="note">屏幕右下角，3 秒自动消失；失败提示带重试并保持到用户处理。</p>
+  <div class="frame" style="height:320px;background:repeating-linear-gradient(45deg,#f7f7f5 0 10px,#efefec 10px 20px)">
+    <div class="toast" style="bottom:120px">✓ 已复制到剪贴板</div>
+    <div class="toast" style="bottom:70px">✓ 已保存 · 截图_1432.png <span class="btn">打开文件夹</span></div>
+    <div class="toast">✕ 复制失败：剪贴板被占用 <span class="btn">重试</span></div>
+  </div>
+</section>
+</div>
+
+<div class="two">
+<section id="s5">
+  <h2>S5 关闭确认</h2>
+  <p class="note">仅当最后一次复制/保存之后有改动时出现。</p>
+  <div class="frame" style="height:260px">
+    <div class="dim"></div>
+    <div class="dialog">
+      <b>有未复制或保存的编辑</b>
+      <p style="margin:6px 0 0;color:var(--mute);font-size:13px">关闭后这些编辑会丢失。</p>
+      <div class="row"><span class="btn">取消</span><span class="btn">放弃编辑</span><span class="btn primary">复制后关闭</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="s0">
+  <h2>S0 托盘菜单</h2>
+  <p class="note">P0 只有三项；双击托盘图标 = 截图。设置为 P1。</p>
+  <div class="frame" style="height:260px;display:grid;place-items:center">
+    <div class="menu">
+      <div><span>截图</span><span style="color:var(--mute)">Ctrl+Shift+A</span></div>
+      <div><span>打开图片…</span></div>
+      <hr>
+      <div><span>退出</span></div>
+    </div>
+  </div>
+</section>
+</div>
+
+</main>
+</body>
+</html>
