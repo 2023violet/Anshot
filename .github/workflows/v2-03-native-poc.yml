@@ -7,6 +7,9 @@ on:
       - poc/native-egui/**
       - crates/shareready-core/**
       - crates/shareready-editor/**
+      - crates/shareready-platform-windows/**
+      - Cargo.toml
+      - Cargo.lock
   workflow_dispatch:
 
 permissions:
@@ -35,7 +38,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference="Stop"
-          cargo test --manifest-path poc/native-egui/Cargo.toml --locked
+          cargo test -p shareready-platform-windows --locked
+          if ($LASTEXITCODE -ne 0) {throw "Windows platform tests failed"}
+          cargo test --manifest-path poc/native-egui/Cargo.toml --workspace --locked
           if ($LASTEXITCODE -ne 0) {throw "Rust tests failed"}
           cargo build --manifest-path poc/native-egui/Cargo.toml --locked --release
           if ($LASTEXITCODE -ne 0) {throw "Native GUI build failed"}

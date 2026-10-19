@@ -10,12 +10,23 @@ description = "Isolated Windows-first all-Rust native GUI feasibility probe; not
 [workspace]
 resolver = "2"
 
+[features]
+# Explicit local synthetic diagnostics; excluded from ordinary builds.
+performance-evidence = []
+
 [dependencies]
 shareready-core = { path = "../../crates/shareready-core" }
 shareready-editor = { path = "../../crates/shareready-editor" }
+shareready-platform-windows = { path = "../../crates/shareready-platform-windows" }
+shareready-native-input-bridge = { path = "input-bridge" }
 eframe = { version = "=0.36.2", default-features = false, features = ["glow", "wgpu", "accesskit", "default_fonts"] }
 rfd = { version = "=0.15.4", default-features = false }
 arboard = { version = "=3.6.1", default-features = false, features = ["image-data"] }
+
+[target.'cfg(windows)'.dev-dependencies]
+# Test-only owned station/clipboard fixtures; Security is required for the
+# creation API's parameter type. No security descriptor is set or modified.
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_StationsAndDesktops", "Win32_System_Threading", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 opt-level = "s"

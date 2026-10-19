@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "kind": "fixed synthetic 24MP RGB PNG with global fiducials and 1px lines",
+  "generator": "tests/native_oracle/make_performance_fixtures.py",
+  "formula": "RGB=(x%251,y%251,(x//251+(y//251)*101)%256), then five 64px color/white-diagonal fiducials and a black center 1px horizontal line",
+  "license": "CC0-1.0; generated project synthetic pixels, no external/private image",
+  "budget_scope": "two compressible synthetic PNGs; not worst-case entropy/JPEG/alpha/all inputs",
+  "files": [
+    {
+      "file": "grid-24mp.png",
+      "size": [
+        6000,
+        4000
+      ],
+      "bytes": 83221,
+      "sha256": "29c42e8393907a39e341bdc7d47ebfff8acb4e7a02af9d46a2abe52bf77fffda",
+      "rgb_sha256": "62067de8e9e59bbcedd1494f436d9c026aa9b336bc9aff81fb1cc68ccd13e7b5",
+      "alpha": "opaque"
+    },
+    {
+      "file": "wide-24mp.png",
+      "size": [
+        24000,
+        1000
+      ],
+      "bytes": 78163,
+      "sha256": "0c87a1d6786b15b44da9a1bcf912bb2e9f3263ed80ea2289a332cc1c2c097a2e",
+      "rgb_sha256": "2203410dc45f1dc2a4cdf947467bf52c7b536684a4f970537578320af6df5fea",
+      "alpha": "opaque"
+    }
+  ]
+}
