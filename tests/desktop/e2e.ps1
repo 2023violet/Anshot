@@ -210,4 +210,26 @@ Log "ESC overlays_before=$before after=$(([E]::Visible([uint32]$app.Id, 'ShareRe
 
 if (-not $app.HasExited) { $app.Kill() }
 if (-not $fixture.HasExited) { Stop-Process -Id $fixture.Id -Force }
+Start-Sleep -Milliseconds 500
+
+# ---- 7. B3: single-key tools, safe mosaic, arrow, text, copy ----
+[System.Windows.Forms.Clipboard]::Clear()
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x4D                                # M: safe mosaic
+Drag $w ($io.X + 374) ($io.Y + 143) ($io.X + 476) ($io.Y + 163)
+Key 0x41                                # A: arrow
+Drag $w ($io.X + 450) ($io.Y + 360) ($io.X + 360) ($io.Y + 300)
+Key 0x54                                # T: text
+[void][E]::SetCursorPos($w.O.X + $io.X + 400, $w.O.Y + $io.Y + 380); Start-Sleep -Milliseconds 200
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+foreach ($k in 0x32, 0x30, 0x32, 0x36) { Key ([byte]$k) }   # "2026" (digits pass through any IME mode)
+Key 0x0D                                # Enter commits the text
+Shot $w '11-b3-annotated.png'
+Key 0x43 -Ctrl
+Start-Sleep -Milliseconds 1500
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) { $clip.Save((Join-Path $Out 'clipboard-b3.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "B3 clipboard=$($clip.Width)x$($clip.Height)" } else { Log "B3 clipboard=none" }
+if (-not $w.P.HasExited) { $w.P.Kill() }
+
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

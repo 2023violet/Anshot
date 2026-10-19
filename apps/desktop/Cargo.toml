@@ -25,6 +25,7 @@ path = "src/main.rs"
 shareready-core = { path = "../../crates/shareready-core" }
 shareready-editor = { path = "../../crates/shareready-editor" }
 shareready-platform-windows = { path = "../../crates/shareready-platform-windows" }
+shareready-render = { path = "../../crates/shareready-render" }
 slint = "=1.18.1"
 image = { version = "=0.25.8", default-features = false, features = ["png"] }
 rfd = { version = "=0.15.4", default-features = false }

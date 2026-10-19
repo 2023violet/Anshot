@@ -9,3 +9,4 @@ description = "Rust editor document identity, history, and asynchronous operatio
 
 [dependencies]
 shareready-core = { path = "../shareready-core" }
+shareready-render = { path = "../shareready-render" }

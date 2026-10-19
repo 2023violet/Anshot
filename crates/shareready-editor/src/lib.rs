@@ -6,7 +6,8 @@ pub mod viewport;
 pub use geometry::{Handle, PixelRect};
 pub use viewport::{Point, Viewport, ViewportError};
 
-use shareready_core::{decode_source, redact, Region, MAX_PIXELS};
+use shareready_core::{decode_source, redact, Region, COVER, MAX_PIXELS};
+pub use shareready_render::{Annotation, RedactStyle, Redaction, Scene, Shape};
 use std::sync::Arc;
 
 const MAX_MASKS: usize = 1024;
@@ -19,7 +20,14 @@ pub enum OperationKind { Review, Copy, Save }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Ticket {pub stamp: Stamp, pub operation_id: u64, pub kind: OperationKind}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Mask {pub id: u64, pub region: Region}
+pub struct Mask {pub id: u64, pub region: Region, pub style: RedactStyle}
+/// An annotation object in the same id space and history as masks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnnotationObject {pub id: u64, pub annotation: Annotation}
+/// A redaction is never translucent: force solid fills to alpha 255.
+fn opaque(style:RedactStyle)->RedactStyle{match style{RedactStyle::Solid([r,g,b,_])=>RedactStyle::Solid([r,g,b,255]),s=>s}}
+/// V1-compatible default: Core `COVER` solid fill.
+pub const DEFAULT_REDACTION: RedactStyle = RedactStyle::Solid(COVER.0);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GestureKind { Move, Resize(Handle) }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,8 +38,8 @@ pub enum EditError {
     OperationPending, OutputNotReviewed, IdentityOverflow, MissingSource,
     GestureInProgress, WrongGesture, NoChange, StaleReview, CoreFailure(String),
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Snapshot {masks:Vec<Mask>,selected:Option<u64>}
+#[derive(Clone, Debug, PartialEq)]
+struct Snapshot {masks:Vec<Mask>,annotations:Vec<AnnotationObject>,crop:Option<Region>,selected:Option<u64>}
 #[derive(Clone, Debug)]
 struct Gesture {ticket:GestureTicket,id:u64,base:Region,kind:GestureKind,preview:Region}
 #[derive(Clone, Debug)]
@@ -45,6 +53,8 @@ impl ReviewKey {
     pub fn ticket(&self)->Ticket{self.ticket}
 }
 pub struct ReviewWork {key:ReviewKey,dimensions:(u32,u32),regions:Vec<Region>}
+/// Full-scene export work (redactions with styles, annotations, crop). May run off-thread.
+pub struct RenderWork {key:ReviewKey,dimensions:(u32,u32),scene:Scene}
 pub struct ReviewResult {key:ReviewKey,dimensions:(u32,u32),bytes:Arc<[u8]>}
 /// A validated source, not a reviewed output or an authority to discard edits.
 /// Presentation code cannot forge dimensions or duplicate this owned candidate.
@@ -74,6 +84,15 @@ impl ReviewWork {
         Ok(ReviewResult{key:self.key,dimensions:self.dimensions,bytes:Arc::from(bytes)})
     }
 }
+impl RenderWork {
+    pub fn key(&self)->ReviewKey{self.key.clone()}
+    pub fn scene(&self)->&Scene{&self.scene}
+    /// The render crate owns composition; Core owns decoding and PNG validation.
+    pub fn run(self)->Result<ReviewResult,EditError>{
+        let bytes=shareready_render::render_png(self.key.source.as_ref(),&self.scene).map_err(EditError::CoreFailure)?;
+        Ok(ReviewResult{key:self.key,dimensions:self.dimensions,bytes:Arc::from(bytes)})
+    }
+}
 impl ReviewResult {
     pub fn bytes(&self)->&[u8]{self.bytes.as_ref()}
     pub fn dimensions(&self)->(u32,u32){self.dimensions}
@@ -87,6 +106,8 @@ pub struct Editor {
     width:u32,height:u32,
     source:Option<Arc<[u8]>>,
     masks:Vec<Mask>,
+    annotations:Vec<AnnotationObject>,
+    crop:Option<Region>,
     selected:Option<u64>,
     undo:Vec<Snapshot>, redo:Vec<Snapshot>,
     next_mask_id:u64,
@@ -112,7 +133,7 @@ impl Editor {
         Self::check_dimensions(width,height)?;
         Ok(Self{
             stamp:Stamp{document_id:1,revision:0},width,height,source:None,
-            masks:Vec::new(),selected:None,undo:Vec::new(),redo:Vec::new(),
+            masks:Vec::new(),annotations:Vec::new(),crop:None,selected:None,undo:Vec::new(),redo:Vec::new(),
             next_mask_id:1,active:None,next_gesture_id:1,
             output:None,pending_png:None,pending:None,next_op:1,last_delivery:None,
         })
@@ -129,6 +150,20 @@ impl Editor {
     pub fn stamp(&self)->Stamp{self.stamp}
     pub fn dimensions(&self)->(u32,u32){(self.width,self.height)}
     pub fn masks(&self)->&[Mask]{&self.masks}
+    pub fn annotations(&self)->&[AnnotationObject]{&self.annotations}
+    pub fn crop(&self)->Option<Region>{self.crop}
+    /// Exported image size (after crop).
+    pub fn output_dimensions(&self)->(u32,u32){
+        shareready_render::output_size(self.dimensions(),&self.scene()).unwrap_or(self.dimensions())
+    }
+    /// The exact scene an export of the current revision renders.
+    pub fn scene(&self)->Scene{
+        Scene{
+            redactions:self.masks.iter().map(|m|Redaction{region:m.region,style:m.style}).collect(),
+            annotations:self.annotations.iter().map(|a|a.annotation.clone()).collect(),
+            crop:self.crop,
+        }
+    }
     pub fn selected(&self)->Option<u64>{self.selected}
     pub fn can_undo(&self)->bool{!self.undo.is_empty()}
     pub fn can_redo(&self)->bool{!self.redo.is_empty()}
@@ -143,12 +178,12 @@ impl Editor {
     pub fn source_bytes(&self)->Option<&[u8]>{self.source.as_deref()}
     pub fn select(&mut self,id:Option<u64>)->Result<(),EditError>{
         if let Some(id)=id {
-            if !self.masks.iter().any(|m|m.id==id){return Err(EditError::InvalidMaskIndex);}
+            if !self.masks.iter().any(|m|m.id==id) && !self.annotations.iter().any(|a|a.id==id){return Err(EditError::InvalidMaskIndex);}
         }
         self.selected=id;
         Ok(())
     }
-    fn snapshot(&self)->Snapshot {Snapshot{masks:self.masks.clone(),selected:self.selected}}
+    fn snapshot(&self)->Snapshot {Snapshot{masks:self.masks.clone(),annotations:self.annotations.clone(),crop:self.crop,selected:self.selected}}
     fn invalidate(&mut self){
         self.output=None;self.pending_png=None;self.pending=None;self.last_delivery=None;
     }
@@ -157,7 +192,7 @@ impl Editor {
     }
     fn change(&mut self,next:Snapshot)->Result<bool,EditError>{
         self.ensure_idle()?;
-        if self.masks==next.masks {
+        if self.masks==next.masks && self.annotations==next.annotations && self.crop==next.crop {
             self.selected=next.selected;
             return Ok(false);
         }
@@ -166,7 +201,7 @@ impl Editor {
         if self.undo.len()==HISTORY_LIMIT{self.undo.remove(0);}
         self.undo.push(before);
         self.redo.clear();
-        self.masks=next.masks;self.selected=next.selected;
+        self.masks=next.masks;self.annotations=next.annotations;self.crop=next.crop;self.selected=next.selected;
         self.stamp.revision=revision;
         self.invalidate();
         Ok(true)
@@ -177,16 +212,66 @@ impl Editor {
     }
     /// Every real edit is one undo entry, even if initiated from a keyboard command.
     pub fn add_mask(&mut self,candidate:Region)->Result<u64,EditError>{
+        self.add_redaction(candidate,DEFAULT_REDACTION)
+    }
+    pub fn add_redaction(&mut self,candidate:Region,style:RedactStyle)->Result<u64,EditError>{
+        let style=opaque(style);
         self.ensure_idle()?;
-        if self.masks.len()>=MAX_MASKS {return Err(EditError::MaskLimit);}
+        if self.masks.len()+self.annotations.len()>=MAX_MASKS {return Err(EditError::MaskLimit);}
         let region=self.normalized(candidate)?;
         let id=self.next_mask_id;
         let next_id=id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         let mut next=self.snapshot();
-        next.masks.push(Mask{id,region});next.selected=Some(id);
+        next.masks.push(Mask{id,region,style});next.selected=Some(id);
         self.change(next)?;
         self.next_mask_id=next_id;
         Ok(id)
+    }
+    pub fn set_redaction_style(&mut self,id:u64,style:RedactStyle)->Result<bool,EditError>{
+        let style=opaque(style);
+        self.ensure_idle()?;
+        let mut next=self.snapshot();
+        next.masks.iter_mut().find(|m|m.id==id).ok_or(EditError::InvalidMaskIndex)?.style=style;
+        self.change(next)
+    }
+    /// One undo entry per added annotation.
+    pub fn add_annotation(&mut self,annotation:Annotation)->Result<u64,EditError>{
+        self.ensure_idle()?;
+        if self.masks.len()+self.annotations.len()>=MAX_MASKS {return Err(EditError::MaskLimit);}
+        let id=self.next_mask_id;
+        let next_id=id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
+        let mut next=self.snapshot();
+        next.annotations.push(AnnotationObject{id,annotation});next.selected=Some(id);
+        self.change(next)?;
+        self.next_mask_id=next_id;
+        Ok(id)
+    }
+    /// Move / resize / restyle an annotation as one undo entry (GUI owns the live preview).
+    pub fn replace_annotation(&mut self,id:u64,annotation:Annotation)->Result<bool,EditError>{
+        self.ensure_idle()?;
+        let mut next=self.snapshot();
+        next.annotations.iter_mut().find(|a|a.id==id).ok_or(EditError::InvalidMaskIndex)?.annotation=annotation;
+        next.selected=Some(id);
+        self.change(next)
+    }
+    /// Remove a mask or an annotation.
+    pub fn remove_object(&mut self,id:u64)->Result<(),EditError>{
+        if self.masks.iter().any(|m|m.id==id){return self.remove_mask(id);}
+        self.ensure_idle()?;
+        let mut next=self.snapshot();
+        let pos=next.annotations.iter().position(|a|a.id==id).ok_or(EditError::InvalidMaskIndex)?;
+        next.annotations.remove(pos);
+        if next.selected==Some(id){next.selected=None;}
+        self.change(next)?;
+        Ok(())
+    }
+    /// Crop is part of the history; `None` restores the full image.
+    pub fn set_crop(&mut self,crop:Option<Region>)->Result<bool,EditError>{
+        self.ensure_idle()?;
+        let crop=match crop {Some(r)=>Some(self.normalized(r)?),None=>None};
+        let mut next=self.snapshot();
+        next.crop=crop;
+        self.change(next)
     }
     pub fn remove_mask(&mut self,id:u64)->Result<(),EditError>{
         self.ensure_idle()?;
@@ -199,7 +284,8 @@ impl Editor {
     }
     pub fn clear_masks(&mut self)->Result<bool,EditError>{
         self.ensure_idle()?;
-        self.change(Snapshot{masks:Vec::new(),selected:None})
+        let mut next=self.snapshot();next.masks.clear();next.selected=None;
+        self.change(next)
     }
     pub fn move_mask(&mut self,id:u64,dx:i64,dy:i64)->Result<bool,EditError>{
         self.ensure_idle()?;
@@ -278,7 +364,7 @@ impl Editor {
         let revision=self.stamp.revision.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         let previous=self.undo.pop().ok_or(EditError::EmptyHistory)?;
         self.redo.push(self.snapshot());
-        self.masks=previous.masks;self.selected=previous.selected;
+        self.masks=previous.masks;self.annotations=previous.annotations;self.crop=previous.crop;self.selected=previous.selected;
         self.stamp.revision=revision;self.invalidate();
         Ok(())
     }
@@ -288,7 +374,7 @@ impl Editor {
         let next=self.redo.pop().ok_or(EditError::EmptyHistory)?;
         if self.undo.len()==HISTORY_LIMIT{self.undo.remove(0);}
         self.undo.push(self.snapshot());
-        self.masks=next.masks;self.selected=next.selected;
+        self.masks=next.masks;self.annotations=next.annotations;self.crop=next.crop;self.selected=next.selected;
         self.stamp.revision=revision;self.invalidate();
         Ok(())
     }
@@ -298,7 +384,7 @@ impl Editor {
         let next_id=self.stamp.document_id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         self.width=w;self.height=h;self.source=None;
         self.stamp=Stamp{document_id:next_id,revision:0};
-        self.masks.clear();self.selected=None;self.undo.clear();self.redo.clear();
+        self.masks.clear();self.annotations.clear();self.crop=None;self.selected=None;self.undo.clear();self.redo.clear();
         self.active=None;self.invalidate();
         Ok(())
     }
@@ -319,6 +405,19 @@ impl Editor {
         self.invalidate();self.next_op=next;self.pending=Some(ticket);
         Ok(ReviewWork{key:ReviewKey{ticket,source},dimensions:self.dimensions(),regions})
     }
+    /// Reserve a full-scene export. Unlike `prepare_review`, an image with only
+    /// annotations (or nothing) may be exported: the GUI states the redaction count.
+    pub fn prepare_render(&mut self)->Result<RenderWork,EditError>{
+        self.ensure_idle()?;
+        if self.pending.is_some(){return Err(EditError::OperationPending);}
+        let source=self.source.as_ref().ok_or(EditError::MissingSource)?.clone();
+        let op=self.next_op;
+        let next=op.checked_add(1).ok_or(EditError::IdentityOverflow)?;
+        let ticket=Ticket{stamp:self.stamp,operation_id:op,kind:OperationKind::Review};
+        let scene=self.scene();let dimensions=self.output_dimensions();
+        self.invalidate();self.next_op=next;self.pending=Some(ticket);
+        Ok(RenderWork{key:ReviewKey{ticket,source},dimensions,scene})
+    }
     pub fn review_is_current(&self,key:&ReviewKey)->bool{
         key.ticket.kind==OperationKind::Review && self.pending==Some(key.ticket) &&
             key.ticket.stamp==self.stamp && self.source.as_ref().is_some_and(|s|Arc::ptr_eq(s,&key.source))
@@ -331,7 +430,7 @@ impl Editor {
     /// Accept only Core-produced bytes for this exact owner and operation.
     /// This does not grant delivery: the adapter must show this PNG, then finish.
     pub fn accept_review(&mut self,result:ReviewResult)->Result<Ticket,EditError>{
-        if !self.review_is_current(&result.key) || result.dimensions!=self.dimensions(){
+        if !self.review_is_current(&result.key) || result.dimensions!=self.output_dimensions(){
             return Err(EditError::StaleReview);
         }
         let ticket=result.key.ticket;self.pending_png=Some(result.bytes);Ok(ticket)
@@ -382,6 +481,65 @@ impl Editor {
             }
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod scene_tests{
+    use super::*;
+    const FIX:&[u8]=include_bytes!("../../../docs/research/fixtures/T01_CHAT.png");
+    fn ann(x:f32)->Annotation{Annotation{shape:Shape::Arrow{from:(x,10.0),to:(x+50.0,60.0),width:4.0},color:[229,52,43,255]}}
+    #[test] fn annotations_styles_and_crop_share_one_history_and_invalidate_output(){
+        let mut e=Editor::from_source(FIX.to_vec()).unwrap();
+        let m=e.add_redaction(Region::new(10,10,60,40),RedactStyle::SafeMosaic).unwrap();
+        let a=e.add_annotation(ann(100.0)).unwrap();
+        assert_eq!(e.selected(),Some(a));
+        assert!(e.set_redaction_style(m,RedactStyle::Solid([0,0,0,255])).unwrap());
+        assert!(e.replace_annotation(a,ann(120.0)).unwrap());
+        assert!(e.set_crop(Some(Region::new(0,0,600,400))).unwrap());
+        assert_eq!(e.output_dimensions(),(600,400));
+        let scene=e.scene();
+        assert_eq!(scene.redactions[0].style,RedactStyle::Solid([0,0,0,255]));
+        assert_eq!(scene.annotations[0],ann(120.0));
+        for _ in 0..3 {e.undo().unwrap();}
+        assert_eq!(e.masks()[0].style,RedactStyle::SafeMosaic);
+        assert_eq!(e.annotations()[0].annotation,ann(100.0));
+        assert_eq!(e.crop(),None);
+        e.remove_object(a).unwrap();
+        assert!(e.annotations().is_empty());
+        e.undo().unwrap();
+        assert_eq!(e.annotations().len(),1);
+    }
+    #[test] fn render_exports_annotation_only_scenes_with_crop_and_rejects_stale_results(){
+        let mut e=Editor::from_source(FIX.to_vec()).unwrap();
+        e.add_annotation(ann(100.0)).unwrap();
+        e.set_crop(Some(Region::new(50,0,450,300))).unwrap();
+        let work=e.prepare_render().unwrap();let key=work.key();
+        let result=work.run().unwrap();
+        assert_eq!(result.dimensions(),(400,300));
+        let review=e.accept_review(result).unwrap();
+        assert!(e.finish(review,true));
+        let copy=e.begin(OperationKind::Copy).unwrap();
+        let png=e.bytes_for(copy).unwrap();
+        assert_eq!(shareready_core::decode_generated_png(png,(400,300)).unwrap().dimensions(),(400,300));
+        assert!(e.finish(copy,true));
+        // A newer edit makes an older render unacceptable.
+        let work=e.prepare_render().unwrap();let result=work.run().unwrap();
+        e.add_annotation(ann(200.0)).unwrap();
+        assert!(e.accept_review(result).is_err());
+        assert!(!e.review_is_current(&key));
+    }
+    #[test] fn translucent_solid_redactions_are_forced_opaque(){
+        let mut e=Editor::from_source(FIX.to_vec()).unwrap();
+        let id=e.add_redaction(Region::new(0,0,10,10),RedactStyle::Solid([1,2,3,0])).unwrap();
+        assert_eq!(e.masks()[0].style,RedactStyle::Solid([1,2,3,255]));
+        e.set_redaction_style(id,RedactStyle::Solid([9,9,9,10])).unwrap();
+        assert_eq!(e.masks()[0].style,RedactStyle::Solid([9,9,9,255]));
+    }
+    #[test] fn legacy_review_path_still_requires_a_mask(){
+        let mut e=Editor::from_source(FIX.to_vec()).unwrap();
+        e.add_annotation(ann(1.0)).unwrap();
+        assert_eq!(e.prepare_review().err(),Some(EditError::NoEffectiveMask));
     }
 }
 

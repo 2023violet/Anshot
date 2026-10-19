@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/shareready-core", "crates/shareready-editor", "crates/shareready-platform-windows", "e1-spike"]
+members = ["crates/shareready-core", "crates/shareready-editor", "crates/shareready-platform-windows", "crates/shareready-render", "e1-spike"]
 default-members = ["crates/shareready-core", "crates/shareready-editor", "e1-spike"]
 
 [workspace.package]

@@ -2,7 +2,7 @@
 //! pointer position hits. Pure Rust so it is unit-tested without a window.
 #![forbid(unsafe_code)]
 use shareready_core::Region;
-use shareready_editor::{Handle, Mask, Point, Viewport};
+use shareready_editor::{Handle, Point, Viewport};
 
 /// Visual handles are 8 logical px; the hit box is 16 x 16 (half-open).
 pub const HANDLE_HIT_HALF: f64 = 8.0;
@@ -46,36 +46,14 @@ impl View {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Hit { Handle(u64, Handle), Body(u64), Empty }
-
 pub const HANDLES: [(Handle, f64, f64); 8] = [
     (Handle::Nw, 0.0, 0.0), (Handle::N, 0.5, 0.0), (Handle::Ne, 1.0, 0.0), (Handle::W, 0.0, 0.5),
     (Handle::E, 1.0, 0.5), (Handle::Sw, 0.0, 1.0), (Handle::S, 0.5, 1.0), (Handle::Se, 1.0, 1.0),
 ];
 
-/// Handles of the selected mask win over any body; topmost (last) body wins.
-pub fn hit_test(view: View, masks: &[Mask], selected: Option<u64>, p: Point) -> Hit {
-    if let Some(m) = selected.and_then(|id| masks.iter().find(|m| m.id == id)) {
-        let (x, y, w, h) = view.rect(m.region);
-        for (handle, fx, fy) in HANDLES {
-            let (hx, hy) = (x + w * fx, y + h * fy);
-            if (p.x - hx).abs() < HANDLE_HIT_HALF && (p.y - hy).abs() < HANDLE_HIT_HALF {
-                return Hit::Handle(m.id, handle);
-            }
-        }
-    }
-    for m in masks.iter().rev() {
-        let (x, y, w, h) = view.rect(m.region);
-        if p.x >= x && p.x < x + w && p.y >= y && p.y < y + h { return Hit::Body(m.id); }
-    }
-    Hit::Empty
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn mask(id: u64, x0: i64, y0: i64, x1: i64, y1: i64) -> Mask { Mask { id, region: Region::new(x0, y0, x1, y1) } }
 
     #[test]
     fn fit_never_upscales_and_centers() {
@@ -85,20 +63,6 @@ mod tests {
         let big = View::layout(4000, 2000, 1000.0, 600.0, Zoom::Fit);
         assert!((big.scale - (952.0 / 4000.0)).abs() < 1e-12);
         assert!(big.width() <= 952.0 + 1e-9 && big.height() <= 552.0 + 1e-9);
-    }
-
-    #[test]
-    fn handle_hit_box_is_16px_half_open_and_beats_bodies() {
-        let v = View::layout(400, 200, 1000.0, 600.0, Zoom::Fit); // scale 1, origin 300,200
-        let masks = [mask(1, 100, 50, 200, 100), mask(2, 150, 80, 260, 150)];
-        // Se handle of mask 1 at canvas (500, 300); mask 2 body overlaps it.
-        let se = Point { x: 500.0, y: 300.0 };
-        assert_eq!(hit_test(v, &masks, Some(1), se), Hit::Handle(1, Handle::Se));
-        assert_eq!(hit_test(v, &masks, Some(1), Point { x: 507.9, y: 307.9 }), Hit::Handle(1, Handle::Se));
-        assert_eq!(hit_test(v, &masks, Some(1), Point { x: 508.0, y: 300.0 }), Hit::Body(2));
-        // Without selection, the topmost body wins.
-        assert_eq!(hit_test(v, &masks, None, se), Hit::Body(2));
-        assert_eq!(hit_test(v, &masks, None, Point { x: 10.0, y: 10.0 }), Hit::Empty);
     }
 
     #[test]

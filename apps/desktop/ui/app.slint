@@ -1,6 +1,7 @@
-// ShareReady main window (02 S2/S3/S5, 05 H01-H16). Logic lives in Rust; this file only renders state.
+// ShareReady main window (02 S2/S3/S5, 05 H01-H22). Logic lives in Rust; this file only renders state.
+// The canvas image is the Rust-rendered scene (WYSIWYG); Slint draws only selection chrome.
 import { Theme } from "theme.slint";
-import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Shield, ToolButton, VSep } from "widgets.slint";
+import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Segmented, Shield, Swatches, ToolButton, VSep } from "widgets.slint";
 import { AboutSlint } from "std-widgets.slint";
 export { CaptureOverlay, Box } from "overlay.slint";
 export { Tray, ToastWindow } from "shell.slint";
@@ -21,8 +22,9 @@ export component AppWindow inherits Window {
     in property <bool> opening;
     in property <image> preview;
     in property <length> img-x; in property <length> img-y; in property <length> img-w; in property <length> img-h;
-    in property <[MaskBox]> masks;
-    in property <bool> draft-visible; in property <MaskBox> draft;
+    in property <bool> sel-visible; in property <MaskBox> sel;
+    in property <bool> crop-visible; in property <MaskBox> crop; in property <bool> crop-active;
+    in property <[MaskBox]> grips;
     in property <string> tool: "redact";
     in property <bool> can-undo; in property <bool> can-redo; in property <bool> can-deliver;
     in property <string> busy; // "", "copy", "save"
@@ -30,8 +32,18 @@ export component AppWindow inherits Window {
     in property <string> dims-text;
     in property <string> zoom-text: "100%";
     in property <bool> zoom-fit: true;
+    // property bar: "redact" | "mosaic" | "stroke" | "fill" | "text" | "hint-select"
+    in property <string> prop-mode: "redact";
     in property <bool> has-selection;
+    in property <bool> has-region;
     in property <string> sel-x; in property <string> sel-y; in property <string> sel-w; in property <string> sel-h;
+    in property <int> color-index; in property <int> width-index: 1; in property <int> size-index: 1;
+    in property <bool> text-background; in property <int> solid-index;
+    // in-place text editing
+    in property <bool> text-editing;
+    in property <length> text-x; in property <length> text-y; in property <length> text-size: 18px;
+    in property <color> text-color: #e5342b;
+    in property <string> text-initial;
     in property <string> toast-kind; // "", "done", "error", "warn"
     in property <string> toast-title; in property <string> toast-detail; in property <string> toast-action;
     in property <string> dialog; // "", "close", "replace", "about"
@@ -42,10 +54,16 @@ export component AppWindow inherits Window {
     callback pointer-down(length, length);
     callback pointer-move(length, length);
     callback pointer-up();
+    callback double-click(length, length);
     callback canvas-size(length, length);
     callback key(string, bool, bool, bool) -> bool; // text, ctrl, shift, alt-or-meta
     callback command(string);
     callback dialog-choice(string);
+    callback text-commit(string);
+    callback text-cancel();
+
+    property <[color]> inks: [#e5342b, #ffc60a, #22a652, #2f6ff0, #ffffff, #1a1915];
+    property <[string]> ink-names: ["红", "黄", "绿", "蓝", "白", "黑"];
 
     forward-focus: keys;
     keys := FocusScope {
@@ -66,16 +84,16 @@ export component AppWindow inherits Window {
                     }
                     VerticalLayout { alignment: center; horizontal-stretch: 0; HorizontalLayout { spacing: 4px;
                         ToolButton { label: "选择 V"; d: "M 4 4 L 11 21 L 13.5 13.5 L 21 11 Z"; selected: root.has-document && root.tool == "select"; enabled: root.has-document; clicked => { root.command("tool-select"); } }
-                        ToolButton { label: "箭头 A（后续版本）"; d: "M 5 19 L 19 5 M 9 5 L 19 5 L 19 15"; enabled: false; }
-                        ToolButton { label: "框 R（后续版本）"; d: "M 4 5 L 20 5 L 20 19 L 4 19 Z"; enabled: false; }
-                        ToolButton { label: "文字 T（后续版本）"; d: "M 5 6 L 5 4 L 19 4 L 19 6 M 12 4 L 12 20 M 9 20 L 15 20"; enabled: false; }
-                        ToolButton { label: "序号 N（后续版本）"; d: "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 M 11 9 L 12.5 8 L 12.5 16"; enabled: false; }
-                        ToolButton { label: "高亮 H（后续版本）"; d: "M 9 11 L 4 16 L 4 20 L 8 20 L 13 15 M 9 11 L 14 6 L 18 10 L 13 15 Z"; enabled: false; }
+                        ToolButton { label: "箭头 A"; d: "M 5 19 L 19 5 M 9 5 L 19 5 L 19 15"; selected: root.has-document && root.tool == "arrow"; enabled: root.has-document; clicked => { root.command("tool-arrow"); } }
+                        ToolButton { label: "框 R"; d: "M 4 5 L 20 5 L 20 19 L 4 19 Z"; selected: root.has-document && root.tool == "rect"; enabled: root.has-document; clicked => { root.command("tool-rect"); } }
+                        ToolButton { label: "文字 T"; d: "M 5 6 L 5 4 L 19 4 L 19 6 M 12 4 L 12 20 M 9 20 L 15 20"; selected: root.has-document && root.tool == "text"; enabled: root.has-document; clicked => { root.command("tool-text"); } }
+                        ToolButton { label: "序号 N"; d: "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 M 11 9 L 12.5 8 L 12.5 16"; selected: root.has-document && root.tool == "number"; enabled: root.has-document; clicked => { root.command("tool-number"); } }
+                        ToolButton { label: "高亮 H"; d: "M 9 11 L 4 16 L 4 20 L 8 20 L 13 15 M 9 11 L 14 6 L 18 10 L 13 15 Z"; selected: root.has-document && root.tool == "highlight"; enabled: root.has-document; clicked => { root.command("tool-highlight"); } }
                         VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
                         ToolButton { label: "遮挡 B"; d: "M 12 3 L 20 6 L 20 12 L 17 18 L 12 21 L 7 18 L 4 12 L 4 6 Z"; selected: root.has-document && root.tool == "redact"; enabled: root.has-document; clicked => { root.command("tool-redact"); } }
-                        ToolButton { label: "马赛克 M（后续版本）"; d: "M 4 4 L 11 4 L 11 11 L 4 11 Z M 13 13 L 20 13 L 20 20 L 13 20 Z"; enabled: false; secure-badge: true; }
+                        ToolButton { label: "安全马赛克 M"; d: "M 4 4 L 11 4 L 11 11 L 4 11 Z M 13 13 L 20 13 L 20 20 L 13 20 Z"; selected: root.has-document && root.tool == "mosaic"; enabled: root.has-document; secure-badge: true; clicked => { root.command("tool-mosaic"); } }
                         VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
-                        ToolButton { label: "裁剪 C（后续版本）"; d: "M 6 2 L 6 18 L 22 18 M 2 6 L 18 6 L 18 22"; enabled: false; }
+                        ToolButton { label: "裁剪 C"; d: "M 6 2 L 6 18 L 22 18 M 2 6 L 18 6 L 18 22"; selected: root.has-document && root.tool == "crop"; enabled: root.has-document; clicked => { root.command("tool-crop"); } }
                     } }
                     Rectangle { horizontal-stretch: 1; }
                     VerticalLayout { alignment: center; horizontal-stretch: 0; HorizontalLayout { spacing: 4px;
@@ -89,30 +107,44 @@ export component AppWindow inherits Window {
                 Rectangle { y: parent.height - 1px; height: 1px; background: Theme.line; }
             }
 
-            // ---------- property bar (redaction selected) ----------
+            // ---------- property bar ----------
             if root.has-document: Rectangle {
                 height: Theme.propbar-h; background: Theme.bg-soft;
-                if !root.has-selection: HorizontalLayout {
-                    padding-left: 12px; padding-right: 10px; spacing: 8px;
-                    Label { text: root.tool == "redact" ? "拖拽框住要隐藏的内容 · 遮挡区域导出为不含原图信息的实心像素" : "单击选择遮挡 · 拖动移动 · 拖手柄调整 · 方向键微调（Shift ×10）"; }
+                HorizontalLayout {
+                    padding-left: 12px; padding-right: 10px; spacing: 10px;
+                    if root.prop-mode == "redact" || root.prop-mode == "mosaic": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        Label { text: "遮挡样式"; }
+                        VerticalLayout { alignment: center; Segmented { options: ["实心", "安全马赛克"]; selected: root.prop-mode == "mosaic" ? 1 : 0;
+                            picked(i) => { root.command(i == 0 ? "style-solid" : "style-mosaic"); } } }
+                        if root.prop-mode == "redact": Label { text: "颜色"; }
+                        if root.prop-mode == "redact": VerticalLayout { alignment: center; Swatches { colors: [#1a1915, #ffffff]; names: ["黑", "白"]; selected: root.solid-index; picked(i) => { root.command("solid-" + i); } } }
+                    }
+                    if root.prop-mode == "stroke" || root.prop-mode == "fill" || root.prop-mode == "text": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        Label { text: "颜色"; }
+                        VerticalLayout { alignment: center; Swatches { colors: root.inks; names: root.ink-names; selected: root.color-index; picked(i) => { root.command("color-" + i); } } }
+                    }
+                    if root.prop-mode == "stroke": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        VerticalLayout { alignment: center; VSep { } }
+                        Label { text: "粗细"; }
+                        VerticalLayout { alignment: center; Segmented { options: ["细", "中", "粗"]; selected: root.width-index; picked(i) => { root.command("width-" + i); } } }
+                    }
+                    if root.prop-mode == "text": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        VerticalLayout { alignment: center; VSep { } }
+                        Label { text: "字号"; }
+                        VerticalLayout { alignment: center; Segmented { options: ["14", "18", "24", "32", "48"]; selected: root.size-index; picked(i) => { root.command("size-" + i); } } }
+                        VerticalLayout { alignment: center; Segmented { options: ["无底色", "背景底色"]; selected: root.text-background ? 1 : 0; picked(i) => { root.command(i == 1 ? "bg-on" : "bg-off"); } } }
+                    }
+                    if root.prop-mode == "hint-select": Label { horizontal-stretch: 0; text: "单击选择对象 · 拖动移动 · 拖手柄调整 · 方向键微调（Shift ×10）· 双击文字修改"; }
+                    if root.prop-mode == "crop": Label { horizontal-stretch: 0; text: "拖拽框出要保留的区域 · Enter 确认 · Esc 取消 · 再次框选可修改"; }
+                    if root.has-region: HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        VerticalLayout { alignment: center; VSep { } }
+                        Label { text: "X"; } VerticalLayout { alignment: center; NumberField { value: root.sel-x; } }
+                        Label { text: "Y"; } VerticalLayout { alignment: center; NumberField { value: root.sel-y; } }
+                        Label { text: "W"; } VerticalLayout { alignment: center; NumberField { value: root.sel-w; } }
+                        Label { text: "H"; } VerticalLayout { alignment: center; NumberField { value: root.sel-h; } }
+                    }
                     Rectangle { horizontal-stretch: 1; }
-                }
-                if root.has-selection: HorizontalLayout {
-                    padding-left: 12px; padding-right: 10px; spacing: 8px;
-                    Label { text: "遮挡样式"; }
-                    VerticalLayout { alignment: center; Rectangle { height: 28px; width: seg.preferred-width; border-radius: 8px; background: Theme.bg-pressed;
-                        seg := HorizontalLayout { padding: 2px; spacing: 2px;
-                            Rectangle { width: 44px; border-radius: 6px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-                                Text { text: "实心"; font-size: 12px; color: Theme.ink; horizontal-alignment: center; vertical-alignment: center; } }
-                            Text { text: "安全马赛克"; font-size: 12px; color: Theme.disabled; horizontal-alignment: center; vertical-alignment: center; width: 84px; }
-                        } } }
-                    VerticalLayout { alignment: center; padding-left: 4px; padding-right: 4px; VSep { } }
-                    Label { text: "X"; } VerticalLayout { alignment: center; NumberField { value: root.sel-x; } }
-                    Label { text: "Y"; } VerticalLayout { alignment: center; NumberField { value: root.sel-y; } }
-                    Label { text: "W"; } VerticalLayout { alignment: center; NumberField { value: root.sel-w; } }
-                    Label { text: "H"; } VerticalLayout { alignment: center; NumberField { value: root.sel-h; } }
-                    Rectangle { horizontal-stretch: 1; }
-                    VerticalLayout { alignment: center; ActionButton { label: "删除"; key: "Del"; kind: 2; clicked => { root.command("delete"); } } }
+                    if root.has-selection: VerticalLayout { alignment: center; ActionButton { label: "删除"; key: "Del"; kind: 2; clicked => { root.command("delete"); } } }
                 }
                 Rectangle { y: parent.height - 1px; height: 1px; background: Theme.line; }
             }
@@ -129,35 +161,62 @@ export component AppWindow inherits Window {
                     x: root.img-x - 1px; y: root.img-y - 1px; width: root.img-w + 2px; height: root.img-h + 2px;
                     background: Theme.line-strong;
                     Image { x: 1px; y: 1px; width: root.img-w; height: root.img-h; source: root.preview; image-fit: fill;
-                        opacity: root.opening ? 0.4 : 1.0; accessible-role: image; accessible-label: "图片画布"; }
+                        opacity: root.opening ? 0.4 : 1.0; accessible-role: image; accessible-label: "图片画布（已遮挡 " + root.mask-count + " 处）"; }
                 }
-                for m in root.masks: Rectangle {
-                    x: m.x; y: m.y; width: m.w; height: m.h; background: Theme.cover;
-                    border-width: m.selected ? 0 : 1px; border-color: Theme.secure;
-                }
-                for m in root.masks: Rectangle {
-                    if m.selected: Rectangle { x: m.x - 1px; y: m.y - 1px; width: m.w + 2px; height: m.h + 2px; border-width: 1px; border-color: white; }
-                    if m.selected: Rectangle { x: m.x - 2px; y: m.y - 2px; width: m.w + 4px; height: m.h + 4px; border-width: 1px; border-color: Theme.select-bg; }
-                    for h in m.selected ? [{fx: 0, fy: 0}, {fx: 0.5, fy: 0}, {fx: 1, fy: 0}, {fx: 0, fy: 0.5}, {fx: 1, fy: 0.5}, {fx: 0, fy: 1}, {fx: 0.5, fy: 1}, {fx: 1, fy: 1}] : []: Rectangle {
-                        x: m.x + m.w * h.fx - 4px; y: m.y + m.h * h.fy - 4px; width: 8px; height: 8px;
-                        border-radius: 2px; background: white; border-width: 1.5px; border-color: Theme.select-bg;
+                // Crop: the excluded image area is dimmed (it will not be exported).
+                if root.crop-visible: Rectangle {
+                    x: root.img-x; y: root.img-y; width: root.img-w; height: root.img-h; clip: true;
+                    property <length> cx: root.crop.x - root.img-x; property <length> cy: root.crop.y - root.img-y;
+                    property <color> dim: root.crop-active ? #26251e99 : #26251ed9;
+                    Rectangle { x: 0; y: 0; width: parent.width; height: cy; background: dim; }
+                    Rectangle { x: 0; y: cy + root.crop.h; width: parent.width; height: parent.height - cy - root.crop.h; background: dim; }
+                    Rectangle { x: 0; y: cy; width: cx; height: root.crop.h; background: dim; }
+                    Rectangle { x: cx + root.crop.w; y: cy; width: parent.width - cx - root.crop.w; height: root.crop.h; background: dim; }
+                    Rectangle { x: cx; y: cy; width: root.crop.w; height: root.crop.h; border-width: 1px; border-color: white;
+                        if root.crop-active: Rectangle { x: parent.width / 3; width: 1px; background: #ffffff80; }
+                        if root.crop-active: Rectangle { x: parent.width * 2 / 3; width: 1px; background: #ffffff80; }
+                        if root.crop-active: Rectangle { y: parent.height / 3; height: 1px; background: #ffffff80; }
+                        if root.crop-active: Rectangle { y: parent.height * 2 / 3; height: 1px; background: #ffffff80; }
                     }
                 }
-                if root.draft-visible: Rectangle {
-                    x: root.draft.x; y: root.draft.y; width: root.draft.w; height: root.draft.h;
-                    background: Theme.cover; opacity: 0.85;
-                    Rectangle { x: parent.width + 6px; y: parent.height + 6px; width: dl.preferred-width + 12px; height: 18px; border-radius: 4px; background: Theme.select-bg;
-                        dl := Text { text: round(root.draft.w / 1px) + " × " + round(root.draft.h / 1px); font-family: Theme.font-mono; font-size: 11px; color: Theme.select-fg; vertical-alignment: center; } }
+                if root.sel-visible: Rectangle {
+                    x: root.sel.x - 2px; y: root.sel.y - 2px; width: root.sel.w + 4px; height: root.sel.h + 4px;
+                    border-width: 1px; border-color: Theme.select-bg;
+                    Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-width: 1px; border-color: white; }
+                }
+                for g in root.grips: Rectangle {
+                    x: g.x - 4px; y: g.y - 4px; width: 8px; height: 8px;
+                    border-radius: 2px; background: white; border-width: 1.5px; border-color: Theme.select-bg;
                 }
 
                 TouchArea {
-                    enabled: root.has-document && root.dialog == "";
-                    mouse-cursor: root.tool == "redact" ? crosshair : default;
+                    enabled: root.has-document && root.dialog == "" && !root.text-editing;
+                    mouse-cursor: root.tool == "select" ? default : root.tool == "text" ? text : crosshair;
                     pointer-event(e) => {
                         if e.button == PointerEventButton.left && e.kind == PointerEventKind.down { keys.focus(); root.pointer-down(self.mouse-x, self.mouse-y); }
                         if e.button == PointerEventButton.left && e.kind == PointerEventKind.up { root.pointer-up(); }
                     }
                     moved => { root.pointer-move(self.mouse-x, self.mouse-y); }
+                    double-clicked => { root.double-click(self.mouse-x, self.mouse-y); }
+                }
+
+                // In-place text editing (IME composes here; Enter commits, Esc cancels).
+                if root.text-editing: Rectangle {
+                    x: root.text-x - 4px; y: root.text-y - 3px;
+                    width: max(160px, ti.preferred-width + 16px); height: ti.preferred-height + 6px;
+                    border-width: 1px; border-color: Theme.select-bg; background: #ffffffcc;
+                    FocusScope {
+                        key-pressed(e) => {
+                            if e.text == Key.Escape { root.text-cancel(); return accept; }
+                            reject
+                        }
+                        ti := TextInput {
+                            x: 4px; y: 3px; text: root.text-initial; font-size: root.text-size; color: root.text-color;
+                            single-line: true; accessible-label: "标注文字";
+                            accepted => { root.text-commit(self.text); }
+                            init => { self.focus(); self.select-all(); }
+                        }
+                    }
                 }
 
                 if root.opening: Rectangle {
@@ -171,18 +230,19 @@ export component AppWindow inherits Window {
                     VerticalLayout { alignment: center; spacing: 22px;
                         Text { text: "开始一张截图"; font-size: 26px; letter-spacing: -0.4px; color: Theme.ink; horizontal-alignment: center; }
                         HorizontalLayout { alignment: center; spacing: 12px;
-                            for c in [{t: "打开图片", k: "Ctrl O", cmd: "open"}, {t: "粘贴图片", k: "Ctrl V", cmd: "paste"}]: Rectangle {
+                            for c in [{t: "截图", k: "Ctrl Shift A", cmd: "capture"}, {t: "打开图片", k: "Ctrl O", cmd: "open"}, {t: "粘贴图片", k: "Ctrl V", cmd: "paste"}]: Rectangle {
                                 width: 168px; height: 116px; border-radius: 12px; background: ca.has-hover ? Theme.bg-hover : Theme.bg-card;
                                 border-width: 1px; border-color: Theme.line-strong;
                                 accessible-role: button; accessible-label: c.t; accessible-action-default => { root.command(c.cmd); }
                                 ca := TouchArea { clicked => { root.command(c.cmd); } }
+                                if c.cmd == "capture": Rectangle { x: 10px; y: 10px; width: 8px; height: 8px; border-radius: 2px; background: Theme.brand; }
                                 VerticalLayout { alignment: center; spacing: 8px;
                                     Text { text: c.t; font-size: 13px; font-weight: 500; color: Theme.ink; horizontal-alignment: center; accessible-role: none; }
                                     HorizontalLayout { alignment: center; Keycap { label: c.k; } }
                                 }
                             }
                         }
-                        Text { text: "按 Ctrl+Shift+A 截图，或从托盘图标开始"; font-size: 12px; color: Theme.mute; horizontal-alignment: center; }
+                        Text { text: "或把 PNG / JPEG 拖到这个窗口"; font-size: 12px; color: Theme.mute; horizontal-alignment: center; }
                     }
                 }
 
@@ -214,7 +274,8 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     padding-left: 12px; padding-right: 12px; spacing: 12px;
                     Text { text: root.dims-text; font-family: Theme.font-mono; font-size: 12px; color: Theme.mute; vertical-alignment: center; }
-                    if root.has-document: VerticalLayout { alignment: center; Pill { label: "已遮挡 " + root.mask-count + " 处"; fill: Theme.pill-secure; shield: true; } }
+                    if root.has-document: VerticalLayout { alignment: center;
+                        Pill { label: root.mask-count > 0 ? "已遮挡 " + root.mask-count + " 处" : "未遮挡"; fill: root.mask-count > 0 ? Theme.pill-secure : Theme.bg-pressed; shield: root.mask-count > 0; } }
                     if root.busy != "": VerticalLayout { alignment: center; Pill { label: root.busy == "copy" ? "正在复制" : "正在保存"; fill: Theme.pill-busy; } }
                     if root.opening: VerticalLayout { alignment: center; Pill { label: "正在打开"; fill: Theme.pill-busy; } }
                     Rectangle { horizontal-stretch: 1; }
@@ -247,7 +308,7 @@ export component AppWindow inherits Window {
                     Rectangle { height: 150px; AboutSlint { } }
                     HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
-                if root.dialog != "about": dlay := VerticalLayout { padding: 24px; spacing: 6px;
+                if root.dialog != "about": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: root.dialog == "close" ? "有未复制或保存的编辑" : "替换当前图片？"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: root.dialog == "close" ? "关闭后这些编辑会丢失。" : "当前图片有未复制或保存的编辑，替换后会丢失。"; color: Theme.body; wrap: word-wrap; }
                     HorizontalLayout { padding-top: 16px; spacing: 8px; alignment: end;
@@ -260,5 +321,6 @@ export component AppWindow inherits Window {
         }
     }
 
+    public function focus-keys() { keys.focus(); }
     init => { keys.focus(); }
 }

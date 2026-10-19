@@ -11,7 +11,7 @@ mod display;
 mod platform;
 
 use canvas::Zoom;
-use controller::{Controller, Delivery, Notice, Tool};
+use controller::{Controller, Delivery, Notice, Tool, INKS, TEXT_SIZES};
 use image::RgbaImage;
 use shareready_editor::{EditError, Point, ReviewKey, ReviewResult, SourceCandidate};
 use slint::{CloseRequestResponse, ComponentHandle, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
@@ -47,6 +47,8 @@ struct App {
     session: Option<capture::Session>,
     overlays: Vec<(CaptureOverlay, Monitor)>,
     toast_win: Option<ToastWindow>,
+    /// Decoded source downscaled for the screen, and its scale (preview px per source px).
+    base: Option<(RgbaImage, f32)>,
 }
 
 fn to_image(img: &RgbaImage) -> Image {
@@ -75,50 +77,86 @@ impl App {
         let ctl = &self.ctl;
         ui.set_has_document(ctl.editor.is_some());
         ui.set_opening(ctl.opening);
-        ui.set_tool(match ctl.tool { Tool::Select => "select", Tool::Redact => "redact" }.into());
+        ui.set_tool(tool_name(ctl.tool).into());
         ui.set_busy(match ctl.busy() { Some(Delivery::Copy) => "copy", Some(Delivery::Save) => "save", None => "" }.into());
         ui.set_can_deliver(ctl.can_deliver());
         ui.set_narrow(ctl.area().0 < 900.0);
         ui.set_tiny(ctl.area().0 < 720.0);
+        let st = ctl.style;
+        ui.set_color_index(st.color as i32);
+        ui.set_width_index(st.width as i32);
+        ui.set_size_index(st.size as i32);
+        ui.set_text_background(st.background);
+        ui.set_solid_index(st.solid as i32);
         let (Some(e), Some(view)) = (ctl.editor.as_ref(), ctl.view()) else {
-            ui.set_masks(ModelRc::default());
+            ui.set_grips(ModelRc::default());
+            ui.set_sel_visible(false);
+            ui.set_crop_visible(false);
             ui.set_has_selection(false);
+            ui.set_has_region(false);
+            ui.set_text_editing(false);
             ui.set_dims_text(SharedString::new());
             ui.set_can_undo(false);
             ui.set_can_redo(false);
             return;
         };
-        ui.set_can_undo(e.can_undo() && !ctl.dragging());
-        ui.set_can_redo(e.can_redo() && !ctl.dragging());
+        let busy = ctl.dragging() || ctl.text_edit.is_some();
+        ui.set_can_undo(e.can_undo() && !busy);
+        ui.set_can_redo(e.can_redo() && !busy);
         ui.set_img_x(view.x as f32);
         ui.set_img_y(view.y as f32);
         ui.set_img_w(view.width() as f32);
         ui.set_img_h(view.height() as f32);
         let (w, h) = e.dimensions();
-        ui.set_dims_text(format!("{w} × {h}").into());
+        let (ow, oh) = e.output_dimensions();
+        ui.set_dims_text(if (ow, oh) == (w, h) { format!("{w} × {h}") } else { format!("{w} × {h} → {ow} × {oh}") }.into());
         ui.set_zoom_fit(ctl.zoom == Zoom::Fit);
         ui.set_zoom_text(format!("{}%", (view.scale * 100.0).round()).into());
-        let boxes: Vec<MaskBox> = ctl.display_masks().into_iter().map(|(_, r, selected)| {
-            let (x, y, w, h) = view.rect(r);
-            MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected }
-        }).collect();
         ui.set_mask_count(e.masks().len() as i32);
-        let selected = ctl.display_masks().into_iter().find(|m| m.2).map(|m| m.1);
-        ui.set_has_selection(selected.is_some());
-        if let Some(r) = selected {
+        // WYSIWYG canvas: the same Rust renderer as export, at preview scale.
+        if let Some((base, k)) = self.base.as_ref() {
+            let mut img = base.clone();
+            shareready_render::render_into(&mut img, &ctl.display_scene(), *k);
+            ui.set_preview(to_image(&img));
+        }
+        let mb = |(x, y, w, h): (f64, f64, f64, f64)| MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected: true };
+        match ctl.selection_box() {
+            Some(b) => { ui.set_sel(mb(b)); ui.set_sel_visible(true); }
+            None => ui.set_sel_visible(false),
+        }
+        let grips: Vec<MaskBox> = ctl.grips().into_iter().map(|(_, (x, y))| mb((x, y, 0.0, 0.0))).collect();
+        ui.set_grips(ModelRc::new(VecModel::from(grips)));
+        match ctl.crop_box() {
+            Some(r) => { ui.set_crop(mb(view.rect(r))); ui.set_crop_visible(true); }
+            None => ui.set_crop_visible(false),
+        }
+        ui.set_crop_active(ctl.tool == Tool::Crop);
+        let kind = ctl.selected_kind();
+        ui.set_has_selection(kind.is_some());
+        let mode = match kind.unwrap_or(ctl.tool) {
+            Tool::Redact => "redact", Tool::Mosaic => "mosaic", Tool::Arrow | Tool::Rect => "stroke",
+            Tool::Number | Tool::Highlight => "fill", Tool::Text => "text", Tool::Select => "hint-select", Tool::Crop => "crop",
+        };
+        ui.set_prop_mode(mode.into());
+        let region = ctl.selected_region();
+        ui.set_has_region(region.is_some() && !ctl.narrow_propbar());
+        if let Some(r) = region {
             ui.set_sel_x(r.x0.to_string().into());
             ui.set_sel_y(r.y0.to_string().into());
             ui.set_sel_w((r.x1 - r.x0).to_string().into());
             ui.set_sel_h((r.y1 - r.y0).to_string().into());
         }
-        ui.set_masks(ModelRc::new(VecModel::from(boxes)));
-        match ctl.draft() {
-            Some(r) => {
-                let (x, y, w, h) = view.rect(r);
-                ui.set_draft(MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected: false });
-                ui.set_draft_visible(true);
+        match ctl.text_edit.as_ref() {
+            Some(t) => {
+                ui.set_text_x((view.x + f64::from(t.origin.0) * view.scale) as f32);
+                ui.set_text_y((view.y + f64::from(t.origin.1) * view.scale) as f32);
+                ui.set_text_size((f64::from(TEXT_SIZES[st.size]) * view.scale) as f32);
+                let c = INKS[st.color];
+                ui.set_text_color(slint::Color::from_rgb_u8(c[0], c[1], c[2]));
+                if !ui.get_text_editing() { ui.set_text_initial(t.initial.clone().into()); }
+                ui.set_text_editing(true);
             }
-            None => ui.set_draft_visible(false),
+            None => ui.set_text_editing(false),
         }
         let title = ctl.source_name.clone().unwrap_or_else(|| "未命名".into());
         ui.set_doc_title(if ctl.has_unsaved_edits() { format!("● {title}") } else { title }.into());
@@ -166,10 +204,8 @@ impl App {
             self.toast("error", "无法打开", &format!("{e:?}"), None);
             return;
         }
-        let (w, h) = preview.dimensions();
-        let mut buf = SharedPixelBuffer::<Rgba8Pixel>::new(w, h);
-        buf.make_mut_bytes().copy_from_slice(preview.as_raw());
-        if let Some(ui) = self.ui() { ui.set_preview(Image::from_rgba8(buf)); }
+        let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
+        self.base = Some((preview, k));
         self.clear_toast();
     }
 
@@ -218,11 +254,11 @@ impl App {
         self.refresh();
     }
     fn after_delivery(&mut self, kind: Delivery, outcome: Result<(), String>, name: Option<String>) {
-        let n = self.ctl.editor.as_ref().map_or(0, |e| e.masks().len());
-        let (w, h) = self.ctl.editor.as_ref().map_or((0, 0), |e| e.dimensions());
+        let n = self.ctl.redaction_count();
+        let (w, h) = self.ctl.editor.as_ref().map_or((0, 0), |e| e.output_dimensions());
         match (kind, outcome) {
             (Delivery::Copy, Ok(())) => {
-                let detail = format!("{w} × {h} · 已遮挡 {n} 处");
+                let detail = if n == 0 { format!("{w} × {h} · 未遮挡任何内容") } else { format!("{w} × {h} · 已遮挡 {n} 处") };
                 match std::mem::replace(&mut self.after_copy, AfterCopy::Stay) {
                     AfterCopy::Quit => { let _ = slint::quit_event_loop(); }
                     // 02 U07: a successful copy ends the task; the editor steps aside.
@@ -268,6 +304,10 @@ impl App {
             return true;
         }
         let step = if shift { 10 } else { 1 };
+        if self.ctl.tool == Tool::Crop {
+            if is(Key::Return) { self.ctl.confirm_crop(); self.refresh(); return true; }
+            if is(Key::Escape) { self.ctl.cancel_crop(); self.refresh(); return true; }
+        }
         let handled = if is(Key::Delete) || is(Key::Backspace) { self.ctl.delete_selected() }
             else if is(Key::LeftArrow) { self.ctl.nudge(-step, 0) }
             else if is(Key::RightArrow) { self.ctl.nudge(step, 0) }
@@ -276,9 +316,15 @@ impl App {
             else if is(Key::Escape) { if self.ctl.dragging() { self.ctl.cancel_drag() } else { self.ctl.deselect() }; true }
             else {
                 match text.chars().next().map(|c| c.to_ascii_lowercase()) {
-                    Some('v') => { self.ctl.tool = Tool::Select; true }
-                    Some('b') => { self.ctl.tool = Tool::Redact; true }
-                    _ => false,
+                    Some(c @ '1'..='6') => { let i = c as usize - '1' as usize; self.ctl.apply_style(|s| s.color = i); true }
+                    Some(c) => match tool_for_key(c) {
+                        Some(Tool::Crop) => { self.ctl.enter_crop(); true }
+                        Some(Tool::Mosaic) => { self.ctl.set_redaction_kind(true); true }
+                        Some(Tool::Redact) => { self.ctl.set_redaction_kind(false); true }
+                        Some(t) => { self.ctl.tool = t; true }
+                        None => false,
+                    },
+                    None => false,
                 }
             };
         self.refresh();
@@ -288,7 +334,7 @@ impl App {
     // ---- window lifecycle ----
     /// Hide the editor (resident) or end the process. `discard` drops the document.
     fn close_editor(&mut self, discard: bool) {
-        if discard { self.ctl.close_document(); self.refresh(); }
+        if discard { self.ctl.close_document(); self.base = None; self.refresh(); }
         if !self.resident { let _ = slint::quit_event_loop(); return; }
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
     }
@@ -487,6 +533,7 @@ fn command(cmd: &str) {
         // Blocking dialogs and clipboard reads run outside the state borrow.
         "open" => { if let Some(p) = picker(platform::pick_image) { open_path(p); } }
         "paste" => spawn_open(platform::read_clipboard(), Some("剪贴板图片.png".into())),
+        "capture" => { with(|a| a.begin_capture()); }
         "save" => {
             if !with(|a| a.ctl.can_deliver()).unwrap_or(false) {
                 with(|a| a.start(Delivery::Save));
@@ -504,7 +551,20 @@ fn command(cmd: &str) {
                     "redo" => { a.ctl.redo(); }
                     "delete" => { a.ctl.delete_selected(); }
                     "tool-select" => a.ctl.tool = Tool::Select,
-                    "tool-redact" => a.ctl.tool = Tool::Redact,
+                    "tool-arrow" => a.ctl.tool = Tool::Arrow,
+                    "tool-rect" => a.ctl.tool = Tool::Rect,
+                    "tool-text" => a.ctl.tool = Tool::Text,
+                    "tool-number" => a.ctl.tool = Tool::Number,
+                    "tool-highlight" => a.ctl.tool = Tool::Highlight,
+                    "tool-redact" | "style-solid" => { a.ctl.set_redaction_kind(false); }
+                    "tool-mosaic" | "style-mosaic" => { a.ctl.set_redaction_kind(true); }
+                    "tool-crop" => a.ctl.enter_crop(),
+                    "bg-on" => { a.ctl.apply_style(|s| s.background = true); }
+                    "bg-off" => { a.ctl.apply_style(|s| s.background = false); }
+                    c if c.starts_with("color-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.color = i.min(5)); } }
+                    c if c.starts_with("width-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.width = i.min(2)); } }
+                    c if c.starts_with("size-") => { if let Ok(i) = c[5..].parse::<usize>() { a.ctl.apply_style(|s| s.size = i.min(4)); } }
+                    c if c.starts_with("solid-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.solid = i.min(1)); } }
                     "zoom-fit" => a.ctl.zoom = Zoom::Fit,
                     "zoom-actual" => a.ctl.zoom = Zoom::Actual,
                     "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } None => {} },
@@ -521,7 +581,7 @@ fn main() -> Result<(), slint::PlatformError> {
     APP.with(|cell| *cell.borrow_mut() = Some(App {
         ctl: Controller::default(), ui: ui.as_weak(), pending: None, save_path: None,
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
-        resident: false, tray: None, session: None, overlays: Vec::new(), toast_win: None,
+        resident: false, tray: None, session: None, overlays: Vec::new(), toast_win: None, base: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -546,6 +606,9 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_pointer_up(|| { with(|a| { a.ctl.pointer_up(); a.refresh(); }); });
     ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); }); });
     ui.on_command(|c| command(c.as_str()));
+    ui.on_double_click(|x, y| { with(|a| { a.ctl.edit_text_at(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
+    ui.on_text_commit(|t| { with(|a| { a.ctl.commit_text(t.as_str()); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
+    ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_dialog_choice(|c| { with(|a| a.dialog_choice(c.as_str())); });
     ui.on_key(|text, ctrl, shift, other| {
         let dialog_open = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(true);
@@ -580,4 +643,18 @@ fn main() -> Result<(), slint::PlatformError> {
     with(|a| a.refresh());
     ui.show()?;
     slint::run_event_loop_until_quit()
+}
+
+fn tool_name(t: Tool) -> &'static str {
+    match t {
+        Tool::Select => "select", Tool::Arrow => "arrow", Tool::Rect => "rect", Tool::Text => "text", Tool::Number => "number",
+        Tool::Highlight => "highlight", Tool::Redact => "redact", Tool::Mosaic => "mosaic", Tool::Crop => "crop",
+    }
+}
+/// 02 §5.2 single-key tools.
+fn tool_for_key(c: char) -> Option<Tool> {
+    Some(match c {
+        'v' => Tool::Select, 'a' => Tool::Arrow, 'r' => Tool::Rect, 't' => Tool::Text, 'n' => Tool::Number,
+        'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop, _ => return None,
+    })
 }

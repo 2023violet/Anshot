@@ -1,19 +1,22 @@
 """Compare the clipboard image read back by another process with the expected redaction.
 
-Usage: python tests/desktop/compare_clipboard.py <source.png> <clipboard.png> x0 y0 x1 y1
-Expected: pixels inside the half-open region equal Core COVER (17,24,39);
+Usage: python tests/desktop/compare_clipboard.py <source.png> <clipboard.png> x0 y0 x1 y1 [rrggbb]
+Expected: pixels inside the half-open region equal the solid colour (default 04_DESIGN
+redact.solid #1a1915; pass 111827 for the V1 Core COVER);
 every other pixel equals the source RGB.
 """
 import sys
 
 from PIL import Image
 
-COVER = (17, 24, 39)
+DEFAULT_SOLID = "1a1915"
 
 
 def main() -> int:
-    src_path, clip_path, *box = sys.argv[1:]
-    x0, y0, x1, y1 = map(int, box)
+    src_path, clip_path, *rest = sys.argv[1:]
+    x0, y0, x1, y1 = map(int, rest[:4])
+    hexc = rest[4] if len(rest) > 4 else DEFAULT_SOLID
+    COVER = tuple(int(hexc[i:i + 2], 16) for i in (0, 2, 4))
     src = Image.open(src_path).convert("RGB")
     clip = Image.open(clip_path).convert("RGB")
     if src.size != clip.size:
