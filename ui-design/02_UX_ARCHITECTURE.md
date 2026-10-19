@@ -2,6 +2,7 @@
 
 版本 v0.1 草稿　日期 2026-10-19　状态：**待 Gate 02 确认**
 上游：[01_PRD.md](01_PRD.md)（Gate 01 已确认）　线框：[02_WIREFRAMES.html](02_WIREFRAMES.html)
+视觉风格：已按用户要求先用 awesome-design-md 确定，见 [03_VISUAL_DIRECTIONS.md](03_VISUAL_DIRECTIONS.md) 与 [04_DESIGN.md](04_DESIGN.md)；本文只定义结构与流程，线框保持灰度。
 
 ## 1. 架构决策
 
