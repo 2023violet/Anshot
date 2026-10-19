@@ -1,0 +1,34 @@
+[package]
+name = "shareready-desktop"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+publish = false
+description = "ShareReady Windows desktop app: Slint UI over the Rust editor and image core."
+
+# Own workspace and Cargo.lock: the frozen V1 WASM layer (e1-spike) pins
+# wasm-bindgen =0.2.105, which conflicts with Slint's femtovg chain (=0.2.123).
+# Merge into the root workspace once V1 is retired.
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[[bin]]
+name = "shareready"
+path = "src/main.rs"
+
+[dependencies]
+shareready-core = { path = "../../crates/shareready-core" }
+shareready-editor = { path = "../../crates/shareready-editor" }
+shareready-platform-windows = { path = "../../crates/shareready-platform-windows" }
+slint = "=1.18.1"
+image = { version = "=0.25.8", default-features = false, features = ["png"] }
+rfd = { version = "=0.15.4", default-features = false }
+arboard = { version = "=3.6.1", default-features = false, features = ["image-data"] }
+
+[build-dependencies]
+slint-build = "=1.18.1"

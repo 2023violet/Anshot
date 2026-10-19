@@ -1,0 +1,41 @@
+// Interface tokens from ui-design/04_DESIGN.md v1.0 (frozen). Single source for the UI.
+// Content colours that reach exported pixels live in Rust, not here.
+import "../../../poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf";
+
+export global Theme {
+    out property <color> bg-canvas: #f7f7f4;
+    out property <color> bg-soft: #fafaf7;
+    out property <color> bg-card: #ffffff;
+    out property <color> bg-workspace: #ecebe5;
+    out property <color> bg-hover: #efeee8;
+    out property <color> bg-pressed: #e6e5e0;
+    out property <color> line: #e6e5e0;
+    out property <color> line-strong: #cfcdc4;
+    out property <color> ink: #26251e;
+    out property <color> body: #5a5852;
+    out property <color> mute: #6b6960;
+    out property <color> decor: #807d72;
+    out property <color> disabled: #a09c92;
+    out property <color> select-bg: #26251e;
+    out property <color> select-fg: #f7f7f4;
+    out property <color> brand: #f54e00;
+    out property <color> primary: #d04200;
+    out property <color> primary-hover: #bf3d00;
+    out property <color> primary-pressed: #b33900;
+    out property <color> secure: #1f8a65;
+    out property <color> error: #cf2d56;
+    out property <color> warn: #ffc533;
+    out property <color> scrim: #26251e8c;
+    out property <color> pill-secure: #9fc9a2;
+    out property <color> pill-busy: #dfa88f;
+    out property <color> pill-done: #c08532;
+    // Core COVER (#111827): redaction pixels are drawn exactly as exported (B1).
+    out property <color> cover: #111827;
+
+    out property <string> font-ui: "Noto Sans CJK SC";
+    out property <string> font-mono: "Consolas";
+    out property <length> toolbar-h: 52px;
+    out property <length> propbar-h: 40px;
+    out property <length> status-h: 30px;
+    out property <length> control: 32px;
+}

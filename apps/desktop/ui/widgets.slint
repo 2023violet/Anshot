@@ -1,0 +1,109 @@
+import { Theme } from "theme.slint";
+
+export component Icon inherits Path {
+    in property <string> d;
+    width: 18px; height: 18px;
+    viewbox-width: 24; viewbox-height: 24;
+    commands: d;
+    fill: transparent;
+    stroke-width: 1.5px;
+    stroke-line-cap: round;
+    stroke-line-join: round;
+    accessible-role: none;
+}
+
+export component Shield inherits Path {
+    viewbox-width: 2; viewbox-height: 2;
+    commands: "M 1 0 L 1.9 0.35 L 1.9 1.05 L 1.55 1.65 L 1 2 L 0.45 1.65 L 0.1 1.05 L 0.1 0.35 Z";
+    stroke-width: 0;
+    accessible-role: none;
+}
+
+export component Keycap inherits Rectangle {
+    in property <string> label;
+    in property <bool> on-primary;
+    height: 18px;
+    width: t.preferred-width + 10px;
+    border-radius: 4px;
+    background: on-primary ? #ffffff2e : Theme.bg-card;
+    border-width: on-primary ? 0 : 1px;
+    border-color: Theme.line-strong;
+    accessible-role: none;
+    t := Text { text: label; font-family: Theme.font-mono; font-size: 11px; color: on-primary ? white : Theme.mute; vertical-alignment: center; accessible-role: none; }
+}
+
+export component ToolButton inherits Rectangle {
+    in property <string> d;
+    in property <string> label;
+    in property <bool> selected;
+    in property <bool> enabled: true;
+    in property <bool> secure-badge;
+    callback clicked();
+    width: Theme.control; height: Theme.control;
+    border-radius: 6px;
+    background: selected ? Theme.select-bg : (ta.has-hover && enabled) ? Theme.bg-hover : transparent;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { root.clicked(); } }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+    Icon { d: root.d; stroke: !enabled ? Theme.disabled : selected ? Theme.select-fg : Theme.body; }
+    if secure-badge: Shield { x: 21px; y: 20px; width: 8px; height: 9px; fill: root.selected ? #5fd3a6 : Theme.secure; }
+}
+
+// kind: 0 secondary, 1 primary, 2 danger
+export component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <string> key;
+    in property <int> kind;
+    in property <bool> enabled: true;
+    in property <bool> busy;
+    callback clicked();
+    height: Theme.control;
+    width: row.preferred-width;
+    border-radius: 8px;
+    background: !enabled ? Theme.bg-pressed
+        : kind == 1 ? (ta.pressed ? Theme.primary-pressed : ta.has-hover ? Theme.primary-hover : Theme.primary)
+        : kind == 2 ? (ta.has-hover ? Theme.bg-hover : transparent)
+        : (ta.pressed ? Theme.bg-pressed : ta.has-hover ? Theme.bg-hover : Theme.bg-card);
+    border-width: kind == 0 && enabled ? 1px : 0;
+    border-color: Theme.line-strong;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { root.clicked(); } }
+    ta := TouchArea { enabled: root.enabled && !root.busy; clicked => { root.clicked(); } }
+    row := HorizontalLayout {
+        padding-left: 14px; padding-right: 12px; spacing: 8px; alignment: center;
+        if busy: VerticalLayout { alignment: center; Rectangle {
+            width: 14px; height: 14px; border-radius: 7px; border-width: 2px; border-color: #ffffff60;
+            Rectangle { x: 6px; y: 0; width: 2px; height: 5px; background: white; }
+        } }
+        Text { text: label; font-size: 13px; font-weight: 500; vertical-alignment: center; accessible-role: none;
+            color: !enabled ? Theme.disabled : kind == 1 ? white : kind == 2 ? Theme.error : Theme.ink; }
+        if key != "": VerticalLayout { alignment: center; Keycap { label: key; on-primary: kind == 1 && enabled; } }
+    }
+}
+
+export component VSep inherits Rectangle { width: 1px; height: 22px; background: Theme.line-strong; accessible-role: none; }
+
+export component Pill inherits Rectangle {
+    in property <string> label;
+    in property <color> fill;
+    in property <bool> shield;
+    height: 20px; border-radius: 10px; background: fill;
+    width: lay.preferred-width;
+    lay := HorizontalLayout {
+        padding-left: 8px; padding-right: 8px; spacing: 5px; alignment: center;
+        if shield: VerticalLayout { alignment: center; Shield { width: 9px; height: 10px; fill: Theme.secure; } }
+        Text { text: label; font-size: 11px; font-weight: 600; color: Theme.ink; vertical-alignment: center; }
+    }
+}
+
+export component NumberField inherits Rectangle {
+    in property <string> value;
+    width: 52px; height: 28px; border-radius: 8px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+    Text { x: 8px; height: parent.height; text: value; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
+}
+
+export component Label inherits Text { font-size: 12px; color: Theme.mute; vertical-alignment: center; }

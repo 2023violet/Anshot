@@ -1,6 +1,6 @@
 # 02 UX 架构 — ShareReady（临时代号）
 
-版本 v0.1 草稿　日期 2026-10-19　状态：**待 Gate 02 确认**
+版本 v0.1　日期 2026-10-19　状态：**Gate 02 已确认（用户，2026-10-19，与 Gate 05 一并确认）**
 上游：[01_PRD.md](01_PRD.md)（Gate 01 已确认）　线框：[02_WIREFRAMES.html](02_WIREFRAMES.html)
 视觉风格：已按用户要求先用 awesome-design-md 确定，见 [03_VISUAL_DIRECTIONS.md](03_VISUAL_DIRECTIONS.md) 与 [04_DESIGN.md](04_DESIGN.md)；本文只定义结构与流程，线框保持灰度。
 
@@ -150,5 +150,5 @@ S3 / 托盘「打开图片」/ 拖入 S2 / 在 S2 中 Ctrl+V 粘贴图片
 ## Gate 02 检查
 - [x] 导航与信息层级支持核心任务（§2–3）
 - [x] 流程覆盖进入、操作、完成、失败与恢复（§4）
-- [ ] 线框经评审，无明显无效路径（[02_WIREFRAMES.html](02_WIREFRAMES.html)，待你评审）
-- [ ] **用户确认**（含 U05 对 PRD 的修正）：＿＿＿＿
+- [x] 线框经评审，无明显无效路径（[02_WIREFRAMES.html](02_WIREFRAMES.html)）
+- [x] **用户确认**：2026-10-19，确认 02 结构，含 U05 托盘进入 P0（对 PRD 的修正）。

@@ -1,0 +1,9 @@
+LAYOUT client=1180x760 image_origin=280,196 scale=1
+UIA toast=已复制到剪贴板 620 × 430 · 已遮挡 1 处 | 已复制到剪贴板
+CLIPBOARD image=620x430
+CLOSE_AFTER_COPY exited=True
+CLOSE_GUARD exited=False dialog=True
+CLOSE_GUARD_CANCEL still_running=True
+PASTE status=620 × 430 | 已遮挡 0 处
+REGION 521,143-599,163 inside_pixels=1560 inside_mismatch=0 outside_pixels=265040 outside_mismatch=0
+CLIPBOARD_PIXELS_PASS
