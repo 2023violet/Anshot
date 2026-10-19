@@ -1,5 +1,7 @@
 # ShareReady — Rust-first image-sharing preparation tool (working title)
 
+> **产品重新定义中（2026-10-19 起）。** 新方向：以 Rust 为可信主导的 Windows 桌面工具，覆盖“截图 → 标注 → 遮挡 → 分享”。产品、UX 与设计交付物见 [`ui-design/`](ui-design/)，从 [01_PRD.md](ui-design/01_PRD.md) 开始。下方 V1.3 与 V2-03 样机内容为冻结的历史参考（快照 tag `pre-redesign-2026-10-19`）。
+
 > **STATUS: V2-03 RUST NATIVE POC UNDER LOCAL DEVELOPMENT / NOT RELEASED.** V1.3 remains the current user-facing Windows/Web edition. The native POC has guarded image/edit/export paths, a Chinese workbench and measured synthetic 24MP GPU/output evidence; [latest completed source-intake evidence and remaining acceptance](docs/V2/P03-K/README.md) and [previous completed batch](docs/V2/P03-J/README.md) distinguish exact artifacts from historical CI, security certification and human usability sign-off.
 
 ShareReady is a **temporary project code name**, not a cleared public-facing product name. An unrelated image-sharing product already uses the name; trademark/branding checks remain open.
