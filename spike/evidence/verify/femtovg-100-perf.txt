@@ -1,0 +1,28 @@
+VERIFY start backend=default scale_env=none
+VERIFY base_generated_ms=50.2
+VERIFY first_image_set_ms=54.6
+VERIFY rendering_notifier=supported
+VERIFY first_frame_rendered
+VERIFY update step=1 set_ms=49.2 to_frame_ms=139.2
+VERIFY update step=2 set_ms=59.6 to_frame_ms=113.6
+VERIFY update step=3 set_ms=62.0 to_frame_ms=111.0
+VERIFY update step=4 set_ms=56.6 to_frame_ms=111.4
+VERIFY update step=5 set_ms=61.2 to_frame_ms=111.6
+VERIFY update step=6 set_ms=55.0 to_frame_ms=106.3
+VERIFY update step=7 set_ms=56.2 to_frame_ms=107.6
+VERIFY update step=8 set_ms=59.3 to_frame_ms=108.1
+VERIFY update step=9 set_ms=59.1 to_frame_ms=104.0
+VERIFY update step=10 set_ms=52.6 to_frame_ms=102.1
+VERIFY update step=11 set_ms=59.8 to_frame_ms=109.6
+VERIFY update step=12 set_ms=57.1 to_frame_ms=107.4
+VERIFY update step=13 set_ms=55.7 to_frame_ms=100.6
+VERIFY update step=14 set_ms=53.3 to_frame_ms=107.2
+VERIFY update step=15 set_ms=56.5 to_frame_ms=100.5
+VERIFY update step=16 set_ms=52.3 to_frame_ms=103.4
+VERIFY update step=17 set_ms=47.2 to_frame_ms=91.7
+VERIFY update step=18 set_ms=62.0 to_frame_ms=112.7
+VERIFY update step=19 set_ms=58.9 to_frame_ms=102.4
+VERIFY update step=20 set_ms=56.2 to_frame_ms=106.9
+VERIFY updates_done
+HARNESS updates_done_seen=True
+HARNESS peak_working_set_mb=630.5 peak_private_mb=583.7

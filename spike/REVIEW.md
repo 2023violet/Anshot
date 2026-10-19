@@ -82,3 +82,42 @@ Slint 进入 Gate 03 选定前必须验证（每项给出 MEASURED 证据）：
 - spike 证据真实、可复现（体积、依赖、行数、内存均已独立重测一致；截图与源码对得上），足以支持“Slint 首选、iced 备选、egui 降级”的**暂定**排序。
 - 需更正：150% 下 egui 发丝线发虚（非“清晰”）、Slint 为 2px 取整；FontTweak/container 修正为 HYPOTHESIS；egui spike 未启用 AccessKit；依赖数口径含非 Windows 目标；Slint 工具栏布局偏离样稿。
 - 不可作为最终框架选定：125% 未测、全部交互/IME/大图/Narrator 未测，且本审查为代理审查而非真人评审。
+
+## 第二轮：Slint 条件验证审查
+
+日期 2026-10-19　审查者：同一独立子代理（非真人）。对象：`VERIFY_SLINT.md`、`slint-verify/{src/main.rs,ui/verify.slint}`、`verify.ps1`、`ime_control.ps1`、`evidence/verify/*`。
+方法：只从 `VERIFY update step=` 行重算统计（排除 `first_image_set_ms`）；核对 harness 坐标与 Rust 命中逻辑；读 i-slint-renderer-femtovg 1.18.1 源码确认通知时机；重跑 `ime_control.ps1` 一次（输出 `NOTEPAD text=[你好]`）。
+
+| 声明 | 结论 | 依据 |
+|---|---|---|
+| 许可证：接受 Royalty-free 2.0，AboutSlint 已渲染 | CONFIRMED | 用户决定由协调方转述；截图与 UIA 中有 `#MadeWithSlint` / `Version 1.18.1`；产品 About 对话框尚未实现 |
+| femtovg 100%：set 中位 56 / p95 62；到帧 107 / 114 / max 139 | CONFIRMED（小注） | 重算 n=20：set 中位 56.55（四舍五入应为 57）、p95 62.0；到帧中位 107.3、p95 113.6、max 139.2。n=20 时 p95 即第 19 个值，样本小 |
+| femtovg 150%：104 / 116 / 144 | CONFIRMED | 中位 103.75、p95 115.9、max 143.6 |
+| 软件渲染 set 中位 58，帧时间不可测 | CONFIRMED（需改述） | 中位 58.4。软件路径的 20 次 set 在**同一个**定时器回调里连跑，期间不渲染，所以只测到 CPU 合成 + 拷贝 + `set_image`，不含任何软件光栅化耗时 |
+| 峰值内存 631–651 / 584 MB；软件 195 MB | CONFIRMED | 日志 630.5/583.7、650.7/584.2、195.0/195.3。取样间隔 100 ms，可能漏掉瞬时峰值 |
+| 拖拽 3 组结果与 14px 未命中 | CONFIRMED | 起点 120,100,160,60：移动 +30/+20 得 150,120,160,60 ✓。右下手柄中心 (310,180)，按下点 (316,186) 偏 6/6：在 8px 可视（±4）之外、`abs<=8` 命中盒之内，结果 185×75 ✓。左上 +10/+10 得 160,130,175,65 ✓。(349,209) 距右下手柄 (335,195) 14/14 → None ✓ |
+| “16×16 命中区” | CORRECTED（细节） | 代码为 `<=8`，实际是含边界的 17×17；只测了 6px 内、14px 外两个点，**未测 8/9px 边界**；该点同时也在选区外，所以没区分“手柄优先于主体” |
+| 150% 拖拽 | CONFIRMED（限模拟缩放） | harness 按 `×Scale` 换算屏幕坐标，日志里的逻辑坐标一致（349.3/208.7 为取整误差） |
+| 中文输入法 TextInput 提交“你好” | CONFIRMED（仅提交路径） | `keybd_event` 发的是虚拟键，只有经过输入法才会变成汉字；日志 `text=你好`，截图可见。**未测**：预编辑显示、候选窗位置、Esc 取消、候选选择 |
+| 记事本对照有效 | 部分 CONFIRMED / UNSUPPORTED | 重跑得到“你好”，说明同样的按键确实走拼音转换，作为阳性对照有效。“未切换时为 `nihao `”的阴性对照在脚本中不存在，也没有日志 → UNSUPPORTED。另外 Shift 切换依赖输入法初始状态，测试较脆弱 |
+| UIA：9 个 Button 中文名可聚焦、Edit“标注文字” | CONFIRMED | 3 份日志一致，共 23 个元素 |
+| UIA 补充问题 | 新发现 | 每个按钮下还有同名 `Text` 子元素，Narrator 可能重复朗读；画布、选中框、遮挡对象没有语义；Tab 焦点遍历与 `accessible-action-default` 未测；Narrator 实际朗读未测（需真人） |
+| 软件渲染：启动、拖拽、IME 正常；近邻缩小丢细线 | CONFIRMED | `software-100-interact.txt` 干净；截图中 200px 网格线大多丢失 |
+| 污染运行说明 | CONFIRMED，另需补充 | `software-100-perf.txt` 在 `updates_done` 之后、harness 交互之前出现 (206,138)、(285,161) 两次非脚本按下，把选区拖成 572×405，之后 harness 的 4 次拖拽全部误判为主体。该文件无 `interact_begin` 标记。它引用的 `software-100-after.png` 已被后来的干净运行覆盖，与此日志不对应 |
+| 计时方法“到下一帧渲染完成” | CORRECTED | femtovg 源码中 `AfterRendering` 在 `flush_to_output` + `submit_commands` 之后、`present_surface`（交换缓冲）之前触发。GL 是异步的，所以 to_frame 测的是“合成 + set + 等待下一帧 + CPU 侧提交 GL 命令（含驱动拷贝 96 MB 纹理数据）”，**不含 GPU 完成、交换缓冲和 vsync**，是可见延迟的**下限**。另外 `start` 在合成之前，所以上传 + 渲染的增量约 50 ms，而不是 107 ms |
+| 24MP 约 0.1 s/次，不可逐帧重合成 | CONFIRMED（方向正确） | 结论保守合理；显示预览降采样方案为 HYPOTHESIS，尚未实测 |
+| system-tray 默认特性 | HYPOTHESIS（已正确标注） | 未核实 |
+
+### 剩余阻断项 / 必须补的证据
+1. **真实系统 125%/150% DPI 与每显示器 DPI 切换**：仍 NOT_VERIFIED（需用户改显示设置），是本轮最大缺口。
+2. 计时补测：在 `present` 之后或下一次 `BeforeRendering` 处打点，或者用 `glFinish` 版本测量；并实测“屏幕分辨率预览”方案的更新耗时（这是产品实际要走的路径）。
+3. 输入法：预编辑、候选窗定位（在 125%/150% 下）、取消；补跑并记录阴性对照。
+4. Narrator 真人朗读；去掉按钮的重复 Text 语义；Tab 遍历。
+5. 命中边界 8/9px 与手柄优先级测试；无 GPU 真机。
+以上均不是已证实的框架缺陷，目前**未发现 Slint 的阻断项**。
+
+### 结论
+**ACCEPT_WITH_LIMITS——Slint 可以选定为 Gate 03 框架**，但 Gate 03 记录中必须写明以下限制：
+- 证据是代理自动化，在 100% 系统缩放 + `SLINT_SCALE_FACTOR` 模拟下取得；性能数字是 CPU 侧下限；Narrator、真实 DPI、IME 的预编辑与候选窗都未验证。
+- 产品架构须采用“拖拽中由 Slint 画轮廓，松手后由 Rust 合成屏幕分辨率预览”的方式；24MP 全量上传只用于导出或局部查看。
+- 上面第 1、3 项在 07 阶段前若失败，按原计划对 iced 做同样验证；iced 缺 AccessKit 的问题仍然存在。

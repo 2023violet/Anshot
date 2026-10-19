@@ -1,0 +1,62 @@
+VERIFY start backend=default scale_env=1.5
+VERIFY base_generated_ms=47.8
+VERIFY first_image_set_ms=55.0
+VERIFY rendering_notifier=supported
+VERIFY first_frame_rendered
+VERIFY update step=1 set_ms=54.6 to_frame_ms=143.6
+VERIFY update step=2 set_ms=69.4 to_frame_ms=115.9
+VERIFY update step=3 set_ms=55.7 to_frame_ms=105.7
+VERIFY update step=4 set_ms=62.1 to_frame_ms=113.2
+VERIFY update step=5 set_ms=53.9 to_frame_ms=103.4
+VERIFY update step=6 set_ms=60.3 to_frame_ms=104.3
+VERIFY update step=7 set_ms=53.5 to_frame_ms=103.4
+VERIFY update step=8 set_ms=59.4 to_frame_ms=103.4
+VERIFY update step=9 set_ms=56.6 to_frame_ms=104.5
+VERIFY update step=10 set_ms=57.2 to_frame_ms=100.9
+VERIFY update step=11 set_ms=55.0 to_frame_ms=101.4
+VERIFY update step=12 set_ms=63.0 to_frame_ms=108.8
+VERIFY update step=13 set_ms=52.5 to_frame_ms=98.6
+VERIFY update step=14 set_ms=56.6 to_frame_ms=102.3
+VERIFY update step=15 set_ms=52.0 to_frame_ms=100.8
+VERIFY update step=16 set_ms=57.5 to_frame_ms=104.1
+VERIFY update step=17 set_ms=55.6 to_frame_ms=98.5
+VERIFY update step=18 set_ms=57.9 to_frame_ms=108.5
+VERIFY update step=19 set_ms=56.2 to_frame_ms=105.7
+VERIFY update step=20 set_ms=55.4 to_frame_ms=102.3
+VERIFY updates_done
+HARNESS updates_done_seen=True
+HARNESS keyboard_layout=0x8040804
+UIA ControlType.Button name=选择 focusable=True
+UIA ControlType.Text name=选择 focusable=False
+UIA ControlType.Button name=箭头 focusable=True
+UIA ControlType.Text name=箭头 focusable=False
+UIA ControlType.Button name=矩形 focusable=True
+UIA ControlType.Text name=矩形 focusable=False
+UIA ControlType.Button name=文字 focusable=True
+UIA ControlType.Text name=文字 focusable=False
+UIA ControlType.Button name=序号 focusable=True
+UIA ControlType.Text name=序号 focusable=False
+UIA ControlType.Button name=高亮 focusable=True
+UIA ControlType.Text name=高亮 focusable=False
+UIA ControlType.Button name=遮挡 focusable=True
+UIA ControlType.Text name=遮挡 focusable=False
+UIA ControlType.Button name=马赛克 focusable=True
+UIA ControlType.Text name=马赛克 focusable=False
+UIA ControlType.Button name=裁剪 focusable=True
+UIA ControlType.Text name=裁剪 focusable=False
+UIA ControlType.Edit name=标注文字 focusable=True
+UIA ControlType.Text name=已输入：你好 focusable=False
+UIA ControlType.Image name=#MadeWithSlint focusable=False
+UIA ControlType.Text name=Version 1.18.1
+https://slint.dev/ focusable=False
+UIA total_elements=23
+VERIFY down x=200.0 y=130.0 grab=Some(Body)
+VERIFY up grabbed=true sel=150 120 160 60
+VERIFY down x=316.0 y=186.0 grab=Some(Handle(1.0, 1.0))
+VERIFY up grabbed=true sel=150 120 185 75
+VERIFY down x=150.0 y=120.0 grab=Some(Handle(0.0, 0.0))
+VERIFY up grabbed=true sel=160 130 175 65
+VERIFY down x=349.3 y=208.7 grab=None
+VERIFY up grabbed=false sel=160 130 175 65
+VERIFY text=你好
+HARNESS peak_working_set_mb=650.7 peak_private_mb=584.2

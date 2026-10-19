@@ -1,0 +1,41 @@
+VERIFY start backend=winit-software scale_env=none
+VERIFY base_generated_ms=41.9
+VERIFY first_image_set_ms=45.0
+VERIFY rendering_notifier=unsupported
+HARNESS interact_begin
+HARNESS keyboard_layout=0x8040804
+UIA ControlType.Button name=选择 focusable=True
+UIA ControlType.Text name=选择 focusable=False
+UIA ControlType.Button name=箭头 focusable=True
+UIA ControlType.Text name=箭头 focusable=False
+UIA ControlType.Button name=矩形 focusable=True
+UIA ControlType.Text name=矩形 focusable=False
+UIA ControlType.Button name=文字 focusable=True
+UIA ControlType.Text name=文字 focusable=False
+UIA ControlType.Button name=序号 focusable=True
+UIA ControlType.Text name=序号 focusable=False
+UIA ControlType.Button name=高亮 focusable=True
+UIA ControlType.Text name=高亮 focusable=False
+UIA ControlType.Button name=遮挡 focusable=True
+UIA ControlType.Text name=遮挡 focusable=False
+UIA ControlType.Button name=马赛克 focusable=True
+UIA ControlType.Text name=马赛克 focusable=False
+UIA ControlType.Button name=裁剪 focusable=True
+UIA ControlType.Text name=裁剪 focusable=False
+UIA ControlType.Edit name=标注文字 focusable=True
+UIA ControlType.Text name=已输入：你好 focusable=False
+UIA ControlType.Image name=#MadeWithSlint focusable=False
+UIA ControlType.Text name=Version 1.18.1
+https://slint.dev/ focusable=False
+UIA total_elements=23
+HARNESS shot=D:\study\Software\ShareReady\spike\evidence\verify\software-100-after.png 1180x760
+VERIFY down x=200.0 y=130.0 grab=Some(Body)
+VERIFY up grabbed=true sel=150 120 160 60
+VERIFY down x=316.0 y=186.0 grab=Some(Handle(1.0, 1.0))
+VERIFY up grabbed=true sel=150 120 185 75
+VERIFY down x=150.0 y=120.0 grab=Some(Handle(0.0, 0.0))
+VERIFY up grabbed=true sel=160 130 175 65
+VERIFY down x=349.0 y=209.0 grab=None
+VERIFY up grabbed=false sel=160 130 175 65
+VERIFY text=你好
+HARNESS peak_working_set_mb=217.6 peak_private_mb=195.0

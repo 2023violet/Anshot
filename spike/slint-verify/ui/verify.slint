@@ -1,0 +1,86 @@
+// Gate 03 Slint verification: 24MP image updates, Rust-driven drag/hit-test,
+// Chinese IME in TextInput, accessible names (UIA/Narrator), AboutSlint.
+import { AboutSlint } from "std-widgets.slint";
+import "../../../poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf";
+
+component ToolButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked();
+    width: 32px; height: 32px; border-radius: 6px;
+    background: selected ? #26251e : ta.has-hover ? #efeee8 : transparent;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { root.clicked(); }
+    forward-focus: fs;
+    fs := FocusScope { }
+    ta := TouchArea { clicked => { root.clicked(); } }
+    Text { text: label; font-size: 11px; color: selected ? #f7f7f4 : #5a5852; vertical-alignment: center; horizontal-alignment: center; }
+}
+
+export component VerifyWindow inherits Window {
+    title: "spike-slint-verify";
+    width: 1180px; height: 760px;
+    background: #f7f7f4;
+    default-font-family: "Noto Sans CJK SC";
+
+    in property <image> canvas-image;
+    in property <length> sel-x: 120px;
+    in property <length> sel-y: 100px;
+    in property <length> sel-w: 160px;
+    in property <length> sel-h: 60px;
+    out property <string> typed: ti.text;
+    callback pointer-down(length, length);
+    callback pointer-move(length, length);
+    callback pointer-up();
+    callback text-edited(string);
+    callback tool-clicked(string);
+    in-out property <string> active-tool: "选择";
+
+    // toolbar with accessible names (Narrator / UIA)
+    HorizontalLayout { x: 0; y: 0; height: 52px; width: parent.width; padding: 10px; spacing: 4px;
+        for t in ["选择", "箭头", "矩形", "文字", "序号", "高亮", "遮挡", "马赛克", "裁剪"]: ToolButton {
+            label: t; selected: root.active-tool == t; clicked => { root.active-tool = t; root.tool-clicked(t); }
+        }
+        Rectangle { horizontal-stretch: 1; }
+    }
+
+    // drag stage: one TouchArea, hit-testing and state live in Rust
+    stage := Rectangle { x: 20px; y: 60px; width: 500px; height: 320px; background: #ecebe5; border-width: 1px; border-color: #cfcdc4;
+        Rectangle { x: sel-x; y: sel-y; width: sel-w; height: sel-h; background: #1a1915; }
+        Rectangle { x: sel-x - 1px; y: sel-y - 1px; width: sel-w + 2px; height: sel-h + 2px; border-width: 1px; border-color: white; }
+        Rectangle { x: sel-x - 2px; y: sel-y - 2px; width: sel-w + 4px; height: sel-h + 4px; border-width: 1px; border-color: #26251e; }
+        for h in [{fx: 0, fy: 0}, {fx: 0.5, fy: 0}, {fx: 1, fy: 0}, {fx: 0, fy: 0.5}, {fx: 1, fy: 0.5}, {fx: 0, fy: 1}, {fx: 0.5, fy: 1}, {fx: 1, fy: 1}]: Rectangle {
+            x: sel-x + sel-w * h.fx - 4px; y: sel-y + sel-h * h.fy - 4px; width: 8px; height: 8px;
+            border-radius: 2px; background: white; border-width: 1.5px; border-color: #26251e;
+        }
+        TouchArea {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down { root.pointer-down(self.mouse-x, self.mouse-y); }
+                if e.kind == PointerEventKind.up { root.pointer-up(); }
+            }
+            moved => { root.pointer-move(self.mouse-x, self.mouse-y); }
+        }
+    }
+
+    // 24MP canvas, shown fit-to-box
+    Rectangle { x: 540px; y: 60px; width: 620px; height: 420px; background: #ecebe5; border-width: 1px; border-color: #cfcdc4;
+        Image { width: parent.width - 2px; height: parent.height - 2px; source: canvas-image; image-fit: contain; }
+    }
+
+    // Chinese IME target
+    Rectangle { x: 20px; y: 400px; width: 500px; height: 40px; background: white; border-width: 1px; border-radius: 8px;
+        border-color: ti.has-focus ? #f54e00 : #cfcdc4;
+        ti := TextInput { x: 10px; width: parent.width - 20px; height: parent.height; font-size: 16px; color: #26251e;
+            vertical-alignment: center; accessible-label: "标注文字";
+            edited => { root.text-edited(self.text); } }
+    }
+    Text { x: 20px; y: 446px; text: "已输入：" + ti.text; font-size: 13px; color: #5a5852; }
+
+    // license attribution required by Slint Royalty-free 2.0 (product: About dialog)
+    Rectangle { x: 20px; y: 490px; width: 500px; height: 250px; background: white; border-radius: 12px; border-width: 1px; border-color: #cfcdc4;
+        AboutSlint { }
+    }
+
+    init => { ti.focus(); }
+}
