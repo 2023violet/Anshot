@@ -3,123 +3,134 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>暗夜工作台样稿</title>
+<title>奶油编辑台样稿</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg-workspace:#07080a; --bg-chrome:#0d0d0d; --bg-elevated:#101111; --bg-card:#121212; --bg-hover:#18191a; --bg-pressed:#1f2022;
-  --line:#242728; --line-strong:rgba(255,255,255,.16);
-  --ink:#f4f4f6; --body:#cdcdcd; --mute:#9c9c9d; --dis:#6a6b6c;
-  --accent:#5e6ad2; --accent-hover:#828fff; --accent-soft:rgba(94,106,210,.18); --secure:#7a7fad;
-  --primary:#fff; --primary-pressed:#e8e8e8; --ok:#59d499; --error:#ff6161; --warn:#ffc533; --scrim:rgba(0,0,0,.55);
-  --red:#f2463c; --yellow:#ffd60a; --green:#30c45a; --blue:#2f7cf6; --white:#fff; --black:#111;
+  --bg-canvas:#f7f7f4; --bg-soft:#fafaf7; --bg-card:#fff; --bg-workspace:#ecebe5; --bg-hover:#efeee8; --bg-pressed:#e6e5e0;
+  --line:#e6e5e0; --line-strong:#cfcdc4;
+  --ink:#26251e; --body:#5a5852; --mute:#6b6960; --decor:#807d72; --dis:#a09c92;
+  --sel-bg:#26251e; --sel-fg:#f7f7f4;
+  --brand:#f54e00; --primary:#d04200; --primary-hover:#bf3d00; --primary-pressed:#b33900;
+  --secure:#1f8a65; --error:#cf2d56; --scrim:rgba(38,37,30,.55);
+  --pill-secure:#9fc9a2; --pill-busy:#dfa88f; --pill-done:#c08532; --pill-info:#9fbbe0;
+  --red:#e5342b; --yellow:#ffc60a; --green:#22a652; --blue:#2f6ff0; --black:#1a1915;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
 }
 *{box-sizing:border-box}
-body{margin:0;background:#000;color:var(--body);font:13px/20px Inter,"Noto Sans SC",system-ui,sans-serif;font-feature-settings:"calt","kern","liga","ss03";}
-.page{max-width:1180px;margin:auto;padding:24px 16px 48px;display:grid;gap:32px}
-.page>h1{font-size:20px;line-height:28px;font-weight:600;color:var(--ink);margin:0}
-.page>p{margin:-24px 0 0;color:var(--mute)}
-.label{font-size:12px;color:var(--mute);margin:0 0 8px}
-/* window */
-.win{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--bg-workspace);display:flex;flex-direction:column;height:640px}
-.titlebar{height:32px;background:var(--bg-chrome);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line)}
-.tb-ctl{display:flex;gap:18px;color:var(--mute)}
-.toolbar{height:48px;background:var(--bg-chrome);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 8px;gap:4px}
-.ib{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;color:var(--body);position:relative;cursor:default;transition:background 80ms ease-out}
+body{margin:0;background:var(--bg-canvas);color:var(--body);font:13px/20px Inter,"Noto Sans SC",system-ui,sans-serif}
+.page{max-width:1180px;margin:auto;padding:32px 16px 56px;display:grid;gap:36px}
+.intro h1{font-size:26px;line-height:32px;font-weight:400;letter-spacing:-.4px;color:var(--ink);margin:0}
+.intro p{margin:6px 0 0;color:var(--mute)}
+.label{font-size:12px;color:var(--mute);margin:0 0 10px}
+.win{border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:var(--bg-workspace);display:flex;flex-direction:column;height:660px}
+.titlebar{height:32px;background:var(--bg-canvas);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line)}
+.tb-ctl{display:flex;gap:18px}
+.toolbar{height:52px;background:var(--bg-canvas);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 10px;gap:4px}
+.mark{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:500;margin-right:8px}
+.mark i{width:12px;height:12px;background:var(--brand);border-radius:3px;display:block}
+.ib{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;color:var(--body);position:relative;transition:background 80ms ease-out}
 .ib:hover{background:var(--bg-hover)}
-.ib.on{background:var(--accent);color:#fff}
-.ib.on.sec{background:var(--secure)}
+.ib.on{background:var(--sel-bg);color:var(--sel-fg)}
 .ib.dis{color:var(--dis)}
 .ib svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.vsep{width:1px;height:20px;background:var(--line);margin:0 6px}
+.ib .badge{position:absolute;right:3px;bottom:3px;width:8px;height:9px}
+.ib .badge path{fill:var(--secure);stroke:none}
+.ib.on .badge path{fill:#5fd3a6}
+.vsep{width:1px;height:22px;background:var(--line-strong);margin:0 6px}
 .grow{flex:1}
-.btn{height:32px;border-radius:8px;padding:0 12px;display:inline-flex;align-items:center;gap:8px;font-weight:500;color:var(--ink);border:1px solid var(--line-strong);background:transparent;font:inherit;font-weight:500}
+.btn{height:32px;border-radius:8px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:500 13px/16px Inter,"Noto Sans SC",sans-serif;color:var(--ink);border:1px solid var(--line-strong);background:var(--bg-card);transition:background 80ms}
 .btn:hover{background:var(--bg-hover)}
-.btn.primary{background:var(--primary);color:#000;border-color:transparent}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+.btn.primary:hover{background:var(--primary-hover)}
 .btn.primary:active{background:var(--primary-pressed)}
-.btn.danger{border-color:transparent;color:var(--error)}
-.kc{height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--line);background:linear-gradient(var(--bg-card),#0d0d0d);font-size:11px;line-height:16px;font-weight:500;color:var(--mute);letter-spacing:.2px;display:inline-flex;align-items:center}
-.btn.primary .kc{background:#ececec;border-color:#d4d4d4;color:#555}
-.propbar{height:40px;background:var(--bg-elevated);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 12px;font-size:12px;color:var(--mute)}
-.sw{width:20px;height:20px;border-radius:6px;display:inline-block;position:relative}
-.sw.sel{box-shadow:0 0 0 2px var(--bg-elevated),0 0 0 4px var(--ink)}
-.sw.w{border:1px solid var(--line-strong)}
+.btn.danger{background:transparent;border-color:transparent;color:var(--error)}
+.kc{height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--line-strong);border-bottom-width:2px;background:var(--bg-card);font:500 11px/14px var(--mono);color:var(--mute);display:inline-flex;align-items:center}
+.btn.primary .kc{background:rgba(255,255,255,.18);border:0;color:#fff}
+.propbar{height:40px;background:var(--bg-soft);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 12px;font-size:12px;color:var(--mute)}
+.sw{width:20px;height:20px;border-radius:6px;display:inline-block}
+.sw.w{box-shadow:inset 0 0 0 1px var(--line-strong)}
+.sw.sel{box-shadow:0 0 0 2px var(--bg-soft),0 0 0 4px var(--ink)}
 .swatches{display:flex;gap:8px;align-items:center}
-.seg{display:inline-flex;height:28px;border:1px solid var(--line);border-radius:8px;background:var(--bg-chrome);padding:2px;gap:2px}
+.seg{display:inline-flex;height:28px;border-radius:8px;background:var(--bg-pressed);padding:2px;gap:2px}
 .seg span{padding:0 10px;border-radius:6px;display:flex;align-items:center;color:var(--body);font-size:12px}
-.seg span.on{background:var(--bg-card);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
-.num{height:28px;padding:0 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg-chrome);color:var(--ink);display:inline-flex;align-items:center;font-variant-numeric:tabular-nums}
+.seg span.on{background:var(--bg-card);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.num{height:28px;min-width:44px;padding:0 8px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg-card);color:var(--ink);display:inline-flex;align-items:center;font:12px/16px var(--mono)}
 .canvas{flex:1;display:grid;place-items:center;overflow:hidden;position:relative}
-.status{height:28px;background:var(--bg-chrome);border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 12px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
-.status .sh{display:inline-flex;align-items:center;gap:6px}
-.status svg{width:14px;height:14px;stroke:var(--secure);fill:none;stroke-width:1.5}
+.status{height:30px;background:var(--bg-canvas);border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 12px;font-size:12px;color:var(--mute)}
+.mono{font-family:var(--mono)}
+.pill{height:20px;border-radius:999px;padding:0 8px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink)}
+.pill svg{width:11px;height:11px}
+.pill.secure{background:var(--pill-secure)} .pill.busy{background:var(--pill-busy)} .pill.done{background:var(--pill-done)} .pill.info{background:var(--pill-info)}
 .zoom{display:flex;align-items:center;gap:2px}
-.zoom .z{height:22px;padding:0 8px;border-radius:6px;display:flex;align-items:center}
+.zoom .z{height:22px;padding:0 8px;border-radius:6px;display:flex;align-items:center;gap:6px}
 .zoom .z:hover{background:var(--bg-hover)}
-.zoom .z.on{color:var(--ink);background:var(--bg-card)}
-/* screenshot content (synthetic chat) */
-.shot{width:620px;height:430px;background:#f5f6f8;outline:1px solid var(--line-strong);position:relative;font-family:"Noto Sans SC",sans-serif;color:#222;overflow:hidden}
+.zoom .z.on{color:var(--ink);background:var(--bg-pressed)}
+.focus{box-shadow:0 0 0 2px var(--bg-canvas),0 0 0 4px var(--brand)}
+/* synthetic screenshot */
+.shot{width:620px;height:430px;background:#f3f5f8;outline:1px solid var(--line-strong);position:relative;font-family:"Noto Sans SC",sans-serif;color:#222;overflow:hidden}
 .shot .hd{height:44px;background:#fff;border-bottom:1px solid #e3e5e8;display:flex;align-items:center;padding:0 16px;gap:10px;font-weight:600;font-size:14px}
 .av{width:28px;height:28px;border-radius:50%;background:#c9d4e4}
 .msg{position:absolute;max-width:300px;padding:9px 12px;border-radius:10px;font-size:13px;line-height:20px;background:#fff;border:1px solid #e6e8eb}
 .msg.me{background:#95ec69;border-color:#86d65e}
-/* overlays on shot */
 .o-solid{position:absolute;background:var(--black)}
-.o-mosaic{position:absolute;background:
-  conic-gradient(#4a4b4f 25%,#5b5c61 0 50%,#3a3b3e 0 75%,#6c6d72 0) 0 0/12px 12px}
-.o-dash{position:absolute;outline:1px dashed var(--secure);outline-offset:0}
-.o-sel{position:absolute;outline:1px solid var(--accent)}
-.o-sel i{position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid var(--accent);border-radius:2px}
+.o-mosaic{position:absolute;background:conic-gradient(#4b4a44 25%,#5d5b54 0 50%,#3a3934 0 75%,#6f6d65 0) 0 0/12px 12px}
+.o-dash{position:absolute;outline:1px dashed var(--secure)}
+.o-shield{position:absolute;width:14px;height:14px;background:var(--secure);border-radius:3px;display:grid;place-items:center}
+.o-shield svg{width:9px;height:9px;fill:#fff}
+.o-sel{position:absolute;outline:1px solid var(--sel-bg);box-shadow:0 0 0 2px #fff}
+.o-sel i{position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid var(--sel-bg);border-radius:2px}
 .o-rect{position:absolute;border:3px solid var(--red);border-radius:2px}
 .o-num{position:absolute;width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;font:600 14px/26px Inter,sans-serif;text-align:center}
 .o-text{position:absolute;color:var(--red);font:600 18px/24px Inter,"Noto Sans SC",sans-serif;white-space:nowrap}
 svg.o-arrow{position:absolute;overflow:visible}
-/* toast */
-.toast{position:absolute;right:16px;bottom:16px;min-width:240px;background:var(--bg-card);border:1px solid var(--line-strong);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start}
-.toast b{color:var(--ink);font-weight:500}
+.toast{position:absolute;right:16px;bottom:16px;min-width:260px;background:var(--bg-card);border:1px solid var(--line-strong);border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.toast b{color:var(--ink);font-weight:500;display:block}
 .toast small{display:block;color:var(--mute);font-size:12px;line-height:16px}
-.dot-ok{width:16px;height:16px;border-radius:50%;background:var(--ok);flex:none;margin-top:2px;display:grid;place-items:center}
-.dot-ok svg{width:10px;height:10px;stroke:#000;stroke-width:2.5;fill:none}
-.tip{position:absolute;top:44px;left:0;white-space:nowrap;background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;color:var(--ink);display:flex;gap:8px;align-items:center;z-index:2}
-.focus{box-shadow:0 0 0 2px var(--bg-chrome),0 0 0 4px var(--accent)}
-/* empty + dialog row */
+/* lower row */
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.panel{border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-workspace);height:340px;position:relative;overflow:hidden}
-.empty{position:absolute;inset:0;display:grid;place-content:center;gap:20px;text-align:center}
-.empty h2{margin:0;font-size:20px;line-height:28px;color:var(--ink);font-weight:600}
+.panel{border:1px solid var(--line-strong);border-radius:12px;background:var(--bg-canvas);height:360px;position:relative;overflow:hidden}
+.empty{position:absolute;inset:0;display:grid;place-content:center;gap:22px;text-align:center}
+.empty h2{margin:0;font-size:26px;line-height:32px;font-weight:400;letter-spacing:-.4px;color:var(--ink)}
 .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.card{width:150px;height:104px;border-radius:10px;background:var(--bg-chrome);border:1px solid var(--line);display:grid;place-content:center;gap:6px;justify-items:center;color:var(--ink);font-weight:500}
+.card{width:150px;height:116px;border-radius:12px;background:var(--bg-card);border:1px solid var(--line-strong);display:grid;place-content:center;gap:6px;justify-items:center;color:var(--ink);font-weight:500;position:relative}
+.card.first::before{content:"";position:absolute;left:10px;top:10px;width:8px;height:8px;border-radius:2px;background:var(--brand)}
 .card svg{width:24px;height:24px;stroke:var(--body);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.drop{border:1px dashed var(--line-strong);border-radius:10px;padding:14px;color:var(--mute);font-size:12px}
+.drop{border:1px dashed var(--line-strong);border-radius:12px;padding:14px;color:var(--mute);font-size:12px}
 .scrim{position:absolute;inset:0;background:var(--scrim)}
-.dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,90%);background:var(--bg-card);border:1px solid var(--line-strong);border-radius:10px;padding:20px}
-.dialog h3{margin:0 0 6px;font-size:14px;line-height:20px;color:var(--ink);font-weight:600}
+.dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,90%);background:var(--bg-card);border:1px solid var(--line-strong);border-radius:12px;padding:24px}
+.dialog h3{margin:0 0 6px;font-size:15px;line-height:22px;color:var(--ink);font-weight:600}
 .dialog p{margin:0;color:var(--body)}
-.dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;flex-wrap:wrap}
-.bgshot{position:absolute;inset:0;background:linear-gradient(#f5f6f8,#e9ebee)}
-@media (max-width:860px){.row2{grid-template-columns:1fr}.win{height:auto}.canvas{padding:24px 0}.shot{transform:scale(.55);transform-origin:center;margin:-96px -140px}.toolbar{overflow-x:auto}.propbar{overflow-x:auto}}
+.dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;flex-wrap:wrap}
+.bgshot{position:absolute;inset:0;background:var(--bg-workspace)}
+.bgshot::after{content:"";position:absolute;left:12%;top:14%;right:12%;bottom:14%;background:#f3f5f8;outline:1px solid var(--line-strong)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:860px){.row2{grid-template-columns:1fr}.win{height:auto}.canvas{padding:24px 0}.shot{transform:scale(.55);margin:-96px -140px}.toolbar,.propbar{overflow-x:auto}.mark span{display:none}}
 </style>
 </head>
 <body>
 <div class="page">
-  <h1>暗夜工作台 · 视觉样稿 v0.1</h1>
-  <p>Raycast 骨架 + Linear 强调色。截图内容为合成数据。对应 04_DESIGN.md 的 Token 与组件。</p>
+  <div class="intro">
+    <h1>奶油编辑台 · 视觉样稿 v0.2</h1>
+    <p>Cursor 暖奶油编辑风为主。截图内容为合成数据。对应 04_DESIGN.md v0.2 的 Token 与组件。</p>
+  </div>
 
   <section>
-    <p class="label">S2 编辑窗口 · 选中一个实心遮挡（遮挡工具使用 secure 色；标注为内容色红）· 刚刚复制成功的提示</p>
+    <p class="label">S2 编辑窗口 · 选中实心遮挡（深绿安全身份）· 红色为标注内容色 · 复制成功提示</p>
     <div class="win">
       <div class="titlebar"><span>截图 2026-10-19 14:32</span><span class="tb-ctl"><span>—</span><span>▢</span><span>✕</span></span></div>
       <div class="toolbar">
-        <div class="ib" title="选择 V"><svg viewBox="0 0 24 24"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg></div>
+        <div class="mark"><i></i><span>ShareReady</span></div>
+        <div class="ib"><svg viewBox="0 0 24 24"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg></div>
         <div class="ib"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M9 5h10v10"/></svg></div>
         <div class="ib"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/></svg></div>
         <div class="ib focus" title="文字 T（键盘焦点示例）"><svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg></div>
         <div class="ib"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M11 9l1.5-1V16"/></svg></div>
         <div class="ib"><svg viewBox="0 0 24 24"><path d="M9 11l-5 5v4h4l5-5M14 6l4 4M9 11l5-5 4 4-5 5z"/></svg></div>
         <div class="vsep"></div>
-        <div class="ib on sec"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></div>
-        <div class="ib"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></div>
+        <div class="ib on"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></div>
+        <div class="ib"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 13h7v7h-7z"/><path d="M13 4h7v7h-7zM4 13h7v7H4z" opacity=".45"/></svg><svg class="badge" viewBox="0 0 8 9"><path d="M4 0l4 1.5v3C8 7 6 8.5 4 9 2 8.5 0 7 0 4.5v-3z"/></svg></div>
         <div class="vsep"></div>
         <div class="ib"><svg viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></svg></div>
         <div class="grow"></div>
@@ -131,9 +142,9 @@ svg.o-arrow{position:absolute;overflow:visible}
       </div>
       <div class="propbar">
         遮挡样式 <span class="seg"><span class="on">实心</span><span>安全马赛克</span></span>
-        颜色 <span class="swatches"><span class="sw sel" style="background:var(--black);box-shadow:0 0 0 2px var(--bg-elevated),0 0 0 4px var(--ink),inset 0 0 0 1px var(--line-strong)"></span><span class="sw w" style="background:#fff"></span></span>
+        颜色 <span class="swatches"><span class="sw sel" style="background:var(--black)"></span><span class="sw w" style="background:#fff"></span></span>
         <span class="vsep"></span>
-        X <span class="num">412</span> Y <span class="num">96</span> W <span class="num">176</span> H <span class="num">22</span>
+        X <span class="num">412</span> Y <span class="num">142</span> W <span class="num">176</span> H <span class="num">22</span>
         <span class="grow"></span>
         <button class="btn danger">删除 <span class="kc">Del</span></button>
       </div>
@@ -146,29 +157,35 @@ svg.o-arrow{position:absolute;overflow:visible}
           <div class="msg" style="left:16px;top:268px">如需凭证，可在 “我的 → 订单 → 退款详情” 查看。</div>
           <div class="msg me" style="right:16px;top:336px">好的，谢谢！</div>
 
-          <!-- redactions -->
+          <div class="o-mosaic" style="left:322px;top:142px;width:82px;height:22px"></div>
+          <div class="o-dash" style="left:322px;top:142px;width:82px;height:22px"></div>
+          <div class="o-shield" style="left:316px;top:136px"><svg viewBox="0 0 8 9"><path d="M4 0l4 1.5v3C8 7 6 8.5 4 9 2 8.5 0 7 0 4.5v-3z"/></svg></div>
           <div class="o-solid" style="left:412px;top:142px;width:176px;height:22px"></div>
           <div class="o-sel" style="left:412px;top:142px;width:176px;height:22px">
             <i style="left:-5px;top:-5px"></i><i style="left:calc(50% - 4px);top:-5px"></i><i style="right:-5px;top:-5px"></i>
             <i style="left:-5px;top:calc(50% - 4px)"></i><i style="right:-5px;top:calc(50% - 4px)"></i>
             <i style="left:-5px;bottom:-5px"></i><i style="left:calc(50% - 4px);bottom:-5px"></i><i style="right:-5px;bottom:-5px"></i>
           </div>
-          <div class="o-mosaic" style="left:24px;top:8px;width:0;height:0"></div>
-          <div class="o-mosaic" style="left:322px;top:142px;width:82px;height:22px"></div>
-          <div class="o-dash" style="left:322px;top:142px;width:82px;height:22px"></div>
-          <!-- annotations -->
           <div class="o-rect" style="left:10px;top:262px;width:330px;height:46px"></div>
           <div class="o-num" style="left:330px;top:250px">1</div>
-          <svg class="o-arrow" style="left:360px;top:300px" width="1" height="1"><path d="M90 40 L8 4" stroke="#f2463c" stroke-width="4" stroke-linecap="round"/><path d="M8 4 L24 2 M8 4 L18 16" stroke="#f2463c" stroke-width="4" stroke-linecap="round"/></svg>
-          <div class="o-text" style="left:400px;top:342px;transform:translateY(-14px)">这里看凭证</div>
+          <svg class="o-arrow" style="left:360px;top:300px" width="1" height="1"><path d="M90 40 L8 4" stroke="#e5342b" stroke-width="4" stroke-linecap="round"/><path d="M8 4 L24 2 M8 4 L18 16" stroke="#e5342b" stroke-width="4" stroke-linecap="round"/></svg>
+          <div class="o-text" style="left:400px;top:328px">这里看凭证</div>
         </div>
-        <div class="toast"><span class="dot-ok"><svg viewBox="0 0 12 12"><path d="M2.5 6.5l2.2 2L9.5 3.5"/></svg></span><span><b>已复制到剪贴板</b><small>620 × 430 · 已遮挡 2 处</small></span></div>
+        <div class="toast"><span class="pill done"><svg viewBox="0 0 12 12" fill="none" stroke="#26251e" stroke-width="2"><path d="M2.5 6.5l2.2 2L9.5 3.5"/></svg>已复制</span><span><b>已复制到剪贴板</b><small><span class="mono">620 × 430</span> · 已遮挡 2 处</small></span></div>
       </div>
       <div class="status">
-        <span>620 × 430</span><span class="sh"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>已遮挡 2 处</span>
+        <span class="mono">620 × 430</span>
+        <span class="pill secure"><svg viewBox="0 0 8 9"><path fill="#1f8a65" d="M4 0l4 1.5v3C8 7 6 8.5 4 9 2 8.5 0 7 0 4.5v-3z"/></svg>已遮挡 2 处</span>
         <span class="grow"></span>
-        <span class="zoom"><span class="z">适应 <span class="kc" style="margin-left:6px">Ctrl 0</span></span><span class="z on">100%</span><span class="z">−</span><span class="z">+</span></span>
+        <span class="zoom"><span class="z">适应 <span class="kc">Ctrl 0</span></span><span class="z on mono">100%</span><span class="z">−</span><span class="z">+</span></span>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="label">状态胶囊家族（只用于状态栏与提示）</p>
+    <div class="pills">
+      <span class="pill secure">已遮挡 2 处</span><span class="pill busy">生成中</span><span class="pill done">已复制</span><span class="pill done">已保存</span><span class="pill info">只读文件</span>
     </div>
   </section>
 
@@ -179,7 +196,7 @@ svg.o-arrow{position:absolute;overflow:visible}
         <div class="empty">
           <h2>开始一张截图</h2>
           <div class="cards">
-            <div class="card"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>截图<span class="kc">Ctrl Shift A</span></div>
+            <div class="card first"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>截图<span class="kc">Ctrl Shift A</span></div>
             <div class="card"><svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10H4z"/></svg>打开图片<span class="kc">Ctrl O</span></div>
             <div class="card"><svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 4h6v3H9z"/></svg>粘贴<span class="kc">Ctrl V</span></div>
           </div>
