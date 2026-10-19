@@ -1,0 +1,517 @@
+{
+  "report": "target/p03-i-evidence/window-20261018T075544687154Z/report.json",
+  "build": "72345b581e5aab2313712fa2e14775c6d8e5b0f64bcd9fb4cd1983a55d2f4a2b",
+  "ok": true,
+  "cases": [
+    {
+      "name": "start-0",
+      "process_wall_seconds": 8.814530900039244,
+      "working_set_peak_bytes": 662315008,
+      "max_sample_gap_ms": 25.257600005716085,
+      "first_gpu_readback_from_process_start_ms": 2434.9608,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 1.1737000000000002,
+        "p95_nearest_rank": 2.0405,
+        "maximum": 52.843
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.641700000000085,
+        "p95_nearest_rank": 24.57559999999992,
+        "maximum": 54.80090000000004
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 1.1520000000000001,
+        "p95_nearest_rank": 1.8391,
+        "maximum": 2.0405
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 2152.38075,
+        "p95_nearest_rank": 2208.1735999999996,
+        "maximum": 2208.1735999999996
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 652.6474000000001,
+        "p95_nearest_rank": 652.6474000000001,
+        "maximum": 652.6474000000001
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 7.052499999999999,
+        "p95_nearest_rank": 7.052499999999999,
+        "maximum": 7.052499999999999
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462
+    },
+    {
+      "name": "start-1",
+      "process_wall_seconds": 7.767487900040578,
+      "working_set_peak_bytes": 663678976,
+      "max_sample_gap_ms": 26.118099980521947,
+      "first_gpu_readback_from_process_start_ms": 1348.8644,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 1.2753999999999999,
+        "p95_nearest_rank": 2.1836,
+        "maximum": 59.1064
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 11.49745000000002,
+        "p95_nearest_rank": 25.35670000000012,
+        "maximum": 61.208000000000155
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 1.2722,
+        "p95_nearest_rank": 1.8475,
+        "maximum": 2.1836
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 2111.00655,
+        "p95_nearest_rank": 2111.423,
+        "maximum": 2111.423
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 601.3232,
+        "p95_nearest_rank": 601.3232,
+        "maximum": 601.3232
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 6.0662,
+        "p95_nearest_rank": 6.0662,
+        "maximum": 6.0662
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462
+    },
+    {
+      "name": "start-2",
+      "process_wall_seconds": 6.857758500031196,
+      "working_set_peak_bytes": 662843392,
+      "max_sample_gap_ms": 60.85700000403449,
+      "first_gpu_readback_from_process_start_ms": 1401.184,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 1.0005000000000002,
+        "p95_nearest_rank": 1.4115999999999997,
+        "maximum": 51.8635
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.323350000000174,
+        "p95_nearest_rank": 10.636100000000148,
+        "maximum": 54.12379999999972
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 0.9697,
+        "p95_nearest_rank": 1.2335,
+        "maximum": 1.4115999999999997
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 1908.2471,
+        "p95_nearest_rank": 1994.7379,
+        "maximum": 1994.7379
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 512.9029,
+        "p95_nearest_rank": 512.9029,
+        "maximum": 512.9029
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 2.2938,
+        "p95_nearest_rank": 2.2938,
+        "maximum": 2.2938
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462
+    },
+    {
+      "name": "start-3",
+      "process_wall_seconds": 6.366196800023317,
+      "working_set_peak_bytes": 662274048,
+      "max_sample_gap_ms": 58.559499972034246,
+      "first_gpu_readback_from_process_start_ms": 1128.641,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 0.93875,
+        "p95_nearest_rank": 1.4229999999999998,
+        "maximum": 74.35900000000001
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.359699999999748,
+        "p95_nearest_rank": 12.38050000000035,
+        "maximum": 76.17169999999973
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 0.9377000000000001,
+        "p95_nearest_rank": 1.2869,
+        "maximum": 1.4229999999999998
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 1793.49965,
+        "p95_nearest_rank": 1795.316,
+        "maximum": 1795.316
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 620.1890000000001,
+        "p95_nearest_rank": 620.1890000000001,
+        "maximum": 620.1890000000001
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 2.6024,
+        "p95_nearest_rank": 2.6024,
+        "maximum": 2.6024
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462
+    },
+    {
+      "name": "start-4",
+      "process_wall_seconds": 6.270635700027924,
+      "working_set_peak_bytes": 662183936,
+      "max_sample_gap_ms": 24.955300032161176,
+      "first_gpu_readback_from_process_start_ms": 1166.6719,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 0.9404999999999999,
+        "p95_nearest_rank": 1.3674,
+        "maximum": 51.451899999999995
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.32334999999973,
+        "p95_nearest_rank": 10.598900000000189,
+        "maximum": 53.25110000000022
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 0.9350999999999999,
+        "p95_nearest_rank": 1.222,
+        "maximum": 1.3674
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 1797.67285,
+        "p95_nearest_rank": 1813.4316,
+        "maximum": 1813.4316
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 510.1037,
+        "p95_nearest_rank": 510.1037,
+        "maximum": 510.1037
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 2.8357,
+        "p95_nearest_rank": 2.8357,
+        "maximum": 2.8357
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462
+    },
+    {
+      "name": "repeat-20",
+      "process_wall_seconds": 51.36701710004127,
+      "working_set_peak_bytes": 759975936,
+      "max_sample_gap_ms": 23.697399999946356,
+      "first_gpu_readback_from_process_start_ms": 1135.0841,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 0.95795,
+        "p95_nearest_rank": 1.3636,
+        "maximum": 51.5704
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.372250000000081,
+        "p95_nearest_rank": 11.900900000000103,
+        "maximum": 54.06429999999985
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 0.9509,
+        "p95_nearest_rank": 1.3021,
+        "maximum": 1.3636
+      },
+      "review_inclusive_controller_ms": {
+        "n": 21,
+        "median": 1778.871,
+        "p95_nearest_rank": 1876.0402000000001,
+        "maximum": 1904.7852
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 20,
+        "median": 502.156,
+        "p95_nearest_rank": 515.8835,
+        "maximum": 517.4835
+      },
+      "save_new_ms": {
+        "n": 2,
+        "median": 3.9056,
+        "p95_nearest_rank": 5.5566,
+        "maximum": 5.5566
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 292462,
+      "sampled_after_release_artifact_retained": [
+        {
+          "round": 1,
+          "phase_unix_ns": 1792310287909315400,
+          "sample_delay_ms": 4.6471,
+          "working_set_bytes": 483794944,
+          "private_commit_bytes": 647770112
+        },
+        {
+          "round": 2,
+          "phase_unix_ns": 1792310290256060400,
+          "sample_delay_ms": 17.5777,
+          "working_set_bytes": 487247872,
+          "private_commit_bytes": 719556608
+        },
+        {
+          "round": 3,
+          "phase_unix_ns": 1792310292597690400,
+          "sample_delay_ms": 11.4631,
+          "working_set_bytes": 485036032,
+          "private_commit_bytes": 720629760
+        },
+        {
+          "round": 4,
+          "phase_unix_ns": 1792310294972620500,
+          "sample_delay_ms": 12.02,
+          "working_set_bytes": 484937728,
+          "private_commit_bytes": 720068608
+        },
+        {
+          "round": 5,
+          "phase_unix_ns": 1792310297364135600,
+          "sample_delay_ms": 20.9563,
+          "working_set_bytes": 488800256,
+          "private_commit_bytes": 720773120
+        },
+        {
+          "round": 6,
+          "phase_unix_ns": 1792310299722580100,
+          "sample_delay_ms": 18.5334,
+          "working_set_bytes": 488534016,
+          "private_commit_bytes": 720740352
+        },
+        {
+          "round": 7,
+          "phase_unix_ns": 1792310302089155000,
+          "sample_delay_ms": 10.7953,
+          "working_set_bytes": 484904960,
+          "private_commit_bytes": 720744448
+        },
+        {
+          "round": 8,
+          "phase_unix_ns": 1792310304580865100,
+          "sample_delay_ms": 4.1676,
+          "working_set_bytes": 484159488,
+          "private_commit_bytes": 648597504
+        },
+        {
+          "round": 9,
+          "phase_unix_ns": 1792310306972411300,
+          "sample_delay_ms": 15.8991,
+          "working_set_bytes": 487931904,
+          "private_commit_bytes": 721760256
+        },
+        {
+          "round": 10,
+          "phase_unix_ns": 1792310309339020900,
+          "sample_delay_ms": 14.7381,
+          "working_set_bytes": 486940672,
+          "private_commit_bytes": 720740352
+        },
+        {
+          "round": 11,
+          "phase_unix_ns": 1792310311680741900,
+          "sample_delay_ms": 7.4283,
+          "working_set_bytes": 484773888,
+          "private_commit_bytes": 649613312
+        },
+        {
+          "round": 12,
+          "phase_unix_ns": 1792310314147484000,
+          "sample_delay_ms": 12.4218,
+          "working_set_bytes": 485986304,
+          "private_commit_bytes": 720699392
+        },
+        {
+          "round": 13,
+          "phase_unix_ns": 1792310316513826800,
+          "sample_delay_ms": 6.8525,
+          "working_set_bytes": 484241408,
+          "private_commit_bytes": 648556544
+        },
+        {
+          "round": 14,
+          "phase_unix_ns": 1792310318897295400,
+          "sample_delay_ms": 7.8294,
+          "working_set_bytes": 484265984,
+          "private_commit_bytes": 648556544
+        },
+        {
+          "round": 15,
+          "phase_unix_ns": 1792310321255509600,
+          "sample_delay_ms": 8.0845,
+          "working_set_bytes": 484106240,
+          "private_commit_bytes": 648396800
+        },
+        {
+          "round": 16,
+          "phase_unix_ns": 1792310323605489200,
+          "sample_delay_ms": 13.8406,
+          "working_set_bytes": 486973440,
+          "private_commit_bytes": 721649664
+        },
+        {
+          "round": 17,
+          "phase_unix_ns": 1792310325997238800,
+          "sample_delay_ms": 1.7764,
+          "working_set_bytes": 484679680,
+          "private_commit_bytes": 649498624
+        },
+        {
+          "round": 18,
+          "phase_unix_ns": 1792310328355346600,
+          "sample_delay_ms": 0.9116,
+          "working_set_bytes": 484151296,
+          "private_commit_bytes": 648495104
+        },
+        {
+          "round": 19,
+          "phase_unix_ns": 1792310330722157400,
+          "sample_delay_ms": 18.1888,
+          "working_set_bytes": 488759296,
+          "private_commit_bytes": 721645568
+        },
+        {
+          "round": 20,
+          "phase_unix_ns": 1792310333095694800,
+          "sample_delay_ms": 5.7884,
+          "working_set_bytes": 484745216,
+          "private_commit_bytes": 649506816
+        }
+      ],
+      "trend_limit": "first sample after release phase, artifact retained; may overlap next import; not stable idle or leak proof"
+    },
+    {
+      "name": "wide-native",
+      "process_wall_seconds": 6.197288399969693,
+      "working_set_peak_bytes": 652349440,
+      "max_sample_gap_ms": 25.98279999801889,
+      "first_gpu_readback_from_process_start_ms": 1103.2197,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 1.0144,
+        "p95_nearest_rank": 1.5504,
+        "maximum": 53.7631
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.323599999999987,
+        "p95_nearest_rank": 10.34019999999991,
+        "maximum": 56.003399999999814
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 1.0032999999999999,
+        "p95_nearest_rank": 1.4421,
+        "maximum": 1.5504
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 1772.6356500000002,
+        "p95_nearest_rank": 1781.2314000000001,
+        "maximum": 1781.2314000000001
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 555.5919,
+        "p95_nearest_rank": 555.5919,
+        "maximum": 555.5919
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 2.3630999999999998,
+        "p95_nearest_rank": 2.3630999999999998,
+        "maximum": 2.3630999999999998
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 104750
+    },
+    {
+      "name": "wide-tile-512",
+      "process_wall_seconds": 6.128222800034564,
+      "working_set_peak_bytes": 651464704,
+      "max_sample_gap_ms": 27.505000005476177,
+      "first_gpu_readback_from_process_start_ms": 1083.4779,
+      "interaction_controller_plus_all_ui_passes_ms_including_transition_frame": {
+        "n": 30,
+        "median": 1.13755,
+        "p95_nearest_rank": 1.5267,
+        "maximum": 56.962900000000005
+      },
+      "interaction_interval_ms_including_transition_frame": {
+        "n": 30,
+        "median": 8.332100000000286,
+        "p95_nearest_rank": 10.224800000000478,
+        "maximum": 59.32749999999976
+      },
+      "interaction_steady_after_transition_cpu_ms": {
+        "n": 29,
+        "median": 1.1308,
+        "p95_nearest_rank": 1.4298,
+        "maximum": 1.5267
+      },
+      "review_inclusive_controller_ms": {
+        "n": 2,
+        "median": 1779.1619,
+        "p95_nearest_rank": 1804.633,
+        "maximum": 1804.633
+      },
+      "actual_bounded_import_controller_ms": {
+        "n": 1,
+        "median": 502.71110000000004,
+        "p95_nearest_rank": 502.71110000000004,
+        "maximum": 502.71110000000004
+      },
+      "save_new_ms": {
+        "n": 1,
+        "median": 6.5934,
+        "p95_nearest_rank": 6.5934,
+        "maximum": 6.5934
+      },
+      "all_visible_interior_pixels": 2336904,
+      "cover_pixels": 104750
+    }
+  ],
+  "limitations": [
+    "fresh processes with warm OS caches, not cold boot",
+    "GPU readback, not physical display/input response",
+    "diagnostic metric CPU included; dithering disabled",
+    "system background load was not controlled; the earlier historical full run additionally observed background cargo/rustc",
+    "OS peak working set excludes separate GPU memory"
+  ]
+}

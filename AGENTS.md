@@ -20,9 +20,17 @@ At initial adoption, inspected upstream repository main commit: `1eb9624ee2037e4
 - Stage ③: execute only the approved next step; capture evidence with artifact/version identity.
 - Stage ④: review independently, distinguish command pass from real UX/security validation.
 - Stage ⑤: use closing-out for documentation knowledge sync and archive; never delete workspace without explicit review and authorization.
-- **Gate A/B previews require separate human acknowledgment. Never self-confirm a token in the same exchange.** When script execution is unavailable, use manual stage checklists and label the gate `MANUAL / NOT SCRIPT-VERIFIED`, **not PASS**.
+- **Outside the continuous local development authorization below, Gate A/B previews require separate human acknowledgment. Never self-confirm a token in the same exchange.** When script execution is unavailable, use manual stage checklists and label the gate `MANUAL / NOT SCRIPT-VERIFIED`, **not PASS**.
 - Do not create arbitrary `.decision/` files by hand; initialize with the current genuine skill CLI when execution is available.
 - Always distinguish `DOCUMENTED`, `MEASURED`, `HYPOTHESIS`, `NOT_VERIFIED`.
+
+## Continuous local development authorization
+
+The user explicitly approved this policy on 2026-10-17; the approval and exact scope are recorded in [the authorization record](docs/governance/AUTONOMOUS_LOCAL_DEVELOPMENT.md). The agent may autonomously plan, implement, test and review reversible local batches within the approved V2 product roadmap. For these batches only, the agent may generate and confirm genuine workflow Gate A/B and review tokens, and apply non-destructive documentation archives, without another per-token human reply. This is an explicit exception to the human-acknowledgment requirements of this AGENTS.md and the adopted author workflow for that bounded scope. Record the policy approval and each agent confirmation honestly; never describe an agent-confirmed token as a human-reviewed token.
+
+Retain main-only development, expected-HEAD checks, preservation of unrelated work, Rust safety-critical transformations/export, synthetic fixtures, locked dependencies, acceptance coverage and exact-artifact evidence. Production-impacting local code changes retain high-risk evidence and independent review requirements; the exception only removes repeated human confirmation for reversible local work. Independent review may use a separate sub-agent with the change and acceptance criteria; do not treat the implementer's own review as independent.
+
+The exception does not authorize deleting/moving user files or the V1 path, rewriting history, force-pushing, changing secrets/authentication/permissions/security or privacy settings, installing drivers, purchases, external messaging, uploading user data, remote publishing, pushing or releasing. Surface the concrete impact and obtain express human confirmation before such actions. Never silently relax success criteria, replace frozen goldens, claim unobserved human usability/accessibility tests passed, or claim the full product complete from partial machine tests. Preserve unresolved environment and human-evidence gaps; continue independent authorized work where possible.
 
 ## Change safety and review
 

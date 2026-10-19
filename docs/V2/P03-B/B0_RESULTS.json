@@ -1,0 +1,188 @@
+{
+  "schema": "shareready.b0.machine-results/1",
+  "recorded_at_utc": "2026-10-17T09:53:02.832253+00:00",
+  "kind": "CURATED_RESULT_INDEX_NOT_RAW_STDOUT",
+  "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+  "gate_b_confirmed": true,
+  "product_source_changed": false,
+  "workspace_test_passed": 33,
+  "workspace_test_failed": 0,
+  "workspace_all_targets_check": "PASS",
+  "exe_selftest": "PASS_RUST_EDITOR_VS_CORE_SINGLE_RECTANGLE",
+  "window_lifecycle": "PASS",
+  "actual_adapter_line": "SR_V2_03_GPU_ADAPTER backend=Dx12 type=DiscreteGpu name=\"NVIDIA GeForce GTX 1650\" vendor=4318 device=8089 max_texture_dimension_2d=16384",
+  "local_toolchain": "rustc/cargo 1.98.1",
+  "ci_exe_toolchain": "rustc/cargo 1.99.0",
+  "executions": [
+    {
+      "mode": "identity",
+      "utc": "2026-10-17T09:40:01.207257+00:00",
+      "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+      "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+      "context_sha256": "7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+      "raw_report": "target/p03-b-evidence/b0-20261017/20261017T094001-identity-cca18b4e/report.json",
+      "raw_report_sha256": "ceea47088bbf8c8f92e615b5697bf349b6dfd3eb3cb1e00ed67f0f289b1efbef",
+      "results": [
+        {
+          "label": "cargo-version",
+          "started_utc": "2026-10-17T09:40:01.207257+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 0.119404,
+          "files": {
+            "cargo-version.stdout.txt": "9950bbb2d5c3417b1a068f0e81f6d3cac991a363193bdf2a22d447f5acf8b503",
+            "cargo-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "label": "rustc-version",
+          "started_utc": "2026-10-17T09:40:01.327660+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 0.253398,
+          "files": {
+            "rustc-version.stdout.txt": "2073de5abf149185c2f4d7473dc833bc921b99135560d24ae7b2293f33a9c376",
+            "rustc-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      ]
+    },
+    {
+      "mode": "probe",
+      "utc": "2026-10-17T09:40:19.339601+00:00",
+      "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+      "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+      "context_sha256": "7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+      "raw_report": "target/p03-b-evidence/b0-20261017/20261017T094019-probe-04657ad1/report.json",
+      "raw_report_sha256": "41330b12cb5bc5023e830751ac31055e1f72250a184930422ec443512ea6bdd4",
+      "results": [
+        {
+          "label": "self-test",
+          "started_utc": "2026-10-17T09:40:19.340600+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 1.120175,
+          "files": {
+            "self-test.stdout.txt": "2868626c62293e0b31b178210e57480cc1d3b3955cef2b9850b7e8b323270e59",
+            "self-test.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "label": "wgpu-dx12",
+          "started_utc": "2026-10-17T09:40:20.462778+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 6.378459,
+          "files": {
+            "wgpu-dx12.stdout.txt": "0140a521196d9a0745a9d1d0f24b9cf432b47d4be8a22af8f7d16713bfe14260",
+            "wgpu-dx12.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "adapter_lines": [
+            "SR_V2_03_GPU_ADAPTER backend=Dx12 type=DiscreteGpu name=\"NVIDIA GeForce GTX 1650\" vendor=4318 device=8089 max_texture_dimension_2d=16384"
+          ],
+          "physical_gpu_acceptance": "NOT_VERIFIED"
+        }
+      ]
+    },
+    {
+      "mode": "regression",
+      "utc": "2026-10-17T09:41:06.120931+00:00",
+      "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+      "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+      "context_sha256": "7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+      "raw_report": "target/p03-b-evidence/b0-20261017/20261017T094106-regression-1a117440/report.json",
+      "raw_report_sha256": "f5e3be793d82d3c7885e99ee25fa86bb7b2c7e0f7983b27c28124a536f357b7a",
+      "results": [
+        {
+          "label": "workspace-tests",
+          "started_utc": "2026-10-17T09:41:06.121929+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 59.339377,
+          "files": {
+            "workspace-tests.stdout.txt": "a0611030e9515a857ec0ddcbf8e4883bc63990ddfffcd2fe23c64348550b8f50",
+            "workspace-tests.stderr.txt": "e1d7e80aacd484b97e6db1e3a259e3b6e32bd19480d3fe807d8f9ac7b2a73795"
+          }
+        },
+        {
+          "label": "workspace-check",
+          "started_utc": "2026-10-17T09:42:05.463310+00:00",
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 9.328424,
+          "files": {
+            "workspace-check.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "workspace-check.stderr.txt": "a66dcd4af6c43cfd469ffb4931826fbda4507b287088be2321241e4ac72c5203"
+          }
+        }
+      ]
+    }
+  ],
+  "human": {
+    "status": "NOT_RUN_AUTOMATED_EVIDENCE_RECORDED_SEPARATELY",
+    "operator": null,
+    "time": null,
+    "dual_display_resources": "USER_CONFIRMED_AVAILABLE",
+    "per_monitor_resolution": null,
+    "per_monitor_dpi": null,
+    "session_type": null,
+    "pointer_mapping": "NOT_VERIFIED",
+    "keyboard_task": "NOT_VERIFIED",
+    "narrator": "NOT_VERIFIED",
+    "screenshots": []
+  },
+  "limits": [
+    "Physical adapter selected and window rendered; performance, display topology and human interaction not proved.",
+    "Selftest compares Editor with shared Rust Core; not an independent pointer or image-file oracle.",
+    "Workspace tests do not rerun Linux golden verifier, browser regression, or human G01-G10.",
+    "Product source unchanged. No product release, independent security audit or GUI framework freeze."
+  ],
+  "interactive_window": {
+    "pid": 10000,
+    "launch_record": "target/p03-b-evidence/b0-20261017/interactive-20261017T095459-9ee86f56/launch.json",
+    "launch_record_sha256": "5e99f9613e4ed157517267dde0caba65f20825c6f732832b5517c9a6de9225fd",
+    "window_title": "ShareReady · Rust Native POC",
+    "window_handle_observed": true,
+    "responding_observed": true,
+    "observation_method": "Get-Process only; not visual QA",
+    "observed_at_utc": "2026-10-17T09:55:44.583524+00:00",
+    "human_task_observed": false
+  },
+  "automation": {
+    "operator": "CODEX_COMPUTER_USE_AUTOMATION",
+    "raw_file": "B0_AUTOMATION_OBSERVATIONS.json",
+    "raw_sha256": "9a4538f32d621153692f2536457b32d05022f5341e349414776144091b5eab44",
+    "checks": {
+      "tab_reaches_open_image": true,
+      "tab_reaches_review": true,
+      "review_label_present": true,
+      "review_enables_delivery": true,
+      "undo_advances_revision": true,
+      "undo_changes_rectangles": true,
+      "undo_disables_delivery": true,
+      "redo_restores_baseline_rectangles": true,
+      "redo_advances_revision": true,
+      "redo_keeps_delivery_disabled": true
+    },
+    "full_g01_g10_acceptance": "NOT_VERIFIED",
+    "shortcut_issue": {
+      "input": "Control_L+z",
+      "result": "NO_OBSERVABLE_CHANGE",
+      "root_cause": "NOT_DETERMINED_TOOL_OR_APP"
+    },
+    "stale_status_issue": {
+      "after_undo": true,
+      "after_redo": true,
+      "stale_text": "Rust encoded PNG shown. Inspect all unmasked details before copying.",
+      "delivery_buttons_disabled": true
+    },
+    "capture_limitations": [
+      "FrameArrived timed out: timed out waiting on channel",
+      "coordinate input geometry is unavailable",
+      "window capture timed out: timed out waiting on channel"
+    ],
+    "settings_open_error": "SystemSettings.exe reported stack-based buffer overrun; dialog dismissed; no settings changed."
+  },
+  "baseline_collection": "COMPLETE_WITH_GAPS_NOT_PRODUCT_ACCEPTANCE"
+}

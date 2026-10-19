@@ -1,0 +1,107 @@
+{
+  "schema": "shareready.p03-g.evidence/1",
+  "status": "ISOLATION_CAPABILITY_UNAVAILABLE_STOPPED",
+  "outcome": "止损",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "reports": [
+    {
+      "report": "target/p03-g-evidence/clipboard-20261017T145611514253Z/report.json",
+      "sha256": "b49d4ec15cbc1e7645df11574841068cd482010b3002f92faf2c5935eefa0a0d",
+      "os_error": 183,
+      "data": {
+        "mode": "isolation-only",
+        "source_files": {
+          "poc/native-egui/examples/clipboard_probe.rs": "c01759d9455538980f50a2a862c65bc6bb8c43d87a92e6d7a84d8af46a88c422",
+          "poc/native-egui/Cargo.toml": "84744780e3dc83688a58cf385436e22769679efe67aa6c30a25ea51ec61af350",
+          "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+          "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0"
+        },
+        "pre_execution_review_sha256": "f4ab7d59f412dc13ca8722de052ac94f8346303d9fcd76599903b1e559de1cc2",
+        "checks": [
+          {
+            "name": "build",
+            "exit_code": 0,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "412843d635bc50882dcc4afb63c1284687cf4deb3c0a04a4da3bfb1a5ff215f5"
+          },
+          {
+            "name": "isolation",
+            "exit_code": 2,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "9f7db25f49f2ce2283c0b3afa2d7cdc6be54c32ea1c1fdf5f42c0aa9d674bd5f"
+          }
+        ],
+        "exe_sha256": "e3542d87cf1ddaeb3a96634bafebc205848f525879d83b21834438ca0e040718",
+        "ok": false,
+        "error": "('isolation', 2)"
+      }
+    },
+    {
+      "report": "target/p03-g-evidence/clipboard-20261017T145943299952Z/report.json",
+      "sha256": "336830404fb348fddeff4f4dbbe96c8558af75f4d4b8d950e0444e7e5db79e37",
+      "os_error": 5,
+      "data": {
+        "mode": "isolation-only",
+        "source_files": {
+          "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+          "poc/native-egui/Cargo.toml": "84744780e3dc83688a58cf385436e22769679efe67aa6c30a25ea51ec61af350",
+          "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+          "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0"
+        },
+        "pre_execution_review_sha256": "4e52b706b2ea1b30d641bb8bc737ed5ec57e8c8ccf676ea9d7f00af7381c42ea",
+        "checks": [
+          {
+            "name": "build",
+            "exit_code": 0,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "93f68d8996be5e331a1825bcdcd6b418d76429f4bf31accdc50f8a02ede5eb47"
+          },
+          {
+            "name": "isolation",
+            "exit_code": 2,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "e8a1a7a21c01c8e6a2143b33604d3a94625f3735ae1027346413b59f824a9fab"
+          }
+        ],
+        "exe_sha256": "e7e2967cce12167c2f912e90b56c0f5d0d374a47b664da19ee3a662fdf6eba4c",
+        "ok": false,
+        "error": "('isolation', 2)"
+      }
+    }
+  ],
+  "independent_review": "target/p03-g-evidence/INDEPENDENT_REVIEW.md",
+  "independent_review_sha256": "73f7b341a3bcad2ad3f433b54b0657e6b1b4053c2ed29ee186607e604784cefe",
+  "source_files": {
+    "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+    "poc/native-egui/Cargo.toml": "84744780e3dc83688a58cf385436e22769679efe67aa6c30a25ea51ec61af350",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266"
+  },
+  "tested": {
+    "build": "PASS",
+    "auto_name_isolation": "FAIL_OS183",
+    "unique_name_isolation": "FAIL_OS5",
+    "python_optimize": 0
+  },
+  "not_run": [
+    "station/desktop creation success",
+    "context switch/restore",
+    "new clipboard open/count",
+    "clipboard content get/empty/set",
+    "full mode (not implemented after A1 stop)",
+    "actual Ctrl+V/Windows/paint/second app",
+    "full regression after dev-only manifest change"
+  ],
+  "preservation": {
+    "original_clipboard_content_read_or_written": false,
+    "original_sequence_metadata_queried": true,
+    "sequence_metadata_is_content_proof": false,
+    "elevation_or_permission_change": false,
+    "user_station_fallback": false,
+    "main_head_and_v1_preserved": true,
+    "push_release": false
+  },
+  "authority": "docs/governance/AUTONOMOUS_LOCAL_DEVELOPMENT.md",
+  "gate_confirmation_actor": "agent under user-approved policy"
+}

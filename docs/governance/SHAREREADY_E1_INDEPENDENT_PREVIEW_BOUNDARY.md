@@ -4,7 +4,7 @@
 
 ## 为什么不直接“replan”旧 Stage 01
 
-原 [Gate A 决策卡](../decisions/STAGE01_GATE_A_CARD_READY.md) 把 Rust 应用代码明确列为非目标，原 [Gate B 九步计划](STAGE01_GATE_B_MACHINE_INPUT.json) 的 S06 依赖 S05a/S05b 的真实用户证据。当前 S05a = BLOCKED_BY_RECRUITMENT，A1 市场需求未知。如果直接删掉 S05 的依赖或把 E1 编码当作 Stage 01 已批准工作，既会违反既有授权，也会破坏审计线索。
+原 [Gate A 决策卡](../decisions/STAGE01_GATE_A_CARD_READY.md) 把 Rust 应用代码明确列为非目标，原 [Gate B 九步计划](../plans/STAGE01_GATE_B_MACHINE_INPUT.json) 的 S06 依赖 S05a/S05b 的真实用户证据。当前 S05a = BLOCKED_BY_RECRUITMENT，A1 市场需求未知。如果直接删掉 S05 的依赖或把 E1 编码当作 Stage 01 已批准工作，既会违反既有授权，也会破坏审计线索。
 
 **方案：为 E1 建立独立 Skill 决策工作区，原有 Stage 01 的 Gate A/B 和机器状态保持原样。** 这样可在技术层验证“值得试一个最小 Rust/WASM”而不捏造十名用户研究。新 E1 仍需经过自己的 Gate A、Gate B 两次独立人工确认，以及明确的代码 SPIKE 授权；研究项目依旧保留阻断。
 
@@ -20,7 +20,7 @@
 
 ## E1 验证对象
 
-决策卡：[E1 Gate A 候选](../decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md)。待 Gate A 人工批准后才能正式产生 Gate B token。六步执行计划：[E1 Gate B 候选（未批准）](SHAREREADY_E1_GATE_B_CANDIDATE.json)。该 JSON 内的 `verify_cmd` 将在未来执行各阶段测试，**本次不能执行，也不能因为 CLI plan check 通过而启动代码**。
+决策卡：[E1 Gate A 候选](../decisions/SHAREREADY_E1_GATE_A_CANDIDATE.md)。待 Gate A 人工批准后才能正式产生 Gate B token。六步执行计划：[E1 Gate B 候选（未批准）](../plans/SHAREREADY_E1_GATE_B_CANDIDATE.json)。该 JSON 内的 `verify_cmd` 将在未来执行各阶段测试，**本次不能执行，也不能因为 CLI plan check 通过而启动代码**。
 
 必须提交：决策卡目标/成功标准/止损、计划更改内容、工作区 fingerprint、每一步预期操作与副作用、每项安全检查的真实机器证据。
 

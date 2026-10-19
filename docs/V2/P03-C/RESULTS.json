@@ -1,0 +1,184 @@
+{
+  "schema": "shareready.p03-c.evidence/1",
+  "status": "LOCAL_IMPLEMENTED_AND_MACHINE_VERIFIED_WITH_LIMITS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "build_id": "337688fa76b157752017a0dabedb3b56d969cda15f9fb74b89bff755db9b866c",
+  "exe_sha256": "c81cb0f1e5b9f6b12a40c497a319f58ff64bfa9b8753cd6c101019c8d4ce0553",
+  "source_files": {
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/lib.rs": "c9e2bec7a65b6e0e764548123c877e492c61e954d4bf42d5157c85b90cfc5d36",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "e5399f3afb50ab82e9638b3773d009f4b30a47f18b67d9e08cd1d79bb468f477",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "poc/native-egui/Cargo.lock": "20ab491a04245bee12b2687f7fa85f5a1bddcc4302212203f02c55235619b51e",
+    "poc/native-egui/Cargo.toml": "4b155b230226332237288ddccc0309c9bc78b95150f2742f0718baf6c5189137",
+    "poc/native-egui/src/app.rs": "49fe79354fce191da20720357f3bf2a2d91971179066f616b177c70f82378df6",
+    "poc/native-egui/src/display.rs": "c449a41eefece48a20761ca6f378739d2ab559ff0e07b3043d2732bef39030f8",
+    "poc/native-egui/src/main.rs": "4810f3fded5f71300c5c37d1847f38e4354aa7f216d413a057abc9ef873cc163",
+    "poc/native-egui/src/trace.rs": "8cc2b9058579e4282771df2b2d380e21e90e4c0f651643d466666ef8f15e8453",
+    "tests/native_oracle/png_oracle.py": "57ac3ae5a7f7c6ad0ed7972b05622b339eac0c6d4154f0d08713e14a673e387e",
+    "tests/native_oracle/run_native_checks.py": "721047aaa8efaf3f026d8bc4280e8596a67c8aa490c0de2b53063c22fe9c9123",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "native_report": "target/p03-c-evidence/native-20261017T111145813275Z/report.json",
+  "native_report_sha256": "570ff32a5a8bbd0cd3f029f5b2fa13cc12c30150ca896afe867bb7cf62a1b082",
+  "independent_review": "target/p03-c-evidence/INDEPENDENT_NATIVE_REVIEW.md",
+  "independent_review_sha256": "37723dbe278ddf9dd86472e5f8c234dd2df5b61b782d456bbc7d92dc9b72b766",
+  "tests": {
+    "independent_png_oracle": 19,
+    "native_app": 14,
+    "workspace": 34
+  },
+  "selftest_oracle": {
+    "ok": true,
+    "dimensions": [
+      2400,
+      1600
+    ],
+    "effective_regions": 1,
+    "rgba_sha256": "b983aa4b8039d92d57d76370af66579b3538f9ce3348ab635545b44e6db96865",
+    "png_sha256": "d19b1540029ff9578db3a89d11316eae39f6bbed02cb32da9cc5ce5ba69cd7a2",
+    "chunks": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ]
+  },
+  "actual_window_review_oracle": {
+    "ok": true,
+    "dimensions": [
+      2400,
+      1600
+    ],
+    "effective_regions": 1,
+    "rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4",
+    "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+    "chunks": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ]
+  },
+  "window_trace": [
+    {
+      "type": "synthetic_trace",
+      "fixture": "T04_EDGES",
+      "build": "337688fa76b157752017a0dabedb3b56d969cda15f9fb74b89bff755db9b866c",
+      "private_import": false
+    },
+    {
+      "time_seconds": 3.4991039,
+      "type": "frame",
+      "document": 1,
+      "revision": 0,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": null,
+      "pointer_source": null,
+      "pointer_events": [],
+      "preview": null,
+      "regions": [],
+      "reviewed": false
+    },
+    {
+      "type": "review",
+      "document": 1,
+      "revision": 1,
+      "operation": 1,
+      "png": "review-1-r1.png",
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ]
+    },
+    {
+      "time_seconds": 4.2783769,
+      "type": "frame",
+      "document": 1,
+      "revision": 1,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": null,
+      "pointer_source": null,
+      "pointer_events": [],
+      "preview": null,
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ],
+      "reviewed": true
+    }
+  ],
+  "commands": [
+    {
+      "name": "rustc-version",
+      "exit_code": 0,
+      "stdout_sha256": "2073de5abf149185c2f4d7473dc833bc921b99135560d24ae7b2293f33a9c376",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "25e830bf517c5d4b58c2b8343c20719d9a6bede933849b348b2b0f4f9d2e0831"
+    },
+    {
+      "name": "selftest",
+      "exit_code": 0,
+      "stdout_sha256": "e6ed0eecac1571a226f75bc1463b40c7204425916d3db8026664bbddcf0167be",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "dx12-smoke",
+      "exit_code": 0,
+      "stdout_sha256": "0140a521196d9a0745a9d1d0f24b9cf432b47d4be8a22af8f7d16713bfe14260",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": {
+    "actual_dx12_window": "PASS; GTX 1650",
+    "auto_backend_observation": "Vulkan GTX 1650 lifecycle PASS on earlier EXE 11b51134a67ae5537fe08b9f070e088bd1cd6bbc70df06906638398b9a3797a6; not current EXE; see target/p03-c-evidence/auto-probe.json",
+    "full_G01_G10": "NOT_VERIFIED",
+    "human_usability": "NOT_VERIFIED",
+    "mixed_DPI_physical_pointer": "NOT_VERIFIED",
+    "Narrator_audio": "NOT_VERIFIED",
+    "cross_app_clipboard": "NOT_VERIFIED",
+    "release": "NOT_PERFORMED"
+  },
+  "authority": "docs/governance/AUTONOMOUS_LOCAL_DEVELOPMENT.md",
+  "gate_confirmation_actor": "agent; not per-token human review",
+  "preservation": {
+    "v1_removed": false,
+    "locks_or_goldens_changed": false,
+    "commit_push_publish": false
+  }
+}

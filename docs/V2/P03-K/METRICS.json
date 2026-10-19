@@ -1,0 +1,421 @@
+{
+  "scope": "POST_READ_SYNTHETIC_CODE_INTERVAL_NOT_G04_BUDGET_OR_PHYSICAL_LATENCY",
+  "percentile_method": "nearest rank ceil(.95*n)-1",
+  "callback_scope": "entry through last timing sample before buffered row formatting/return; excludes integration and GPU",
+  "cpu_scope": "captured wall interval around decode/display preparation, read_complete..cpu_prepared; not OS per-thread CPU utilization",
+  "delivery_scope": "controlled Save/Copy includes synchronous Rust decoding and disk writes in diagnostic controller; no OS clipboard",
+  "cases": [
+    {
+      "fixture": "grid",
+      "tasks": [
+        {
+          "kind": "first",
+          "request": 1,
+          "busy_distinct_frames": 63,
+          "trigger_return_ms": 0.0706000000000131,
+          "file_read_wall_ms": 0.15190000000006876,
+          "decode_prepare_wall_ms": 563.8326999999999,
+          "candidate_decode_wall_ms": 227.75119999999993,
+          "display_prepare_wall_ms": 336.0815,
+          "busy_app_ui_ms": {
+            "count": 63,
+            "median": 0.289,
+            "p95_nearest_rank": 0.4936,
+            "max": 0.6579
+          },
+          "busy_callback_span_ms": {
+            "count": 63,
+            "median": 0.3026999999999589,
+            "p95_nearest_rank": 0.510600000000295,
+            "max": 39.17970000000014
+          },
+          "trigger_to_acceptance_observed_ms": 581.4762
+        },
+        {
+          "kind": "cancelled",
+          "request": 2,
+          "busy_distinct_frames": 63,
+          "trigger_return_ms": 0.03949999999986176,
+          "file_read_wall_ms": 0.11560000000008586,
+          "decode_prepare_wall_ms": 520.8561,
+          "candidate_decode_wall_ms": 225.0055000000002,
+          "display_prepare_wall_ms": 295.85059999999976,
+          "busy_app_ui_ms": {
+            "count": 63,
+            "median": 0.2569,
+            "p95_nearest_rank": 0.42719999999999997,
+            "max": 1.0685
+          },
+          "busy_callback_span_ms": {
+            "count": 63,
+            "median": 0.262100000000828,
+            "p95_nearest_rank": 0.43240000000014334,
+            "max": 8.344900000000052
+          },
+          "cancel_return_ms": 0.09760000000005675,
+          "cancel_to_discard_observed_ms": 508.66479999999956
+        },
+        {
+          "kind": "retry",
+          "request": 3,
+          "busy_distinct_frames": 61,
+          "trigger_return_ms": 0.056599999999889405,
+          "file_read_wall_ms": 0.15779999999995198,
+          "decode_prepare_wall_ms": 510.29439999999977,
+          "candidate_decode_wall_ms": 226.03909999999996,
+          "display_prepare_wall_ms": 284.2552999999998,
+          "busy_app_ui_ms": {
+            "count": 61,
+            "median": 0.2394,
+            "p95_nearest_rank": 0.3171,
+            "max": 0.3588
+          },
+          "busy_callback_span_ms": {
+            "count": 61,
+            "median": 0.24360000000069704,
+            "p95_nearest_rank": 0.3221000000003187,
+            "max": 0.363999999999578
+          },
+          "trigger_to_acceptance_observed_ms": 530.2253999999994
+        }
+      ],
+      "process": {
+        "schema": 1,
+        "pid": 29148,
+        "started_utc": "2026-10-19T00:59:53.353428+00:00",
+        "start_unix_ns": 1792371593353428700,
+        "exit_code": 0,
+        "wall_seconds": 10.150652499985881,
+        "sample_count": 440,
+        "requested_sample_seconds": 0.02,
+        "max_observed_sample_gap_seconds": 0.021464399993419647,
+        "sampled_max_working_set_bytes": 590618624,
+        "os_peak_working_set_bytes": 592932864,
+        "sampled_max_private_commit_bytes": 755720192,
+        "query_errors": [],
+        "stop": null,
+        "memory_limit_bytes": 2147483648,
+        "stall_limit_seconds": 120,
+        "memory_scope": "owned child process working set/OS lifetime peak/private commit; excludes separate GPU memory; sampled values can miss peaks",
+        "ok": true
+      },
+      "outputs": [
+        {
+          "name": "old",
+          "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              2400,
+              1600
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4",
+            "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4"
+        },
+        {
+          "name": "first",
+          "png_sha256": "929bba5d9fea600cb8a11e0bf251989e6a855e3a3503ccb8c366510020a4eaff",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              6000,
+              4000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "faca406c1ff031c121e727504f3297a32f5b4b0aaf342e8cda7d2c033db080b6",
+            "png_sha256": "929bba5d9fea600cb8a11e0bf251989e6a855e3a3503ccb8c366510020a4eaff",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "faca406c1ff031c121e727504f3297a32f5b4b0aaf342e8cda7d2c033db080b6"
+        },
+        {
+          "name": "retry",
+          "png_sha256": "6d7bbc97ec19781290ca4cc1543dbca473cd3702beb21b4a49bcc5ebe602eb27",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              6000,
+              4000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "5d6a7dc24952e28e614c5940e1a0697a04e994766ee5ae83d06a5d0497dfc1c5",
+            "png_sha256": "6d7bbc97ec19781290ca4cc1543dbca473cd3702beb21b4a49bcc5ebe602eb27",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "5d6a7dc24952e28e614c5940e1a0697a04e994766ee5ae83d06a5d0497dfc1c5"
+        }
+      ],
+      "all_logged_app_ui_ms": {
+        "count": 677,
+        "median": 0.229,
+        "p95_nearest_rank": 0.36729999999999996,
+        "max": 7.583600000000001
+      },
+      "all_logged_callback_span_ms": {
+        "count": 677,
+        "median": 0.2336999999999989,
+        "p95_nearest_rank": 0.3851999999999407,
+        "max": 347.7297000000008
+      },
+      "screenshot_pixels": [
+        {
+          "scope": "Fit downsample preview, no native-pixel assertion"
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "fixture": "noise",
+      "tasks": [
+        {
+          "kind": "first",
+          "request": 1,
+          "busy_distinct_frames": 31,
+          "trigger_return_ms": 0.05880000000001928,
+          "file_read_wall_ms": 5.355800000000045,
+          "decode_prepare_wall_ms": 306.58760000000007,
+          "candidate_decode_wall_ms": 141.06359999999995,
+          "display_prepare_wall_ms": 165.52400000000011,
+          "busy_app_ui_ms": {
+            "count": 31,
+            "median": 0.2321,
+            "p95_nearest_rank": 0.3221,
+            "max": 0.33809999999999996
+          },
+          "busy_callback_span_ms": {
+            "count": 31,
+            "median": 0.23649999999997817,
+            "p95_nearest_rank": 0.34409999999991214,
+            "max": 36.84980000000007
+          },
+          "trigger_to_acceptance_observed_ms": 324.96489999999983
+        },
+        {
+          "kind": "cancelled",
+          "request": 2,
+          "busy_distinct_frames": 36,
+          "trigger_return_ms": 0.046400000000630826,
+          "file_read_wall_ms": 4.866799999999785,
+          "decode_prepare_wall_ms": 296.5416,
+          "candidate_decode_wall_ms": 132.5560999999998,
+          "display_prepare_wall_ms": 163.98550000000023,
+          "busy_app_ui_ms": {
+            "count": 36,
+            "median": 0.24035,
+            "p95_nearest_rank": 0.5852999999999999,
+            "max": 0.6292
+          },
+          "busy_callback_span_ms": {
+            "count": 36,
+            "median": 0.2449500000000171,
+            "p95_nearest_rank": 0.5892999999996391,
+            "max": 11.704299999999876
+          },
+          "cancel_return_ms": 5.878200000000106,
+          "cancel_to_discard_observed_ms": 291.4457000000002
+        },
+        {
+          "kind": "retry",
+          "request": 3,
+          "busy_distinct_frames": 35,
+          "trigger_return_ms": 0.06610000000000582,
+          "file_read_wall_ms": 4.491799999999785,
+          "decode_prepare_wall_ms": 289.8381999999997,
+          "candidate_decode_wall_ms": 131.2551000000003,
+          "display_prepare_wall_ms": 158.58309999999938,
+          "busy_app_ui_ms": {
+            "count": 35,
+            "median": 0.2163,
+            "p95_nearest_rank": 0.3408,
+            "max": 0.36479999999999996
+          },
+          "busy_callback_span_ms": {
+            "count": 35,
+            "median": 0.21979999999985012,
+            "p95_nearest_rank": 0.34619999999995343,
+            "max": 0.37099999999963984
+          },
+          "trigger_to_acceptance_observed_ms": 311.4448000000002
+        }
+      ],
+      "process": {
+        "schema": 1,
+        "pid": 17840,
+        "started_utc": "2026-10-19T01:00:12.272138+00:00",
+        "start_unix_ns": 1792371612272138700,
+        "exit_code": 0,
+        "wall_seconds": 6.062799299950711,
+        "sample_count": 291,
+        "requested_sample_seconds": 0.02,
+        "max_observed_sample_gap_seconds": 0.021238999965135008,
+        "sampled_max_working_set_bytes": 518414336,
+        "os_peak_working_set_bytes": 521760768,
+        "sampled_max_private_commit_bytes": 731856896,
+        "query_errors": [],
+        "stop": null,
+        "memory_limit_bytes": 2147483648,
+        "stall_limit_seconds": 120,
+        "memory_scope": "owned child process working set/OS lifetime peak/private commit; excludes separate GPU memory; sampled values can miss peaks",
+        "ok": true
+      },
+      "outputs": [
+        {
+          "name": "old",
+          "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              2400,
+              1600
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4",
+            "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4"
+        },
+        {
+          "name": "first",
+          "png_sha256": "ff88b23b3e32424debc40ebf892e5590b1ca90ab471f5d44f6d7ea8bf8f6fb83",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              3000,
+              3000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd",
+            "png_sha256": "ff88b23b3e32424debc40ebf892e5590b1ca90ab471f5d44f6d7ea8bf8f6fb83",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd"
+        },
+        {
+          "name": "retry",
+          "png_sha256": "e5fd59e80aec29ab7ebfba38817ffdc0788544e6397d7747c9fc5c0ec97bab09",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              3000,
+              3000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "5784ccb27df7baece28a54062f8acc4d8b4372ae8381534c599f5efb0b4f8194",
+            "png_sha256": "e5fd59e80aec29ab7ebfba38817ffdc0788544e6397d7747c9fc5c0ec97bab09",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "5784ccb27df7baece28a54062f8acc4d8b4372ae8381534c599f5efb0b4f8194"
+        }
+      ],
+      "all_logged_app_ui_ms": {
+        "count": 435,
+        "median": 0.2297,
+        "p95_nearest_rank": 0.3828,
+        "max": 34.8336
+      },
+      "all_logged_callback_span_ms": {
+        "count": 435,
+        "median": 0.23430000000053042,
+        "p95_nearest_rank": 0.5452000000004773,
+        "max": 271.49090000000024
+      },
+      "screenshot_pixels": [
+        {
+          "scope": "Fit downsample preview, no native-pixel assertion"
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        }
+      ]
+    }
+  ],
+  "current_rust_pass_counts": {
+    "head": 0,
+    "branch": 0,
+    "protected-v1-fixture-diff": 0,
+    "rustc": 0,
+    "root-tests": 72,
+    "native-tests": 86,
+    "native-feature-tests": 93,
+    "performance-oracle-tests": 0,
+    "ordinary-window-oracle": 0
+  },
+  "window_regression": {
+    "cases": 8,
+    "gpu_images": 40,
+    "interactive_frames_per_case": [
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "rounds": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      20,
+      1,
+      1
+    ]
+  },
+  "input_io_conditions": "fixed synthetic source files written and Rust-normalized before the window; likely warm filesystem cache, not cold disk/startup/first human interaction"
+}

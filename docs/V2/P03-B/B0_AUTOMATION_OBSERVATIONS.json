@@ -1,0 +1,181 @@
+{
+  "schema": "shareready.b0.computer-use-results/1",
+  "collected_at_utc": "2026-10-17T10:06:28.899Z",
+  "operator": "CODEX_COMPUTER_USE_AUTOMATION",
+  "human_usability_test": false,
+  "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+  "authorization": "Human explicitly asked Codex to control this computer and debug without requiring manual operation.",
+  "checks": {
+    "tab_reaches_open_image": true,
+    "tab_reaches_review": true,
+    "review_label_present": true,
+    "review_enables_delivery": true,
+    "undo_advances_revision": true,
+    "undo_changes_rectangles": true,
+    "undo_disables_delivery": true,
+    "redo_restores_baseline_rectangles": true,
+    "redo_advances_revision": true,
+    "redo_keeps_delivery_disabled": true
+  },
+  "observed_shortcut_issue": {
+    "input": "Control_L+z",
+    "result": "NO_OBSERVABLE_CHANGE",
+    "root_cause": "NOT_DETERMINED_TOOL_OR_APP"
+  },
+  "observed_status_issue": {
+    "after_undo": true,
+    "after_redo": true,
+    "stale_text": "Rust encoded PNG shown. Inspect all unmasked details before copying.",
+    "delivery_buttons_disabled": true
+  },
+  "capture_limitations": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "coordinate input geometry is unavailable",
+    "window capture timed out: timed out waiting on channel"
+  ],
+  "settings_open_error": {
+    "at": "2026-10-17T10:04:48.641Z",
+    "accessibility": {
+      "focused_element": "0 对话框 SystemSettings.exe - 系统错误 Secondary Actions: Raise",
+      "tree": "Window: \"SystemSettings.exe - 系统错误\", App: csrss.exe.\n\t0 对话框 SystemSettings.exe - 系统错误 Secondary Actions: Raise\n\t\t1 按钮 确定 ID: 2\n\t\t2 图像 ID: 20\n\t\t3 文本 系统在此应用程序中检测到基于堆栈的缓冲区溢出。溢出可能允许恶意用户获得此应用程序的控制。 ID: 65535\n\t\t4 标题栏 (settable, string) Value: SystemSettings.exe - 系统错误\n\nThe focused UI element is 0 对话框 SystemSettings.exe - 系统错误 Secondary Actions: Raise."
+    },
+    "stage": "READ_ONLY_DISPLAY_SETTINGS_OPEN_FAILED"
+  },
+  "screenshots": [],
+  "pointer_pixel_mapping": "NOT_VERIFIED",
+  "mixed_dpi": "NOT_VERIFIED",
+  "narrator_audio_task": "NOT_RUN",
+  "restored_baseline_rectangles": true,
+  "restored_normal_window": true,
+  "observations": [
+    {
+      "step": "baseline-after-capture-failure",
+      "at": "2026-10-17T10:00:41.251Z",
+      "accessibility": {
+        "focused_element": "0 区域 ShareReady · Rust Native POC Secondary Actions: Raise",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Mask updated by Rust Editor.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t27 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t32 按钮 Clear masks\n\t\t\t33 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 0 区域 ShareReady · Rust Native POC Secondary Actions: Raise."
+      }
+    },
+    {
+      "step": "tab-from-root",
+      "at": "2026-10-17T10:00:47.804Z",
+      "accessibility": {
+        "focused_element": "8 按钮 Open image",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Mask updated by Rust Editor.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t27 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t32 按钮 Clear masks\n\t\t\t33 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 8 按钮 Open image."
+      }
+    },
+    {
+      "step": "tab-to-undo",
+      "at": "2026-10-17T10:00:57.611Z",
+      "accessibility": {
+        "focused_element": "9 按钮 Undo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Mask updated by Rust Editor.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t27 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t32 按钮 Clear masks\n\t\t\t33 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 9 按钮 Undo."
+      }
+    },
+    {
+      "step": "tab-to-redo",
+      "at": "2026-10-17T10:01:07.350Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Mask updated by Rust Editor.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t27 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t32 按钮 Clear masks\n\t\t\t33 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    },
+    {
+      "step": "tab-to-review",
+      "at": "2026-10-17T10:01:13.249Z",
+      "accessibility": {
+        "focused_element": "11 按钮 Review PNG",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Mask updated by Rust Editor.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t27 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t32 按钮 Clear masks\n\t\t\t33 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 11 按钮 Review PNG."
+      }
+    },
+    {
+      "step": "activate-review-png",
+      "at": "2026-10-17T10:01:21.104Z",
+      "accessibility": {
+        "focused_element": "11 按钮 Review PNG",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 Copy image\n\t\t13 按钮 Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t42 文本 Reviewing actual encoded PNG\n\t\t\t28 按钮 #1 [1547,475,1567,487]\n\t\t\t29 按钮 #2 [833,494,845,512]\n\t\t\t30 按钮 #3 [863,650,1348,1048]\n\t\t\t31 按钮 #4 [1044,616,1445,906]\n\t\t\t43 按钮 #5 [814,616,1537,990]\n\t\t\t44 按钮 Clear masks\n\t\t\t45 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 11 按钮 Review PNG."
+      }
+    },
+    {
+      "step": "undo-after-review",
+      "at": "2026-10-17T10:01:36.805Z",
+      "accessibility": {
+        "focused_element": "11 按钮 Review PNG",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 Copy image\n\t\t13 按钮 Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t42 文本 Reviewing actual encoded PNG\n\t\t\t28 按钮 #1 [1547,475,1567,487]\n\t\t\t29 按钮 #2 [833,494,845,512]\n\t\t\t30 按钮 #3 [863,650,1348,1048]\n\t\t\t31 按钮 #4 [1044,616,1445,906]\n\t\t\t43 按钮 #5 [814,616,1537,990]\n\t\t\t44 按钮 Clear masks\n\t\t\t45 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 11 按钮 Review PNG."
+      }
+    },
+    {
+      "step": "undo-settled-observation",
+      "at": "2026-10-17T10:01:46.558Z",
+      "accessibility": {
+        "focused_element": "11 按钮 Review PNG",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 Copy image\n\t\t13 按钮 Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t42 文本 Reviewing actual encoded PNG\n\t\t\t28 按钮 #1 [1547,475,1567,487]\n\t\t\t29 按钮 #2 [833,494,845,512]\n\t\t\t30 按钮 #3 [863,650,1348,1048]\n\t\t\t31 按钮 #4 [1044,616,1445,906]\n\t\t\t43 按钮 #5 [814,616,1537,990]\n\t\t\t44 按钮 Clear masks\n\t\t\t45 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 11 按钮 Review PNG."
+      }
+    },
+    {
+      "step": "shift-tab-to-redo",
+      "at": "2026-10-17T10:01:55.452Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 Copy image\n\t\t13 按钮 Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t42 文本 Reviewing actual encoded PNG\n\t\t\t28 按钮 #1 [1547,475,1567,487]\n\t\t\t29 按钮 #2 [833,494,845,512]\n\t\t\t30 按钮 #3 [863,650,1348,1048]\n\t\t\t31 按钮 #4 [1044,616,1445,906]\n\t\t\t43 按钮 #5 [814,616,1537,990]\n\t\t\t44 按钮 Clear masks\n\t\t\t45 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    },
+    {
+      "step": "shift-tab-to-undo",
+      "at": "2026-10-17T10:02:01.859Z",
+      "accessibility": {
+        "focused_element": "9 按钮 Undo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 Copy image\n\t\t13 按钮 Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 6\n\t\t\t26 文本 Masks: 5\n\t\t\t42 文本 Reviewing actual encoded PNG\n\t\t\t28 按钮 #1 [1547,475,1567,487]\n\t\t\t29 按钮 #2 [833,494,845,512]\n\t\t\t30 按钮 #3 [863,650,1348,1048]\n\t\t\t31 按钮 #4 [1044,616,1445,906]\n\t\t\t43 按钮 #5 [814,616,1537,990]\n\t\t\t44 按钮 Clear masks\n\t\t\t45 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 9 按钮 Undo."
+      }
+    },
+    {
+      "step": "activate-undo-button",
+      "at": "2026-10-17T10:02:08.059Z",
+      "accessibility": {
+        "focused_element": "9 按钮 Undo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 7\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [1525,969,1537,990]\n\t\t\t47 文本 Selected mask · resize by 1 source pixel\n\t\t\t48 按钮 NW\n\t\t\t49 按钮 N\n\t\t\t50 按钮 NE\n\t\t\t51 按钮 W\n\t\t\t52 按钮 E\n\t\t\t53 按钮 SW\n\t\t\t54 按钮 S\n\t\t\t55 按钮 SE\n\t\t\t56 按钮 Delete selected\n\t\t\t45 按钮 Clear masks\n\t\t\t57 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 9 按钮 Undo."
+      }
+    },
+    {
+      "step": "tab-to-redo-after-undo",
+      "at": "2026-10-17T10:02:16.276Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 7\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [1525,969,1537,990]\n\t\t\t47 文本 Selected mask · resize by 1 source pixel\n\t\t\t48 按钮 NW\n\t\t\t49 按钮 N\n\t\t\t50 按钮 NE\n\t\t\t51 按钮 W\n\t\t\t52 按钮 E\n\t\t\t53 按钮 SW\n\t\t\t54 按钮 S\n\t\t\t55 按钮 SE\n\t\t\t56 按钮 Delete selected\n\t\t\t45 按钮 Clear masks\n\t\t\t57 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    },
+    {
+      "step": "activate-redo-button",
+      "at": "2026-10-17T10:02:22.737Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 8\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t47 按钮 Clear masks\n\t\t\t56 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    },
+    {
+      "step": "inspect-window-system-menu",
+      "at": "2026-10-17T10:02:35.477Z",
+      "accessibility": {
+        "focused_element": "59 菜单项目 (disabled) 还原 ID: 61728",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t58 菜单 系统\n\t\t\t59 菜单项目 (disabled) 还原 ID: 61728\n\t\t\t60 菜单项目 移动(M) ID: 61456\n\t\t\t61 菜单项目 大小(S) ID: 61440\n\t\t\t62 菜单项目 最小化 ID: 61472\n\t\t\t63 菜单项目 最大化(X) ID: 61488\n\t\t\t64 菜单项目 关闭 ID: 61536\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 8\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t47 按钮 Clear masks\n\t\t\t56 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\t\t58 菜单 系统\n\t\t\t59 菜单项目 (disabled) 还原 ID: 61728\n\t\t\t60 菜单项目 移动(M) ID: 61456\n\t\t\t61 菜单项目 大小(S) ID: 61440\n\t\t\t62 菜单项目 最小化 ID: 61472\n\t\t\t63 菜单项目 最大化(X) ID: 61488\n\t\t\t64 菜单项目 关闭 ID: 61536\n\nThe focused UI element is 59 菜单项目 (disabled) 还原 ID: 61728."
+      }
+    },
+    {
+      "step": "maximize-through-system-menu",
+      "at": "2026-10-17T10:02:42.196Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 还原\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 8\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t47 按钮 Clear masks\n\t\t\t56 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    },
+    {
+      "step": "restore-original-window-size",
+      "at": "2026-10-17T10:03:39.921Z",
+      "accessibility": {
+        "focused_element": "10 按钮 Redo",
+        "tree": "Window: \"ShareReady · Rust Native POC\", App: shareready-native-egui-poc.exe.\n\t0 区域 ShareReady · Rust Native POC Secondary Actions: Raise\n\t\t1 标题栏 (settable, string) Value: ShareReady · Rust Native POC\n\t\t\t2 菜单栏 系统 ID: MenuBar\n\t\t\t\t3 菜单项目 系统\n\t\t\t4 按钮 最小化\n\t\t\t5 按钮 最大化\n\t\t\t6 按钮 关闭\n\t\t7 文本 ShareReady · Rust Native\n\t\t8 按钮 Open image\n\t\t9 按钮 Undo\n\t\t10 按钮 Redo\n\t\t11 按钮 Review PNG\n\t\t12 按钮 (disabled) Copy image\n\t\t13 按钮 (disabled) Save new PNG\n\t\t14 滑块 (settable, float) zoom Value: 0.36000001430511475\n\t\t15 调节按钮 (settable, float) zoom Value: 0.36000001430511475\n\t\t16 文本 zoom\n\t\t17 文本 Rust encoded PNG shown. Inspect all unmasked details before copying.\n\t\t18 图像\n\t\t19 区域 Inspector Secondary Actions: Raise\n\t\t\t20 按钮 Hide\n\t\t\t21 区域\n\t\t\t22 文本 Inspector\n\t\t\t23 文本 Synthetic T04_EDGES.png · no private images\n\t\t\t24 文本 Source: 2400×1600\n\t\t\t25 文本 Revision: 8\n\t\t\t26 文本 Masks: 5\n\t\t\t46 按钮 #1 [1547,475,1567,487]\n\t\t\t28 按钮 #2 [833,494,845,512]\n\t\t\t29 按钮 #3 [863,650,1348,1048]\n\t\t\t30 按钮 #4 [1044,616,1445,906]\n\t\t\t31 按钮 #5 [814,616,1537,990]\n\t\t\t47 按钮 Clear masks\n\t\t\t56 文本 This is a POC. Native clipboard and multi-DPI behavior require external Windows verification.\n\t\t\t34 分隔符\n\t\t\t35 分隔符\n\t\t\t36 分隔符\n\t\t\t37 分隔符\n\t\t\t38 分隔符\n\t\t\t39 分隔符\n\t\t\t40 分隔符\n\t\t\t41 分隔符\n\nThe focused UI element is 10 按钮 Redo."
+      }
+    }
+  ]
+}

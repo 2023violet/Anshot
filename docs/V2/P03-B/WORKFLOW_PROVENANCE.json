@@ -1,0 +1,186 @@
+{
+  "schema": "shareready.p03-b.gate-a-provenance/1",
+  "prepared_at_utc": "2026-10-17T09:08:39.794367+00:00",
+  "upstream": "2023violet/deciding-and-executing",
+  "upstream_commit": "1eb9624ee2037e4a2b253ee8120fa274dad1ef21",
+  "version": "4.1.0 candidate",
+  "files": [
+    {
+      "path": "skills/closing-out/SKILL.md",
+      "git_blob_sha1": "a0ea53d2ce7722045ffa9557e5928c0c18772ebc",
+      "sha256": "364a296a668f401acf1741ff9a82d0f3e35b6772f1a3b4b232bd205f7f2b6a95"
+    },
+    {
+      "path": "skills/closing-out/agents/openai.yaml",
+      "git_blob_sha1": "ebee6a7a87540d9ffac5084b4d6ac1ef9d04ca60",
+      "sha256": "e8f70544ace75a1a358bca4a00115de9aaf6356b781841e099c087e67c767976"
+    },
+    {
+      "path": "skills/closing-out/assets/report.md",
+      "git_blob_sha1": "c6b75f06d8a152948a927e8f430622908954bebf",
+      "sha256": "24bb010aaa81ec8e15b1e0291dba280aee0b38a62272043c57f2d0aaa319f97e"
+    },
+    {
+      "path": "skills/closing-out/references/example.md",
+      "git_blob_sha1": "d202768670bcf1e9a65e60070b8df900344edc97",
+      "sha256": "dec4474b9a22be1cdda3243415ea6094080d4a4c398fb0158bd02279aaeb575d"
+    },
+    {
+      "path": "skills/closing-out/references/placement.md",
+      "git_blob_sha1": "31e75cd7b0bf43e13c8971f948a2b62ef7c67306",
+      "sha256": "51e86fa98fb20d2de435adfd68f40d2c57d2cc808f75916898139b82673bce41"
+    },
+    {
+      "path": "skills/closing-out/references/routing.md",
+      "git_blob_sha1": "94f64ab5452d7174db102acccfd4cc09e3e759e4",
+      "sha256": "d0f6a99397f4f4cca520e07ee71e7b5cab73c03bc4dc0c6b97396b12aa1c62e5"
+    },
+    {
+      "path": "skills/closing-out/scripts/audit.py",
+      "git_blob_sha1": "518efc260315845df1ea8fe9551a801b1cd69a3e",
+      "sha256": "f1897d069fd64a5a89dd7e2c87df4454f9a1ca23faefe3345e92cd1e738859c5"
+    },
+    {
+      "path": "skills/deciding-and-executing/SKILL.md",
+      "git_blob_sha1": "8fbfb55b9fa9b519f64dd64317e99d93ca7ff1b1",
+      "sha256": "c3e049941d2c072410be96da7d3b8a1530e4a6dcc6ce5a10b1dbea49d65ba247"
+    },
+    {
+      "path": "skills/deciding-and-executing/agents/openai.yaml",
+      "git_blob_sha1": "20b3d288e3e050d2835e01d40aaa3a4187f5ec8f",
+      "sha256": "ab1232a778669f30f183325e17034bd8223a0e7585304fbd3a5a7398246ae58a"
+    },
+    {
+      "path": "skills/deciding-and-executing/assets/decision-card.md",
+      "git_blob_sha1": "f593ccb69fef87498025cc4268a29e66477559e5",
+      "sha256": "97c4d0a60c125aa00306e86c1fb2887d6aff0d8ab44dbdedfb65ccb1e16a3d86"
+    },
+    {
+      "path": "skills/deciding-and-executing/assets/plan.json",
+      "git_blob_sha1": "13c6656404a5f33f0d6fd59a2bebe8f16bd41b6c",
+      "sha256": "0608a17a245326e1626b5a4854acf3250c94553b2df760c16625564333f3118f"
+    },
+    {
+      "path": "skills/deciding-and-executing/assets/progress.md",
+      "git_blob_sha1": "c2426f707957305f6b2a589c506b1c41912e0d96",
+      "sha256": "60adb78e1e0d0b81472d88e1335503a7b073f079379df3dbcfa8493f8e02ead6"
+    },
+    {
+      "path": "skills/deciding-and-executing/assets/retro.md",
+      "git_blob_sha1": "b84b6da7e2401db6e912378a20c2110acd264248",
+      "sha256": "6619fb160b77b9d670c104e80f9a6cfd03796195bc88dbb2726ebbb7e71cd7df"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/evidence.md",
+      "git_blob_sha1": "3556103137933603e53783558d704f2fdc1344f2",
+      "sha256": "9f6c2d2d322e7d35893891d8ec2713bb884f21faa5dbd67bb9cbe9dc1e2e3fea"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/permissions.md",
+      "git_blob_sha1": "f02001d38acce8d8c135da36ac75c7f15702d83f",
+      "sha256": "abea2852c1fa8d4af09200fe74fcf6bfcea36b56a3abcd8b12d95724873fd2ef"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/prompts-standalone.md",
+      "git_blob_sha1": "3760a7fc34c039300c8ebab79464328384664414",
+      "sha256": "31a6c2f181b83cd15d0afdc86e85b8f9dc993a641c1feb4c062fca461a8af985"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/stage-1-direction.md",
+      "git_blob_sha1": "928203fd95e658631a9cb4b1e3354430b167ce64",
+      "sha256": "1fb3a6e180a0c1a501a6e5d53340e748c554c99913930676cff412e80b8a5f15"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/stage-2-plan.md",
+      "git_blob_sha1": "cdaae269eb7f72bbde7f9d244d3196ee2547de5c",
+      "sha256": "ae7e9366081e4bcceb89c9c6f2e58212dae8f1363c70ec3173c4ac4125f247f7"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/stage-3-execute.md",
+      "git_blob_sha1": "a0e67682b26182436d759bb13a09348bf0f5ec6b",
+      "sha256": "e7b9b14cd61931d1cc643357e3bdcdebaf4699d9466acaf0e4fc875bb5830c49"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/stage-4-review.md",
+      "git_blob_sha1": "dffaeb1f1901ee13b07578ad15d1cc9da3462897",
+      "sha256": "776e3f305821e863b73c15caac7ada676abe0647add8c04a29ba517e8bd45aef"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/stage-5-closeout.md",
+      "git_blob_sha1": "684ee00cdb1e6e01eddb8b92a5acdcf184684011",
+      "sha256": "9590caaa161ee32bb1b0671ebecc022a8a8684b0a29b30efac903e0cf4d36306"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/verification-strategy.md",
+      "git_blob_sha1": "f46eb85566847028dcca0922804f76ad27f69ab5",
+      "sha256": "3236f5dff955f27a979a9abbb54d400502ec0aca466cd3c4f03336f66e24c838"
+    },
+    {
+      "path": "skills/deciding-and-executing/references/worked-example.md",
+      "git_blob_sha1": "a1e978cfb5c2bc72bc741e9fe5f089babeec5e85",
+      "sha256": "e8953ecd1fed90c925fc62972d77beabe412e4c4345fdb8311ca7f7c1a7aba21"
+    },
+    {
+      "path": "skills/deciding-and-executing/scripts/de.py",
+      "git_blob_sha1": "97fb297df87200cc20d58406bfe7d668b7771fad",
+      "sha256": "27d4541f06db6d64a6b2f3822b258cffb9cbe07942fb87c688a02403f710a598"
+    }
+  ],
+  "initialization": {
+    "tool": "genuine de.py",
+    "risk": "standard",
+    "event_count": 1,
+    "event_types": [
+      "init"
+    ],
+    "plan_last_event": 0,
+    "manual_machine_state_changes": false
+  },
+  "decision_card_sha256": "18e5a8dc55f49422838c11cbd304c52f5e77811d0e3945f7c7233fe764f0833f",
+  "check_card": {
+    "exit_code": 0,
+    "errors": [],
+    "warnings": []
+  },
+  "gate_a": {
+    "command": [
+      "gate",
+      "A"
+    ],
+    "exit_code": 3,
+    "needs_confirmation": true,
+    "token": "9abea39ce1",
+    "confirmation_performed": false
+  },
+  "status_excerpt": {
+    "stage": "direction",
+    "gates": {
+      "A": "missing",
+      "B": "missing"
+    },
+    "risk": "standard",
+    "counts": {
+      "todo": 1,
+      "in_progress": 0,
+      "implemented": 0,
+      "done": 0,
+      "blocked": 0,
+      "needs_replan": 0
+    },
+    "escalations": [],
+    "warnings": [
+      "plan.json 落后于事件日志（最后事件 #1，计划记录 #0）：上次写入可能中断，请检查 events.jsonl"
+    ],
+    "kill_deadline": "2026-10-31"
+  },
+  "preservation": {
+    "sealed_p03a_files_verified": 10,
+    "source_files_verified": 18,
+    "fixtures_verified": 5
+  },
+  "limits": [
+    "Workflow structure and source/file identity only; no product tests or EXE execution.",
+    "Gate B plan is the untouched genuine initialization template, not an executable approved plan.",
+    "The init event/plan counter warning is retained; no patch to upstream or manual counter correction."
+  ]
+}

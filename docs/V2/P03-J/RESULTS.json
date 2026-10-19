@@ -1,0 +1,383 @@
+{
+  "schema": "shareready.p03-j.evidence/1",
+  "status": "LOCAL_BATCH_MEASURED_AND_REVIEWED_WITH_LIMITS",
+  "full_product": "IN_PROGRESS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "branch": "main",
+  "source_files": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "Cargo.toml": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82",
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/clipboard.rs": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59",
+    "crates/shareready-core/src/lib.rs": "9fed9036944f88e99d54b25c7f683bb69f61438ef96554c5b201012d21984a77",
+    "crates/shareready-core/tests/clipboard_dib.rs": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "3e79cce40918bbdd1cc45b82fca83f2cd03cd3fb16d085ec5895c4772bfb49ac",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "crates/shareready-editor/tests/editor_workflow.rs": "d14dcfc877c21afd5c00a78d2a48fd36e4d4cfd648402a0d0e24770b9e59287b",
+    "crates/shareready-platform-windows/Cargo.toml": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0",
+    "crates/shareready-platform-windows/src/clipboard.rs": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f",
+    "crates/shareready-platform-windows/src/lib.rs": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f",
+    "crates/shareready-platform-windows/src/windows.rs": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230",
+    "docs/research/fixtures/generate.py": "884c6877284eebb84123d29bd9976028a78d26f7cfced7ec058b50304853741f",
+    "docs/research/fixtures/manifest.json": "f8d5f8a8559d274dccf5c0896891030117782ab9a866b5ee198f0e658a44722d",
+    "docs/research/fixtures/T01_CHAT.png": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+    "docs/research/fixtures/T02_ORDER.png": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+    "docs/research/fixtures/T03_SUPPORT.png": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "docs/research/fixtures/T05_JPEG_EXIF.jpg": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+    "e1-spike/Cargo.lock": "f364a635b8abeb43c250f6ec02a8415ebacb2def64b7d7493b820cb4b04824af",
+    "e1-spike/Cargo.toml": "2a74c531d11c383ed959abcd74051abae3998f7b6404bd40f70cf7f5505733b0",
+    "e1-spike/examples/v1_baseline_preview.rs": "bb467a3a9060c3fdea8ff3433e22a7ab4310ca4ce5f8e279cf283b0324d4efb2",
+    "e1-spike/src/lib.rs": "ed1d15620eb42b9bc5b5f8b0c25e8ed66e7676f91c86e2b1ad3848ae7455386e",
+    "e1-spike/src/main.rs": "1e841214a6659b022e831cfa35d3b2e1b85737c0c594d8e095bc44e6faaad7dd",
+    "e1-spike/tests/codec_security.rs": "bab1b612e5daef8d5aeb55b8ccf68c62fa8206bfc149fa76125fdc1b1d553de0",
+    "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "poc/native-egui/assets/fonts/OFL-1.1.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+    "poc/native-egui/assets/fonts/PROVENANCE.json": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a",
+    "poc/native-egui/assets/performance/grid-24mp.png": "29c42e8393907a39e341bdc7d47ebfff8acb4e7a02af9d46a2abe52bf77fffda",
+    "poc/native-egui/assets/performance/PROVENANCE.json": "17891e283eba24302fc1e1ee48fbf0397faba65c3e38031e7549b41a0bf74924",
+    "poc/native-egui/assets/performance/wide-24mp.png": "0c87a1d6786b15b44da9a1bcf912bb2e9f3263ed80ea2289a332cc1c2c097a2e",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "poc/native-egui/Cargo.toml": "6820ca41082155e2d332b58755ff44f38e221cab89d69d2b47f6c72e1fc25010",
+    "poc/native-egui/examples/async_window.rs": "21cce8e57dddd905fd2cdf52e9fce36ba18244de548039f4659936ec5ce77ebc",
+    "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+    "poc/native-egui/examples/generated_artifact_check.rs": "cfa0f5a033c8be411a56d1bc53cc20a13869cf24bb090f8b0ed4b50f788b5099",
+    "poc/native-egui/examples/performance_baseline.rs": "1f88a4414ec09ba323e09d73c6dbeac3befba2bba5361bc3dc68e6bfbd0bb39f",
+    "poc/native-egui/examples/performance_window.rs": "81ba99e584740c0e0088ed9d7c21aaedcbdcc3e586be9d7c20a3b25e700f6044",
+    "poc/native-egui/examples/readback_probe.rs": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474",
+    "poc/native-egui/examples/support/async_driver.rs": "25bfcd4c97db9e11e968be7c5cce414721fe088a4d444213b4e26c655bd5e877",
+    "poc/native-egui/examples/support/performance_driver.rs": "2ff06c98dac719c1c4bc22c8d51ac82b5fcb10e7de97aa01af2aa30628550ce7",
+    "poc/native-egui/input-bridge/Cargo.toml": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396",
+    "poc/native-egui/input-bridge/src/lib.rs": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f",
+    "poc/native-egui/input-bridge/src/windows.rs": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199",
+    "poc/native-egui/src/app.rs": "b297ca5497c2466e067db8ace6a92d9b57ed6082013a2786308e599d8e7db265",
+    "poc/native-egui/src/display.rs": "d3dd3b5760c7c50cbdf64ecb078e54ad37461680c86d8a6bd363cead1a541ef2",
+    "poc/native-egui/src/fonts.rs": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e",
+    "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+    "poc/native-egui/src/main.rs": "7003a90df81b53813899ce849184787dd9aaa4569ca836ae1e080dcece70e073",
+    "poc/native-egui/src/review_task.rs": "b1bf49bac80dfe51ee1d2a40b6388d65e8490d22676e16f9d319a4e52f0b2f7c",
+    "poc/native-egui/src/trace.rs": "878f410d6c0bd6970132577430fbb2699ea8502f1e58103e98cae22fe0e714d2",
+    "poc/native-egui/src/visual.rs": "1a182c21dec7093f5ff23012d7f285147cc2674da905b0626c39186436a80da9",
+    "tests/golden/v1_3_baseline.json": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9",
+    "tests/golden/verify_v1_baseline.py": "52b4d76c1c81c746475dd68eca130ec3b38cc07735c7dd20b7700135d56eefe9",
+    "tests/native_oracle/make_performance_fixtures.py": "8a6d2130062e5414813330807b5db679275b1f4393b20afff889bc3f96acf8a6",
+    "tests/native_oracle/png_oracle.py": "99d025bedb7707a0c5cf19544636a89d9510abe19224448cddcadfeed2201337",
+    "tests/native_oracle/run_async_checks.py": "1bf73442ea17ed3e0e153f897d8d84fd3aa893c022a5346c5a5852463c2e262d",
+    "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+    "tests/native_oracle/run_native_checks.py": "b51fe49de79b60617aacae3f7bfade0b21306db94c06cbd192c2e0d461469195",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859",
+    "tests/performance/fixtures/APNG_PROVENANCE.json": "1a8c005a19df6fd17300d688ffc12eafb1ee3b3625f4a8b028d101e4ae093d37",
+    "tests/performance/fixtures/PROVENANCE.json": "1c8cc5d1aa34ada6608fc28109ca3df64e7896ea00b29334a8cb80cc70a2472d",
+    "tests/performance/fixtures/STRUCTURE_PROVENANCE.json": "4c7ba6926d5b9c7c5a6018e41221c0f24a6bc4f17b3282f2e608b91777c1b494",
+    "tests/performance/fixtures/synthetic-metadata.png": "ad8422d81ecb1602a721ca8382c8ee5a664437eabd7e7445b9c5f270ea67c69f",
+    "tests/performance/fixtures/synthetic-noise-9mp.jpg": "b190d5da92519c12034032004c2c033cbda8296a7ebfd23dd298002dcefecd40",
+    "tests/performance/fixtures/synthetic-split-idat.png": "c723e3639c48f90b512398b5826e9cce0d27ce0bc982b77957eab0a641753b9e",
+    "tests/performance/fixtures/synthetic-two-frame.png": "7f91d137c23ab4701a5931c1cd407a604c620f4ac7284a3669b24ba2d1b4d412",
+    "tests/performance/make_entropy_fixture.py": "a8d3ca0db25c5b39216056db1fd738f903a1d08cf1a170bf1d62a1675b57ebb1",
+    "tests/performance/measure_process.py": "49c7cb7201c911e59625bd17701322fa6899273da1fb070a431b0b12b2452148",
+    "tests/performance/run_component_baseline.py": "c09009df59ac166f4bb003230fbb27d648cfb0cc196e9f008b62817280d5f797",
+    "tests/performance/run_fix_checks.py": "b8d9ffda3272e3dce7002626f3ac2e52336b9f01cc955ebbf8d8f7b4aea5d356",
+    "tests/performance/run_large_artifact_checks.py": "04bee6cc0c30563fa36e9879cd13ac67a5c8f1aa2142824c6473bfbb446efab1",
+    "tests/performance/run_window_checks.py": "9519b807b0f12d5af473ed7932425c1ef8089fa593f636116a7fd27faa03210d",
+    "tests/performance/test_measure_process.py": "abbe2c4484d452cd037490cb6e72fed7f6f8c67f169bf9f75582905adaab5f04",
+    "tests/performance/test_performance_identity.py": "f9054ae77b3eb73b38920470aafba609676717cef84f54970e1c587f6e396aae",
+    "tests/performance/test_window_pixels.py": "e6114e46c84324a24ebf7da6b34874c90f9cf5dcb262d4e6293d06437dfeb24c"
+  },
+  "build_id": "1a19169d7317ac939123aad8171a8eb70adf6b123d678ad76046b20faf97fb93",
+  "source_delta_from_I": {
+    "changed": [
+      "crates/shareready-editor/src/lib.rs",
+      "poc/native-egui/examples/support/performance_driver.rs",
+      "poc/native-egui/src/app.rs",
+      "poc/native-egui/src/display.rs",
+      "poc/native-egui/src/trace.rs",
+      "poc/native-egui/src/visual.rs"
+    ],
+    "added": [
+      "poc/native-egui/examples/async_window.rs",
+      "poc/native-egui/examples/support/async_driver.rs",
+      "poc/native-egui/src/review_task.rs",
+      "tests/native_oracle/run_async_checks.py"
+    ]
+  },
+  "protected_sha256": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "docs/V2/PRODUCT_MODIFICATION_PLAN_2026-10-17.md": "3f4d601a35f528f7ee41c82270888fcbde3c4be8570929a44a22037755433456",
+    "docs/V2/deliverables/ShareReady_V2_Product_Modification_Plan_2026-10-17.pdf": "471b0f2948214e1da83a4f86142433a2811e20d38bbd6f35ff9394d6ed912d70"
+  },
+  "reports": {
+    "async": {
+      "path": "target/p03-j-evidence/window-20261018T133030637394Z/report.json",
+      "sha256": "9ba1be1e7064b8ee204972a3ff5ffccb5317d9320b057e37d3552bebcdc294c1"
+    },
+    "fix": {
+      "path": "target/p03-i-evidence/fix-20261018T133153960420Z/report.json",
+      "sha256": "3f7c7a1b1d6494c05d0672b46bb0e5fd666f161cffc4612921199f788a993427"
+    },
+    "ordinary": {
+      "path": "target/p03-c-evidence/native-20261018T133410151662Z/report.json",
+      "sha256": "dcd2af049569dab20103dcbd14230f234037a3575d966dc1ee7496074a229c09"
+    },
+    "large": {
+      "path": "target/p03-i-evidence/large-20261018T133448602415Z/report.json",
+      "sha256": "e100bb1d8b3a726e53ff1bbfec05bdff496e2524a383b1d15ab6fdd7280f0f35"
+    },
+    "window": {
+      "path": "target/p03-i-evidence/window-20261018T133532604328Z/report.json",
+      "sha256": "0511833d036bdbbe9bbf552cf8c00e844de7d88e6c262cfe9a61d3dca726428d"
+    }
+  },
+  "prior_attempts": {
+    "nested-lock": {
+      "path": "target/p03-j-evidence/window-20261018T130611960381Z/report.json",
+      "sha256": "84c8bc42a057153588dbf5613eebe6d54aa5e1409a35a800ee8762c789b99e40"
+    },
+    "name-collision": {
+      "path": "target/p03-j-evidence/window-20261018T132101112501Z/report.json",
+      "sha256": "98f0877fbdb64885eda88c9e855463d316036287f9883a4dcf5ce84aef3181f6"
+    },
+    "offscreen-fit": {
+      "path": "target/p03-j-evidence/window-20261018T132317586636Z/report.json",
+      "sha256": "6cd3943712331d3a6a8961bc4c6466284027ca93953f675441b2272074bf9230"
+    },
+    "grid-pilot-pass": {
+      "path": "target/p03-j-evidence/window-20261018T132802060962Z/report.json",
+      "sha256": "f7c49dd3a06323bd36bc2b8afa4ae7867da9c83a71c68f5fee151402115f389e"
+    }
+  },
+  "snapshots": {
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/shareready-e1.exe": {
+      "role": "v1-executable",
+      "sha256": "959f5dcf62deaa8cb37557e1d1bb3006a176636cc06fc25d380ede8fcd1c8bc6",
+      "source_path": "target\\release\\shareready-e1.exe"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/v1_baseline_preview.exe": {
+      "role": "v1-executable",
+      "sha256": "ad96bb98a7bcac4c0efa90c38807721919381b593afa15c039c5c9bda446b9ff",
+      "source_path": "target\\release\\examples\\v1_baseline_preview.exe"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/hardware.json": {
+      "role": "hardware-inventory-not-physical-display-verification",
+      "sha256": "586bac4873953083c3d79a2f0093a2c15849e67f0f85b54fd6d8a9ac75153af2",
+      "source_path": "target/p03-j-evidence/hardware-current.json"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/workflow-through-step3-plan.json": {
+      "role": "historical-workflow-through-step3",
+      "sha256": "1ca13c445d16747e4426186c41c7832afdb8af1bc98f89ba767d30e1cb8efae8",
+      "source_path": "target/workflows/p03-j/plan.json"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/workflow-through-step3-events.jsonl": {
+      "role": "historical-workflow-through-step3",
+      "sha256": "3d67781f28d778d15e92de5534715f610009156655c66a644f69218d2a4c2bbb",
+      "source_path": "target/workflows/p03-j/events.jsonl"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/workflow-through-step3-progress.md": {
+      "role": "historical-workflow-through-step3",
+      "sha256": "ff106d0abce4d1da0548b48cbbbfd3bd6eb7c2e0460e149795b332e591ad0620",
+      "source_path": "target/workflows/p03-j/progress.md"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/workflow-through-step3-decision-card.md": {
+      "role": "historical-workflow-through-step3",
+      "sha256": "72f27c6ebbbbe6d75e00b0efc71b7ca381169754012fbb017df46ac8894fed80",
+      "source_path": "target/workflows/p03-j/decision-card.md"
+    },
+    "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z/workflow-agent-confirmations-through-step3.jsonl": {
+      "role": "historical-agent-confirmations-not-human-tokens",
+      "sha256": "cc46279c240ea91657d2706a4d65c88d947d9459d77138c9b3808db151b8885b",
+      "source_path": "target/p03-j-evidence/AGENT_CONFIRMATIONS.jsonl"
+    }
+  },
+  "snapshot_dir": "target/p03-j-evidence/artifact-snapshots-20261018T134607995703Z",
+  "visuals": {
+    "grid-gpu-busy.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/grid/gpu-busy.png",
+      "sha256": "0281cec804b9e624eb8436f4040df03bebe2a0a9dcab01c982beeee6747d574d",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "grid-gpu-first.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/grid/gpu-first.png",
+      "sha256": "52df11af4b630a07f70dd3dfc6a106988c4ca9196266da2fe8c7b7bcd82271d7",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "grid-gpu-retry.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/grid/gpu-retry.png",
+      "sha256": "9a3a47c489a29bef0663bd98f9ddd715547e1cca5ec3ad4e451774dd80d38326",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "noise-gpu-busy.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/noise/gpu-busy.png",
+      "sha256": "d387961a4b804de1d264787553cf5cbbc08b4aa94acd6254ce7d5e65a857cfad",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "noise-gpu-first.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/noise/gpu-first.png",
+      "sha256": "1d2011c96d5e9caa3531216bdaddbfbec939915cc5feb9806d1ff66979a7a4e4",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "noise-gpu-retry.png": {
+      "source_path": "target/p03-j-evidence/window-20261018T133030637394Z/noise/gpu-retry.png",
+      "sha256": "c0cab7e7f5ec497131b8dee8ace5f8283a8c1ce453c9017525b2dd8b794b377e",
+      "scope": "actual release diagnostic GPU readback; no desktop/human assertion"
+    },
+    "ordinary-edit.png": {
+      "source_path": "target/p03-c-evidence/native-20261018T133410151662Z/visual/edit.png",
+      "sha256": "476006e506349d59bc192d516c044938b5afcd8d92b1aad4f1c87429aee42a3d",
+      "scope": "ordinary featureless debug Native synthetic GPU state"
+    },
+    "ordinary-review.png": {
+      "source_path": "target/p03-c-evidence/native-20261018T133410151662Z/visual/review.png",
+      "sha256": "b548cf734238d26d8f3525340ca133c2230df1a67a96905df33cdbe0963ff18b",
+      "scope": "ordinary featureless debug Native synthetic GPU state"
+    },
+    "ordinary-small.png": {
+      "source_path": "target/p03-c-evidence/native-20261018T133410151662Z/visual/small.png",
+      "sha256": "7ff7ec9c9bcf9571b7f445dfca6a223733d5c33d5f6ea632a1cd712e3b9dc23a",
+      "scope": "ordinary featureless debug Native synthetic GPU state"
+    },
+    "ordinary-dark.png": {
+      "source_path": "target/p03-c-evidence/native-20261018T133410151662Z/visual/dark.png",
+      "sha256": "d46d7a8bcb3ff56835db0a4b8dab7566a203f8413430b4059c3404f23a197e80",
+      "scope": "ordinary featureless debug Native synthetic GPU state"
+    }
+  },
+  "metrics_sha256": "8f8e3ccb48177db024a9e99d8cea78a71035a6beac73d68697cb8c98c4a8de36",
+  "independent_review": {
+    "status": "ACCEPT_WITH_LIMITS",
+    "sha256": "26f19cc62c0d5aed70ce9d1a519371559a5f23400bf5b6cc11c7f477a1442fa2"
+  },
+  "independent_evidence_files": [
+    "target/p03-j-evidence/DOMAIN_INDEPENDENT_REVIEW.md",
+    "target/p03-j-evidence/FINAL_RUNTIME_PRE_REVIEW.md",
+    "target/p03-j-evidence/PILOT4_INDEPENDENT_NOTES.md",
+    "target/p03-j-evidence/build_docs.py",
+    "target/p03-j-evidence/check_final_receipt.py",
+    "target/p03-j-evidence/domain-red.json",
+    "target/p03-j-evidence/domain-red.stderr.txt",
+    "target/p03-j-evidence/domain-red.stdout.txt",
+    "target/p03-j-evidence/native-boundary-red.json",
+    "target/p03-j-evidence/native-boundary-red.stderr.txt",
+    "target/p03-j-evidence/native-boundary-red.stdout.txt",
+    "target/p03-j-evidence/native-feature.stderr.txt",
+    "target/p03-j-evidence/native-feature.stdout.txt",
+    "target/p03-j-evidence/native-ui-adapted.stderr.txt",
+    "target/p03-j-evidence/native-ui-adapted.stdout.txt",
+    "target/p03-j-evidence/native-ui-first.stderr.txt",
+    "target/p03-j-evidence/native-ui-first.stdout.txt",
+    "target/p03-j-evidence/native-ui-red.json",
+    "target/p03-j-evidence/native-ui-red.stderr.txt",
+    "target/p03-j-evidence/native-ui-red.stdout.txt",
+    "target/p03-j-evidence/r1-boundaries-red.stderr.txt",
+    "target/p03-j-evidence/r1-boundaries-red.stdout.txt",
+    "target/p03-j-evidence/r2-close-red.stderr.txt",
+    "target/p03-j-evidence/r2-close-red.stdout.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-bad-hash/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-bad-hash/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-bad-hash/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-duplicate/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-duplicate/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-duplicate/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-empty/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-empty/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-empty/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-malformed/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-malformed/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-malformed/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-omitted/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-omitted/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-omitted/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-unexpected/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-unexpected/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-unexpected/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-valid/SHA256SUMS",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-valid/a.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/doc-valid/b.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-bad-hash/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-bad-hash/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-bad-hash/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-bad-hash/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-duplicate-root/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-duplicate-root/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-duplicate-root/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-duplicate-root/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-empty-all/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-empty-all/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-empty-all/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-empty-all/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-file/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-file/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-file/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-file/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-root-group/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-root-group/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-root-group/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-omitted-root-group/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-unexpected-file/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-unexpected-file/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-unexpected-file/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-unexpected-file/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-valid/explicit.txt",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-valid/left/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-valid/manifest.json",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/raw-valid/right/artifact.bin",
+    "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/report.json",
+    "target/p03-j-evidence/receipt_negative_controls.py",
+    "target/p03-j-evidence/refresh_docs_receipt.py",
+    "target/p03-j-evidence/reviewer-docs-controls-data.json",
+    "target/p03-j-evidence/reviewer-docs-controls-recheck-data.json",
+    "target/p03-j-evidence/reviewer-domain-20261018T083129392724Z.json",
+    "target/p03-j-evidence/reviewer-domain-20261018T083129392724Z.stderr.txt",
+    "target/p03-j-evidence/reviewer-domain-20261018T083129392724Z.stdout.txt",
+    "target/p03-j-evidence/reviewer-final-runtime-data.json",
+    "target/p03-j-evidence/reviewer-native-boundary-source-20261018T130934182378Z.json",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-1.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-1.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-2.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-2.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-3.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z-3.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-focused-20261018T131036457263Z.json",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-1.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-1.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-2.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-2.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-3.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z-3.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-r1-focused-20261018T131701906948Z.json",
+    "target/p03-j-evidence/reviewer-native-r2-focused-20261018T131952069949Z-1.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-r2-focused-20261018T131952069949Z-1.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-r2-focused-20261018T131952069949Z-2.stderr.txt",
+    "target/p03-j-evidence/reviewer-native-r2-focused-20261018T131952069949Z-2.stdout.txt",
+    "target/p03-j-evidence/reviewer-native-r2-focused-20261018T131952069949Z.json",
+    "target/p03-j-evidence/reviewer_docs_controls.py",
+    "target/p03-j-evidence/reviewer_docs_controls_recheck.py",
+    "target/p03-j-evidence/reviewer_final_runtime.py"
+  ],
+  "artifact_manifest_sha256": "af781284d7fd0ce14834b971dd5536f2a319248f6595a67c569a86a5816369e2",
+  "retained_browser": {
+    "status": "HISTORICAL_I_NOT_RERUN_IN_J",
+    "reason": "Core/e1-spike/web-app sources unchanged; this batch changes Editor/Native and does not certify a new browser build"
+  },
+  "limitations": [
+    "synthetic diagnostic app GPU readback; no human, physical DPI, Narrator or OS clipboard acceptance",
+    "UI draw/promotion is egui submission evidence, not proof a human saw the pixels",
+    "worker busy frame count uses captured real worker_start through cpu_prepared; excludes later waiting/readback",
+    "ordinary source import, texture upload/visible tile preparation and OS dialogs can still block UI",
+    "UI CPU times can include explicit synthetic trace I/O at promotion; GPU time is not measured",
+    "9MP JPEG uses Rust-normalized source and independent pixel composition, not independent JPEG decoder validation",
+    "independent Native review is still required; machine success is not product completion",
+    "cancellation revokes result authority and allows editing; CPU work is not interrupted and occupies the one worker slot until exit",
+    "thread creation failure tested through its actual key cleanup handler, not a forced OS spawn failure",
+    "ordinary app 8-state regression artifact is featureless debug; release timing/images use opt-in synthetic diagnostic calling actual NativeApp/worker",
+    "busy screenshot is Fit preview; strict native GPU pixels are checked on current/retry images; no dedicated cancelled-tail GPU screenshot",
+    "local/remote desktop mode and real mixed-monitor DPI/Narrator/OS clipboard/Win11/8GB/human usability/security/package/release remain unverified"
+  ],
+  "receipt_validation": {
+    "path": "target/p03-j-evidence/receipt-controls-20261018T135036575173Z/report.json",
+    "sha256": "0571b40f9b63903fc02dc88c864417b3d414922c233c7cb7ea2fd11465ba7404",
+    "positive": 2,
+    "negative_rejected": 12
+  }
+}

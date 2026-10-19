@@ -1,0 +1,160 @@
+{
+  "kind": "PATH_REDACTED_DISPLAY_COPY_NOT_EXECUTABLE_NOT_RAW_STDOUT",
+  "original_sha256": "b25f9184d4beb8c89552d20b4320d390d31fb86070b91d71f29e35bd7f32c16b",
+  "copy": {
+    "schema": 2,
+    "name": "SR-V2-03 B0 真机基线观察",
+    "risk": "standard",
+    "milestones": [
+      "固定工件和输入身份可复核",
+      "高风险 GUI 基线已有实测记录或明确缺口",
+      "G01-G10 与下一批修改有证据对应"
+    ],
+    "steps": [
+      {
+        "id": 1,
+        "title": "B0.1 固定身份与执行前检查",
+        "done_when": "main/HEAD、EXE、18 个来源文件、五张输入、操作单和工具哈希一致；无 docs 之外的工作区改动；版本与差异报告已生成。",
+        "verify": "执行 identity；使用 bound context 和新建 target 子目录留档。版本输出不证明产品通过。",
+        "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py identity <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+        "depends_on": [],
+        "covers": [
+          1,
+          5,
+          6
+        ],
+        "irreversible": false,
+        "estimate_h": 0.5,
+        "spent_h": 0,
+        "status": "todo",
+        "fails": 0,
+        "evidence": []
+      },
+      {
+        "id": 2,
+        "title": "B0.2 固定 EXE 自检与 DX12 最小窗口探测",
+        "done_when": "固定 EXE 自检及 wgpu/DX12 多帧探测实际完成，退出码、适配器原始日志与哈希已记录；软件适配器保留物理 GPU 未验证，失败停止受影响路径。",
+        "verify": "执行 probe；核对 self-test/window 标记与 backend=Dx12；随后先做 B0.4 操作单第 1 项最小 H01 人工观察。命令通过只覆盖机器探测，不证明指针/DPI/Narrator。",
+        "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py probe <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+        "depends_on": [
+          1
+        ],
+        "covers": [
+          1,
+          2,
+          3,
+          6
+        ],
+        "irreversible": false,
+        "estimate_h": 1,
+        "spent_h": 0,
+        "status": "todo",
+        "fails": 0,
+        "evidence": [],
+        "tests_assumption": "A1"
+      },
+      {
+        "id": 3,
+        "title": "B0.3 本机 Rust workspace 回归",
+        "done_when": "以已固定本机 Rust 1.98.1 完成 workspace test 和 check --all-targets，真实记录结果；与 CI 1.99.0 分开，不声称执行了 Linux 金样本或 WebView2 浏览器回归。",
+        "verify": "执行 regression（--locked）；每命令 1200 秒超时。仅现有 workspace；失败保留日志并分类，不升级依赖、不改产品来强行通过。",
+        "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py regression <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+        "depends_on": [
+          2
+        ],
+        "covers": [
+          1,
+          5,
+          6
+        ],
+        "irreversible": false,
+        "estimate_h": 1,
+        "spent_h": 0,
+        "status": "todo",
+        "fails": 0,
+        "evidence": []
+      },
+      {
+        "id": 4,
+        "title": "B0.4 双屏、指针、键盘和 Narrator 人工基线",
+        "done_when": "按 HUMAN_OBSERVATION 形成操作者报告：先最小 H01，再观察 G01/G02/G03/G08。记录会话、两屏当前分辨率/DPI与真实现象；无法操作或缺 oracle 保留 NOT_RUN/NOT_VERIFIED/IMPLEMENTATION_GAP。",
+        "verify": "由当前电脑操作者执行已绑定操作单。固定 EXE --renderer wgpu 交互启动；只读显示设置、拖动窗口、合成画布/历史、Tab/快捷键；临时切换 Narrator 后恢复。不改 DPI、不操作剪贴板、不保存图片。以 target 内人工报告与合成截图的 artifact 哈希留证；无人操作不得编造观察。",
+        "verify_cmd": "",
+        "depends_on": [
+          2
+        ],
+        "covers": [
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "irreversible": false,
+        "estimate_h": 3,
+        "spent_h": 0,
+        "status": "todo",
+        "fails": 0,
+        "evidence": [],
+        "tests_assumption": "A1"
+      },
+      {
+        "id": 5,
+        "title": "B0.5 基线分类与下一批有界修改建议",
+        "done_when": "G01-G10 每项对照原合同，区分机器通过、实际观察、实现缺口、未执行及待设备证据；列出最小修复、复验方法和产品策略待决项。没有据 B0 宣称 GUI 冻结或 V2 完成。",
+        "verify": "在 target 内形成带输入/EXE/结果 SHA256 的报告及 coverage 逐条对照；人工证据缺失明确披露。经独立审查后另行评审高风险产品改动，B0 不实施 M01-M09。",
+        "verify_cmd": "",
+        "depends_on": [
+          3,
+          4
+        ],
+        "covers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "irreversible": false,
+        "estimate_h": 1,
+        "spent_h": 0,
+        "status": "todo",
+        "fails": 0,
+        "evidence": []
+      }
+    ],
+    "if_then": [
+      {
+        "if": "身份不符、出现未经批准的产品改动或输入/EXE 改变",
+        "then": "停止执行；保留原日志，重新固定版本并重做相关闸门，不混用证据。"
+      },
+      {
+        "if": "DX12 探测失败或实际使用软件/虚拟适配器",
+        "then": "保留失败/限制；核对会话和设备，物理 GPU 未验证，不安装驱动或改设置，不把结果直接判为框架失败。"
+      },
+      {
+        "if": "没有现场操作者、混合 DPI 或独立指针/像素证据",
+        "then": "记录 NOT_RUN/NOT_VERIFIED 与明确缺口；继续不依赖它的 workspace 回归，不伪造人工通过。"
+      },
+      {
+        "if": "出现像素泄露、旧成品假成功或无提示丢编辑",
+        "then": "停止对应路径并记录合成证据，返回评审，不当场实施产品修复。"
+      }
+    ],
+    "early_signals": [
+      "窗口命令 PASS 却无物理适配器/人工证据",
+      "缩略图看起来正常却缺来源像素 oracle",
+      "文档数量增加却没有可归因的实测结果"
+    ],
+    "first_step": 1,
+    "gates": {
+      "A": {
+        "hash": "e6dbd3e862f50018",
+        "at": "2026-10-17 02:28:51",
+        "confirmed_via": "token"
+      }
+    },
+    "last_event": 2
+  }
+}

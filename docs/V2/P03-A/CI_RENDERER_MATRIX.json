@@ -1,0 +1,67 @@
+{
+  "results": [
+    {
+      "stdout_file": "glow.stdout.txt",
+      "stderr_file": "glow.stderr.txt",
+      "renderer": "glow",
+      "adapter_line": [],
+      "wall_ms": 650,
+      "name": "glow",
+      "error_excerpt": "Error: OpenGL(PainterError(\"egui_glow requires opengl 2.0+. \"))",
+      "exit_code": 1,
+      "timed_out": false,
+      "passed": false,
+      "requested_backend": null
+    },
+    {
+      "stdout_file": "wgpu_dx12.stdout.txt",
+      "stderr_file": "wgpu_dx12.stderr.txt",
+      "renderer": "wgpu",
+      "adapter_line": [
+        "SR_V2_03_GPU_ADAPTER backend=Dx12 type=Cpu name=\"Microsoft Basic Render Driver\" vendor=5140 device=140 max_texture_dimension_2d=16384"
+      ],
+      "wall_ms": 3467,
+      "name": "wgpu_dx12",
+      "error_excerpt": "",
+      "exit_code": 0,
+      "timed_out": false,
+      "passed": true,
+      "requested_backend": "dx12"
+    },
+    {
+      "stdout_file": "wgpu_auto.stdout.txt",
+      "stderr_file": "wgpu_auto.stderr.txt",
+      "renderer": "wgpu",
+      "adapter_line": [
+        "SR_V2_03_GPU_ADAPTER backend=Dx12 type=Cpu name=\"Microsoft Basic Render Driver\" vendor=5140 device=140 max_texture_dimension_2d=16384"
+      ],
+      "wall_ms": 1881,
+      "name": "wgpu_auto",
+      "error_excerpt": "",
+      "exit_code": 0,
+      "timed_out": false,
+      "passed": true,
+      "requested_backend": null
+    }
+  ],
+  "schema": "shareready.v2-03.renderer-matrix/1",
+  "system": {
+    "runner": "GitHub Actions 1000003164",
+    "video_controllers": [
+      {
+        "name": "Microsoft Hyper-V Video",
+        "resolution": "1024x768",
+        "driver": "10.0.26100.1150",
+        "status": "OK"
+      }
+    ],
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "exe_sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+    "sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0"
+  },
+  "limitations": [
+    "CI Windows virtual machine does not validate physical mouse, multimonitor DPI, Paint paste or Narrator.",
+    "D3D12 on Microsoft software adapter does not prove discrete GPU performance.",
+    "One successful window lifecycle is not equivalent to G01-G10 human acceptance."
+  ]
+}

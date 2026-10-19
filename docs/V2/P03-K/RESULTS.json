@@ -1,0 +1,937 @@
+{
+  "schema": "shareready.p03-k.evidence/1",
+  "status": "LOCAL_BATCH_MEASURED_AND_REVIEWED_WITH_LIMITS",
+  "full_product": "IN_PROGRESS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "branch": "main",
+  "source_files": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "Cargo.toml": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82",
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/clipboard.rs": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59",
+    "crates/shareready-core/src/lib.rs": "9fed9036944f88e99d54b25c7f683bb69f61438ef96554c5b201012d21984a77",
+    "crates/shareready-core/tests/clipboard_dib.rs": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "c903c26c9c2e61968043a6fce79b12e2719cdca58201b0323c5232d9c685616e",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "crates/shareready-editor/tests/editor_workflow.rs": "d14dcfc877c21afd5c00a78d2a48fd36e4d4cfd648402a0d0e24770b9e59287b",
+    "crates/shareready-platform-windows/Cargo.toml": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0",
+    "crates/shareready-platform-windows/src/clipboard.rs": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f",
+    "crates/shareready-platform-windows/src/lib.rs": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f",
+    "crates/shareready-platform-windows/src/windows.rs": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230",
+    "docs/research/fixtures/generate.py": "884c6877284eebb84123d29bd9976028a78d26f7cfced7ec058b50304853741f",
+    "docs/research/fixtures/manifest.json": "f8d5f8a8559d274dccf5c0896891030117782ab9a866b5ee198f0e658a44722d",
+    "docs/research/fixtures/T01_CHAT.png": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+    "docs/research/fixtures/T02_ORDER.png": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+    "docs/research/fixtures/T03_SUPPORT.png": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "docs/research/fixtures/T05_JPEG_EXIF.jpg": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+    "e1-spike/Cargo.lock": "f364a635b8abeb43c250f6ec02a8415ebacb2def64b7d7493b820cb4b04824af",
+    "e1-spike/Cargo.toml": "2a74c531d11c383ed959abcd74051abae3998f7b6404bd40f70cf7f5505733b0",
+    "e1-spike/examples/v1_baseline_preview.rs": "bb467a3a9060c3fdea8ff3433e22a7ab4310ca4ce5f8e279cf283b0324d4efb2",
+    "e1-spike/src/lib.rs": "ed1d15620eb42b9bc5b5f8b0c25e8ed66e7676f91c86e2b1ad3848ae7455386e",
+    "e1-spike/src/main.rs": "1e841214a6659b022e831cfa35d3b2e1b85737c0c594d8e095bc44e6faaad7dd",
+    "e1-spike/tests/codec_security.rs": "bab1b612e5daef8d5aeb55b8ccf68c62fa8206bfc149fa76125fdc1b1d553de0",
+    "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "poc/native-egui/assets/fonts/OFL-1.1.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+    "poc/native-egui/assets/fonts/PROVENANCE.json": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a",
+    "poc/native-egui/assets/performance/grid-24mp.png": "29c42e8393907a39e341bdc7d47ebfff8acb4e7a02af9d46a2abe52bf77fffda",
+    "poc/native-egui/assets/performance/PROVENANCE.json": "17891e283eba24302fc1e1ee48fbf0397faba65c3e38031e7549b41a0bf74924",
+    "poc/native-egui/assets/performance/wide-24mp.png": "0c87a1d6786b15b44da9a1bcf912bb2e9f3263ed80ea2289a332cc1c2c097a2e",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "poc/native-egui/Cargo.toml": "6820ca41082155e2d332b58755ff44f38e221cab89d69d2b47f6c72e1fc25010",
+    "poc/native-egui/examples/async_window.rs": "21cce8e57dddd905fd2cdf52e9fce36ba18244de548039f4659936ec5ce77ebc",
+    "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+    "poc/native-egui/examples/generated_artifact_check.rs": "cfa0f5a033c8be411a56d1bc53cc20a13869cf24bb090f8b0ed4b50f788b5099",
+    "poc/native-egui/examples/performance_baseline.rs": "1f88a4414ec09ba323e09d73c6dbeac3befba2bba5361bc3dc68e6bfbd0bb39f",
+    "poc/native-egui/examples/performance_window.rs": "81ba99e584740c0e0088ed9d7c21aaedcbdcc3e586be9d7c20a3b25e700f6044",
+    "poc/native-egui/examples/readback_probe.rs": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474",
+    "poc/native-egui/examples/source_window.rs": "71d07694c5a81637ff4edcae6da931b8ce414f8e785f83dc84ec766f44b92d89",
+    "poc/native-egui/examples/support/async_driver.rs": "25bfcd4c97db9e11e968be7c5cce414721fe088a4d444213b4e26c655bd5e877",
+    "poc/native-egui/examples/support/performance_driver.rs": "441128a6d88ef1dc10b1a0037e91fe0bddd5d4cd7865b77a99faf7e177ed850e",
+    "poc/native-egui/examples/support/source_driver.rs": "aa6b3bfb5fbc912ec57dfc73e16e1be12b0f8776c275878d64a5bb88ab78b704",
+    "poc/native-egui/input-bridge/Cargo.toml": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396",
+    "poc/native-egui/input-bridge/src/lib.rs": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f",
+    "poc/native-egui/input-bridge/src/windows.rs": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199",
+    "poc/native-egui/src/app.rs": "a2332463ea0e0fe7b611c7e1b38d06701ffc60a6491f5635c268b6afe7fc4f04",
+    "poc/native-egui/src/display.rs": "21338c4f16825855c8f723e4c04b0eea57b3bdc568456e4a77bec535bc7ea063",
+    "poc/native-egui/src/fonts.rs": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e",
+    "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+    "poc/native-egui/src/main.rs": "7003a90df81b53813899ce849184787dd9aaa4569ca836ae1e080dcece70e073",
+    "poc/native-egui/src/review_task.rs": "b1bf49bac80dfe51ee1d2a40b6388d65e8490d22676e16f9d319a4e52f0b2f7c",
+    "poc/native-egui/src/source_task.rs": "81d8762ac5e45b2467cfaf772167b772ef9083eb7a7630f081a3db745dd6ed0f",
+    "poc/native-egui/src/trace.rs": "878f410d6c0bd6970132577430fbb2699ea8502f1e58103e98cae22fe0e714d2",
+    "poc/native-egui/src/visual.rs": "1a182c21dec7093f5ff23012d7f285147cc2674da905b0626c39186436a80da9",
+    "tests/golden/v1_3_baseline.json": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9",
+    "tests/golden/verify_v1_baseline.py": "52b4d76c1c81c746475dd68eca130ec3b38cc07735c7dd20b7700135d56eefe9",
+    "tests/native_oracle/make_performance_fixtures.py": "8a6d2130062e5414813330807b5db679275b1f4393b20afff889bc3f96acf8a6",
+    "tests/native_oracle/png_oracle.py": "99d025bedb7707a0c5cf19544636a89d9510abe19224448cddcadfeed2201337",
+    "tests/native_oracle/run_async_checks.py": "1bf73442ea17ed3e0e153f897d8d84fd3aa893c022a5346c5a5852463c2e262d",
+    "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+    "tests/native_oracle/run_native_checks.py": "b51fe49de79b60617aacae3f7bfade0b21306db94c06cbd192c2e0d461469195",
+    "tests/native_oracle/run_source_checks.py": "155666e00ad562450ad9235f2fe21da838297151c6ef551233e67c98f773a318",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859",
+    "tests/performance/fixtures/APNG_PROVENANCE.json": "1a8c005a19df6fd17300d688ffc12eafb1ee3b3625f4a8b028d101e4ae093d37",
+    "tests/performance/fixtures/PROVENANCE.json": "1c8cc5d1aa34ada6608fc28109ca3df64e7896ea00b29334a8cb80cc70a2472d",
+    "tests/performance/fixtures/STRUCTURE_PROVENANCE.json": "4c7ba6926d5b9c7c5a6018e41221c0f24a6bc4f17b3282f2e608b91777c1b494",
+    "tests/performance/fixtures/synthetic-metadata.png": "ad8422d81ecb1602a721ca8382c8ee5a664437eabd7e7445b9c5f270ea67c69f",
+    "tests/performance/fixtures/synthetic-noise-9mp.jpg": "b190d5da92519c12034032004c2c033cbda8296a7ebfd23dd298002dcefecd40",
+    "tests/performance/fixtures/synthetic-split-idat.png": "c723e3639c48f90b512398b5826e9cce0d27ce0bc982b77957eab0a641753b9e",
+    "tests/performance/fixtures/synthetic-two-frame.png": "7f91d137c23ab4701a5931c1cd407a604c620f4ac7284a3669b24ba2d1b4d412",
+    "tests/performance/make_entropy_fixture.py": "a8d3ca0db25c5b39216056db1fd738f903a1d08cf1a170bf1d62a1675b57ebb1",
+    "tests/performance/measure_process.py": "49c7cb7201c911e59625bd17701322fa6899273da1fb070a431b0b12b2452148",
+    "tests/performance/run_component_baseline.py": "c09009df59ac166f4bb003230fbb27d648cfb0cc196e9f008b62817280d5f797",
+    "tests/performance/run_fix_checks.py": "b8d9ffda3272e3dce7002626f3ac2e52336b9f01cc955ebbf8d8f7b4aea5d356",
+    "tests/performance/run_large_artifact_checks.py": "04bee6cc0c30563fa36e9879cd13ac67a5c8f1aa2142824c6473bfbb446efab1",
+    "tests/performance/run_window_checks.py": "9519b807b0f12d5af473ed7932425c1ef8089fa593f636116a7fd27faa03210d",
+    "tests/performance/test_measure_process.py": "abbe2c4484d452cd037490cb6e72fed7f6f8c67f169bf9f75582905adaab5f04",
+    "tests/performance/test_performance_identity.py": "f9054ae77b3eb73b38920470aafba609676717cef84f54970e1c587f6e396aae",
+    "tests/performance/test_source_method.py": "ea3f0ffb186d522c7cc4c43177c7dd87de6a400c9d8386f224fda4f340f3f84a",
+    "tests/performance/test_window_pixels.py": "e6114e46c84324a24ebf7da6b34874c90f9cf5dcb262d4e6293d06437dfeb24c"
+  },
+  "build_id": "114491f9a9a202b39f5e0a1c38db3e21fde738cb138bd0015c095a135c7be014",
+  "source_exe_sha256": "72b11e173dfe1822a64b68d2a5af73bd746dbc4150fdd732b530a91a5a400292",
+  "protected_sha256": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "docs/V2/PRODUCT_MODIFICATION_PLAN_2026-10-17.md": "3f4d601a35f528f7ee41c82270888fcbde3c4be8570929a44a22037755433456",
+    "docs/V2/deliverables/ShareReady_V2_Product_Modification_Plan_2026-10-17.pdf": "471b0f2948214e1da83a4f86142433a2811e20d38bbd6f35ff9394d6ed912d70"
+  },
+  "reports": {
+    "source": {
+      "path": "target/p03-k-evidence/window-20261019T005902416947Z/report.json",
+      "sha256": "e87afd1eb18c3eec492a7d82e74951bdd3a47b5059ea6809e6d4fb6c906b8be5"
+    },
+    "async_review": {
+      "path": "target/p03-j-evidence/window-20261019T010025846788Z/report.json",
+      "sha256": "233841391d51b6264fce1c4ac1a6f6c1fb4501cec009753230555c4ea2748ded"
+    },
+    "fix": {
+      "path": "target/p03-i-evidence/fix-20261019T010152577691Z/report.json",
+      "sha256": "8ccc5d9d7ecb58500105eb9aa9ce9ebdfac5160184f6811b6161b26d02469db2"
+    },
+    "ordinary": {
+      "path": "target/p03-c-evidence/native-20261019T010431162209Z/report.json",
+      "sha256": "9ed5940b24cb9522ad1023eac0293cb665dbe65ae837f75c4479c6f5d2f7ba1c"
+    },
+    "large": {
+      "path": "target/p03-i-evidence/large-20261019T010509687620Z/report.json",
+      "sha256": "9b598b116e09e637c3d7f61bd9da890c00c9348c018d3959afbf240f5d085fe9"
+    },
+    "window": {
+      "path": "target/p03-i-evidence/window-20261019T010555358183Z/report.json",
+      "sha256": "cc6b245af847593e2b0020d200893b8f8412a330aca4a0d6b1b92927c8a7c6b7"
+    }
+  },
+  "prior_attempts": {
+    "pilot": {
+      "path": "target/p03-k-evidence/window-20261019T004415429259Z/report.json",
+      "sha256": "92e68e9885b5db5efa3ce96d7288f7cb7bb442011e4d4e665923a939065e116d"
+    },
+    "machine_green_visual_status_failed": {
+      "path": "target/p03-k-evidence/window-20261019T004720615835Z/report.json",
+      "sha256": "528228a82c3b9d54bf6aa7985e4045861a704e8928ddf63b91126d71b7a94f44"
+    }
+  },
+  "source_delta_from_J": {
+    "changed": [
+      "crates/shareready-editor/src/lib.rs",
+      "poc/native-egui/examples/support/performance_driver.rs",
+      "poc/native-egui/src/app.rs",
+      "poc/native-egui/src/display.rs"
+    ],
+    "added": [
+      "poc/native-egui/examples/source_window.rs",
+      "poc/native-egui/examples/support/source_driver.rs",
+      "poc/native-egui/src/source_task.rs",
+      "tests/native_oracle/run_source_checks.py",
+      "tests/performance/test_source_method.py"
+    ]
+  },
+  "snapshots": {
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/shareready-e1.exe": {
+      "role": "executed-v1-producer",
+      "source_path": "target/release/shareready-e1.exe",
+      "sha256": "959f5dcf62deaa8cb37557e1d1bb3006a176636cc06fc25d380ede8fcd1c8bc6"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/v1_baseline_preview.exe": {
+      "role": "executed-v1-producer",
+      "source_path": "target/release/examples/v1_baseline_preview.exe",
+      "sha256": "ad96bb98a7bcac4c0efa90c38807721919381b593afa15c039c5c9bda446b9ff"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/workflow-through-step3-plan.json": {
+      "role": "historical-workflow-through-step3",
+      "source_path": "target/workflows/p03-k/plan.json",
+      "sha256": "bcfe37b9e936a3c55ecf7f3cee15f571b8629fa7bb9170311c7c203b37cb0cdd"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/workflow-through-step3-events.jsonl": {
+      "role": "historical-workflow-through-step3",
+      "source_path": "target/workflows/p03-k/events.jsonl",
+      "sha256": "c25ec85b71f1f7b3b57a5c7cc6a7ae66c4d3f42b81d1eaa0fe196165e588aeef"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/workflow-through-step3-progress.md": {
+      "role": "historical-workflow-through-step3",
+      "source_path": "target/workflows/p03-k/progress.md",
+      "sha256": "5b29abd506d66f7f270e08fa94abd924cca20eb6615601eb14c8274260892904"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/workflow-through-step3-decision-card.md": {
+      "role": "historical-workflow-through-step3",
+      "source_path": "target/workflows/p03-k/decision-card.md",
+      "sha256": "57d89fd108634a8021ac881beb47cb63af8e050ec9d611d5f71ff66d1761ed91"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/agent-confirmations-through-step3.jsonl": {
+      "role": "agent-confirmations-not-human-tokens",
+      "source_path": "target/p03-k-evidence/AGENT_CONFIRMATIONS.jsonl",
+      "sha256": "3e169f07566264a7b8fc75377f6be3b4170b1d1a1c9e7ba3fc54ce15c770fafb"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/Cargo.lock": {
+      "role": "exact-compiled-input",
+      "source_path": "Cargo.lock",
+      "sha256": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "Cargo.toml",
+      "sha256": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-core/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-core/Cargo.toml",
+      "sha256": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-core/src/clipboard.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-core/src/clipboard.rs",
+      "sha256": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-core/src/lib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-core/src/lib.rs",
+      "sha256": "9fed9036944f88e99d54b25c7f683bb69f61438ef96554c5b201012d21984a77"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-core/tests/clipboard_dib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-core/tests/clipboard_dib.rs",
+      "sha256": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-editor/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-editor/Cargo.toml",
+      "sha256": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-editor/src/geometry.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-editor/src/geometry.rs",
+      "sha256": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-editor/src/lib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-editor/src/lib.rs",
+      "sha256": "c903c26c9c2e61968043a6fce79b12e2719cdca58201b0323c5232d9c685616e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-editor/src/viewport.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-editor/src/viewport.rs",
+      "sha256": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-editor/tests/editor_workflow.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-editor/tests/editor_workflow.rs",
+      "sha256": "d14dcfc877c21afd5c00a78d2a48fd36e4d4cfd648402a0d0e24770b9e59287b"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-platform-windows/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-platform-windows/Cargo.toml",
+      "sha256": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-platform-windows/src/clipboard.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-platform-windows/src/clipboard.rs",
+      "sha256": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-platform-windows/src/lib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-platform-windows/src/lib.rs",
+      "sha256": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/crates/shareready-platform-windows/src/windows.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "crates/shareready-platform-windows/src/windows.rs",
+      "sha256": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/generate.py": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/generate.py",
+      "sha256": "884c6877284eebb84123d29bd9976028a78d26f7cfced7ec058b50304853741f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/manifest.json": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/manifest.json",
+      "sha256": "f8d5f8a8559d274dccf5c0896891030117782ab9a866b5ee198f0e658a44722d"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/T01_CHAT.png": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/T01_CHAT.png",
+      "sha256": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/T02_ORDER.png": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/T02_ORDER.png",
+      "sha256": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/T03_SUPPORT.png": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/T03_SUPPORT.png",
+      "sha256": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/T04_EDGES.png": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/T04_EDGES.png",
+      "sha256": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/docs/research/fixtures/T05_JPEG_EXIF.jpg": {
+      "role": "exact-compiled-input",
+      "source_path": "docs/research/fixtures/T05_JPEG_EXIF.jpg",
+      "sha256": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/Cargo.lock": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/Cargo.lock",
+      "sha256": "f364a635b8abeb43c250f6ec02a8415ebacb2def64b7d7493b820cb4b04824af"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/Cargo.toml",
+      "sha256": "2a74c531d11c383ed959abcd74051abae3998f7b6404bd40f70cf7f5505733b0"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/examples/v1_baseline_preview.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/examples/v1_baseline_preview.rs",
+      "sha256": "bb467a3a9060c3fdea8ff3433e22a7ab4310ca4ce5f8e279cf283b0324d4efb2"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/src/lib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/src/lib.rs",
+      "sha256": "ed1d15620eb42b9bc5b5f8b0c25e8ed66e7676f91c86e2b1ad3848ae7455386e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/src/main.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/src/main.rs",
+      "sha256": "1e841214a6659b022e831cfa35d3b2e1b85737c0c594d8e095bc44e6faaad7dd"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/e1-spike/tests/codec_security.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "e1-spike/tests/codec_security.rs",
+      "sha256": "bab1b612e5daef8d5aeb55b8ccf68c62fa8206bfc149fa76125fdc1b1d553de0"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf",
+      "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/fonts/OFL-1.1.txt": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/fonts/OFL-1.1.txt",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/fonts/PROVENANCE.json": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/fonts/PROVENANCE.json",
+      "sha256": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/performance/grid-24mp.png": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/performance/grid-24mp.png",
+      "sha256": "29c42e8393907a39e341bdc7d47ebfff8acb4e7a02af9d46a2abe52bf77fffda"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/performance/PROVENANCE.json": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/performance/PROVENANCE.json",
+      "sha256": "17891e283eba24302fc1e1ee48fbf0397faba65c3e38031e7549b41a0bf74924"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/assets/performance/wide-24mp.png": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/assets/performance/wide-24mp.png",
+      "sha256": "0c87a1d6786b15b44da9a1bcf912bb2e9f3263ed80ea2289a332cc1c2c097a2e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/Cargo.lock": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/Cargo.lock",
+      "sha256": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/Cargo.toml",
+      "sha256": "6820ca41082155e2d332b58755ff44f38e221cab89d69d2b47f6c72e1fc25010"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/async_window.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/async_window.rs",
+      "sha256": "21cce8e57dddd905fd2cdf52e9fce36ba18244de548039f4659936ec5ce77ebc"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/clipboard_probe.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/clipboard_probe.rs",
+      "sha256": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/generated_artifact_check.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/generated_artifact_check.rs",
+      "sha256": "cfa0f5a033c8be411a56d1bc53cc20a13869cf24bb090f8b0ed4b50f788b5099"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/performance_baseline.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/performance_baseline.rs",
+      "sha256": "1f88a4414ec09ba323e09d73c6dbeac3befba2bba5361bc3dc68e6bfbd0bb39f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/performance_window.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/performance_window.rs",
+      "sha256": "81ba99e584740c0e0088ed9d7c21aaedcbdcc3e586be9d7c20a3b25e700f6044"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/readback_probe.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/readback_probe.rs",
+      "sha256": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/source_window.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/source_window.rs",
+      "sha256": "71d07694c5a81637ff4edcae6da931b8ce414f8e785f83dc84ec766f44b92d89"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/support/async_driver.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/support/async_driver.rs",
+      "sha256": "25bfcd4c97db9e11e968be7c5cce414721fe088a4d444213b4e26c655bd5e877"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/support/performance_driver.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/support/performance_driver.rs",
+      "sha256": "441128a6d88ef1dc10b1a0037e91fe0bddd5d4cd7865b77a99faf7e177ed850e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/examples/support/source_driver.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/examples/support/source_driver.rs",
+      "sha256": "aa6b3bfb5fbc912ec57dfc73e16e1be12b0f8776c275878d64a5bb88ab78b704"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/input-bridge/Cargo.toml": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/input-bridge/Cargo.toml",
+      "sha256": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/input-bridge/src/lib.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/input-bridge/src/lib.rs",
+      "sha256": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/input-bridge/src/windows.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/input-bridge/src/windows.rs",
+      "sha256": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/app.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/app.rs",
+      "sha256": "a2332463ea0e0fe7b611c7e1b38d06701ffc60a6491f5635c268b6afe7fc4f04"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/display.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/display.rs",
+      "sha256": "21338c4f16825855c8f723e4c04b0eea57b3bdc568456e4a77bec535bc7ea063"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/fonts.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/fonts.rs",
+      "sha256": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/input.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/input.rs",
+      "sha256": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/main.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/main.rs",
+      "sha256": "7003a90df81b53813899ce849184787dd9aaa4569ca836ae1e080dcece70e073"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/review_task.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/review_task.rs",
+      "sha256": "b1bf49bac80dfe51ee1d2a40b6388d65e8490d22676e16f9d319a4e52f0b2f7c"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/source_task.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/source_task.rs",
+      "sha256": "81d8762ac5e45b2467cfaf772167b772ef9083eb7a7630f081a3db745dd6ed0f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/trace.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/trace.rs",
+      "sha256": "878f410d6c0bd6970132577430fbb2699ea8502f1e58103e98cae22fe0e714d2"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/poc/native-egui/src/visual.rs": {
+      "role": "exact-compiled-input",
+      "source_path": "poc/native-egui/src/visual.rs",
+      "sha256": "1a182c21dec7093f5ff23012d7f285147cc2674da905b0626c39186436a80da9"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/golden/v1_3_baseline.json": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/golden/v1_3_baseline.json",
+      "sha256": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/golden/verify_v1_baseline.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/golden/verify_v1_baseline.py",
+      "sha256": "52b4d76c1c81c746475dd68eca130ec3b38cc07735c7dd20b7700135d56eefe9"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/make_performance_fixtures.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/make_performance_fixtures.py",
+      "sha256": "8a6d2130062e5414813330807b5db679275b1f4393b20afff889bc3f96acf8a6"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/png_oracle.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/png_oracle.py",
+      "sha256": "99d025bedb7707a0c5cf19544636a89d9510abe19224448cddcadfeed2201337"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/run_async_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/run_async_checks.py",
+      "sha256": "1bf73442ea17ed3e0e153f897d8d84fd3aa893c022a5346c5a5852463c2e262d"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/run_clipboard_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/run_clipboard_checks.py",
+      "sha256": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/run_native_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/run_native_checks.py",
+      "sha256": "b51fe49de79b60617aacae3f7bfade0b21306db94c06cbd192c2e0d461469195"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/run_source_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/run_source_checks.py",
+      "sha256": "155666e00ad562450ad9235f2fe21da838297151c6ef551233e67c98f773a318"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/native_oracle/test_png_oracle.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/native_oracle/test_png_oracle.py",
+      "sha256": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/APNG_PROVENANCE.json": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/APNG_PROVENANCE.json",
+      "sha256": "1a8c005a19df6fd17300d688ffc12eafb1ee3b3625f4a8b028d101e4ae093d37"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/PROVENANCE.json": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/PROVENANCE.json",
+      "sha256": "1c8cc5d1aa34ada6608fc28109ca3df64e7896ea00b29334a8cb80cc70a2472d"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/STRUCTURE_PROVENANCE.json": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/STRUCTURE_PROVENANCE.json",
+      "sha256": "4c7ba6926d5b9c7c5a6018e41221c0f24a6bc4f17b3282f2e608b91777c1b494"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/synthetic-metadata.png": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/synthetic-metadata.png",
+      "sha256": "ad8422d81ecb1602a721ca8382c8ee5a664437eabd7e7445b9c5f270ea67c69f"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/synthetic-noise-9mp.jpg": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/synthetic-noise-9mp.jpg",
+      "sha256": "b190d5da92519c12034032004c2c033cbda8296a7ebfd23dd298002dcefecd40"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/synthetic-split-idat.png": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/synthetic-split-idat.png",
+      "sha256": "c723e3639c48f90b512398b5826e9cce0d27ce0bc982b77957eab0a641753b9e"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/fixtures/synthetic-two-frame.png": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/fixtures/synthetic-two-frame.png",
+      "sha256": "7f91d137c23ab4701a5931c1cd407a604c620f4ac7284a3669b24ba2d1b4d412"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/make_entropy_fixture.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/make_entropy_fixture.py",
+      "sha256": "a8d3ca0db25c5b39216056db1fd738f903a1d08cf1a170bf1d62a1675b57ebb1"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/measure_process.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/measure_process.py",
+      "sha256": "49c7cb7201c911e59625bd17701322fa6899273da1fb070a431b0b12b2452148"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/run_component_baseline.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/run_component_baseline.py",
+      "sha256": "c09009df59ac166f4bb003230fbb27d648cfb0cc196e9f008b62817280d5f797"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/run_fix_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/run_fix_checks.py",
+      "sha256": "b8d9ffda3272e3dce7002626f3ac2e52336b9f01cc955ebbf8d8f7b4aea5d356"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/run_large_artifact_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/run_large_artifact_checks.py",
+      "sha256": "04bee6cc0c30563fa36e9879cd13ac67a5c8f1aa2142824c6473bfbb446efab1"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/run_window_checks.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/run_window_checks.py",
+      "sha256": "9519b807b0f12d5af473ed7932425c1ef8089fa593f636116a7fd27faa03210d"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/test_measure_process.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/test_measure_process.py",
+      "sha256": "abbe2c4484d452cd037490cb6e72fed7f6f8c67f169bf9f75582905adaab5f04"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/test_performance_identity.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/test_performance_identity.py",
+      "sha256": "f9054ae77b3eb73b38920470aafba609676717cef84f54970e1c587f6e396aae"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/test_source_method.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/test_source_method.py",
+      "sha256": "ea3f0ffb186d522c7cc4c43177c7dd87de6a400c9d8386f224fda4f340f3f84a"
+    },
+    "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z/compiled-inputs/tests/performance/test_window_pixels.py": {
+      "role": "exact-compiled-input",
+      "source_path": "tests/performance/test_window_pixels.py",
+      "sha256": "e6114e46c84324a24ebf7da6b34874c90f9cf5dcb262d4e6293d06437dfeb24c"
+    }
+  },
+  "snapshot_dir": "target/p03-k-evidence/artifact-snapshots-20261019T010957563576Z",
+  "visuals": {
+    "grid-gpu-busy.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/grid/gpu-busy.png",
+      "sha256": "afdb13454d716691ec2b884e5ec01a49297b61682ae6a48b7b3f76d1cf86bac4",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "grid-gpu-first.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/grid/gpu-first.png",
+      "sha256": "cb6a089681ef2327b456d499a58c2c0a381dbc6f6512529dca210e03d229db44",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "grid-gpu-retry.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/grid/gpu-retry.png",
+      "sha256": "315eeffc3cdf0575436a38ed3f8ab5a8a66ec4225f47f191f6acff0454047dcb",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "noise-gpu-busy.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/noise/gpu-busy.png",
+      "sha256": "a0f822f06c7fd29b7b63d418f1ec87e564ae4889cb006062a0f4bc47b600e3a8",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "noise-gpu-first.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/noise/gpu-first.png",
+      "sha256": "af11a98cb4cd9dd4a9f9f270977db77a80e386d5d967cdb29a274b0c52c5f754",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "noise-gpu-retry.png": {
+      "source_path": "target/p03-k-evidence/window-20261019T005902416947Z/noise/gpu-retry.png",
+      "sha256": "37f800bb560ee9273301742ebccaa8dadec90b8261cd2ea273804c87cebcc465",
+      "scope": "actual release diagnostic GPU readback; not physical or human evidence"
+    },
+    "ordinary-edit.png": {
+      "source_path": "target/p03-c-evidence/native-20261019T010431162209Z/visual/edit.png",
+      "sha256": "476006e506349d59bc192d516c044938b5afcd8d92b1aad4f1c87429aee42a3d",
+      "scope": "ordinary featureless debug synthetic window"
+    },
+    "ordinary-review.png": {
+      "source_path": "target/p03-c-evidence/native-20261019T010431162209Z/visual/review.png",
+      "sha256": "b548cf734238d26d8f3525340ca133c2230df1a67a96905df33cdbe0963ff18b",
+      "scope": "ordinary featureless debug synthetic window"
+    },
+    "ordinary-small.png": {
+      "source_path": "target/p03-c-evidence/native-20261019T010431162209Z/visual/small.png",
+      "sha256": "7ff7ec9c9bcf9571b7f445dfca6a223733d5c33d5f6ea632a1cd712e3b9dc23a",
+      "scope": "ordinary featureless debug synthetic window"
+    },
+    "ordinary-dark.png": {
+      "source_path": "target/p03-c-evidence/native-20261019T010431162209Z/visual/dark.png",
+      "sha256": "d46d7a8bcb3ff56835db0a4b8dab7566a203f8413430b4059c3404f23a197e80",
+      "scope": "ordinary featureless debug synthetic window"
+    }
+  },
+  "metrics_sha256": "1015b67b4576b252857e6bb52e0571f96c0dc1db4ffe6e24155996649516745e",
+  "extra_snapshots": {
+    "native_step2": {
+      "path": "target/p03-k-evidence/native-boundary-sources-20261019T003406488116Z/report.json",
+      "sha256": "90a24ad983a0490e4354e17caae3662c29520ef91ee960a792e42689a83e0152"
+    },
+    "pre_status_full84": {
+      "path": "target/p03-k-evidence/source-full-r1-20261019T005818941823Z/report.json",
+      "sha256": "227630b0d997c9ec8ceebd2bde62771ec5f748e59b82b8f33045a339e6f06155"
+    }
+  },
+  "independent_review": {
+    "status": "ACCEPT_WITH_LIMITS",
+    "sha256": "e6c68a5a4fe0857dd9a976d4e5bb4c963551533f3f3446330f9ace6d778ed7cb"
+  },
+  "independent_evidence_files": [
+    "target/p03-j-evidence/check_final_receipt.py",
+    "target/p03-k-evidence/DOMAIN_INDEPENDENT_REVIEW.md",
+    "target/p03-k-evidence/FINAL_STATIC_R2_STATUS_RECHECK.md",
+    "target/p03-k-evidence/FINAL_STATIC_REVIEW.md",
+    "target/p03-k-evidence/FINAL_STATIC_SOURCE_MAP.json",
+    "target/p03-k-evidence/INDEPENDENT_FINAL_REVIEW.md",
+    "target/p03-k-evidence/NATIVE_BOUNDARY_INDEPENDENT_REVIEW.md",
+    "target/p03-k-evidence/NATIVE_PRE_REVIEW.md",
+    "target/p03-k-evidence/NATIVE_R1_RECHECK.md",
+    "target/p03-k-evidence/SOURCE_DIAGNOSTIC_METHOD_RECHECK.md",
+    "target/p03-k-evidence/SOURCE_DIAGNOSTIC_PRE_REVIEW.md",
+    "target/p03-k-evidence/baseline-j-source-map.json",
+    "target/p03-k-evidence/build_docs.py",
+    "target/p03-k-evidence/check_delivery.py",
+    "target/p03-k-evidence/domain-api-red.json",
+    "target/p03-k-evidence/domain-api-red.stderr.txt",
+    "target/p03-k-evidence/domain-api-red.stdout.txt",
+    "target/p03-k-evidence/domain-behavior-red.json",
+    "target/p03-k-evidence/domain-behavior-red.stderr.txt",
+    "target/p03-k-evidence/domain-behavior-red.stdout.txt",
+    "target/p03-k-evidence/domain-green.json",
+    "target/p03-k-evidence/domain-green.stderr.txt",
+    "target/p03-k-evidence/domain-start.json",
+    "target/p03-k-evidence/domain-start.stderr.txt",
+    "target/p03-k-evidence/domain_run.py",
+    "target/p03-k-evidence/driver-wait-green.json",
+    "target/p03-k-evidence/driver-wait-green.stderr.txt",
+    "target/p03-k-evidence/driver-wait-green.stdout.txt",
+    "target/p03-k-evidence/driver-wait-red.json",
+    "target/p03-k-evidence/driver-wait-red.stderr.txt",
+    "target/p03-k-evidence/driver-wait-red.stdout.txt",
+    "target/p03-k-evidence/final_gates.py",
+    "target/p03-k-evidence/flow.py",
+    "target/p03-k-evidence/freeze_full_r1.py",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-accept.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-accept.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-intake.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-intake.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-repeat-wait.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-repeat-wait.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-visual-wait.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-visual-wait.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-workers.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-feature-workers.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-accept.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-accept.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-close-cancel.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-close-cancel.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-intake.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-intake.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-late-review.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-late-review.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-terminal.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-terminal.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-visual-wait.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-visual-wait.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-workers.stderr.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z-ordinary-workers.stdout.txt",
+    "target/p03-k-evidence/independent-current-native-20261019T011059106634Z.json",
+    "target/p03-k-evidence/independent-delivery-method-data.json",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-accept.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-accept.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-close-cancel.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-close-cancel.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-close-terminal.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-close-terminal.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-intake.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-intake.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-late-review.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-late-review.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-worker.stderr.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z-worker.stdout.txt",
+    "target/p03-k-evidence/independent-native-boundary-20261019T003153930850Z.json",
+    "target/p03-k-evidence/independent-runtime-data.json",
+    "target/p03-k-evidence/independent-runtime-helper-identity.json",
+    "target/p03-k-evidence/independent-runtime-helpers.snapshot.py",
+    "target/p03-k-evidence/independent-source-method-20261019T004455720841Z.json",
+    "target/p03-k-evidence/independent-source-method-20261019T004455720841Z.stderr.txt",
+    "target/p03-k-evidence/independent-source-method-20261019T004455720841Z.stdout.txt",
+    "target/p03-k-evidence/independent-source-method-20261019T004718845675Z.json",
+    "target/p03-k-evidence/independent-source-method-20261019T004718845675Z.stderr.txt",
+    "target/p03-k-evidence/independent-source-method-20261019T004718845675Z.stdout.txt",
+    "target/p03-k-evidence/independent_delivery_method_audit.py",
+    "target/p03-k-evidence/independent_runtime_audit.py",
+    "target/p03-k-evidence/initial-A-confirmed.json",
+    "target/p03-k-evidence/initial-A-confirmed.stderr.txt",
+    "target/p03-k-evidence/initial-A-preview.json",
+    "target/p03-k-evidence/initial-A-preview.stderr.txt",
+    "target/p03-k-evidence/initial-B-confirmed.json",
+    "target/p03-k-evidence/initial-B-confirmed.stderr.txt",
+    "target/p03-k-evidence/initial-B-preview.json",
+    "target/p03-k-evidence/initial-B-preview.stderr.txt",
+    "target/p03-k-evidence/initial-card.json",
+    "target/p03-k-evidence/initial-card.stderr.txt",
+    "target/p03-k-evidence/initial-plan.json",
+    "target/p03-k-evidence/initial-plan.stderr.txt",
+    "target/p03-k-evidence/initial-preflight.json",
+    "target/p03-k-evidence/initial-preflight.stderr.txt",
+    "target/p03-k-evidence/native-feature-r1.json",
+    "target/p03-k-evidence/native-feature-r1.stderr.txt",
+    "target/p03-k-evidence/native-feature-r1.stdout.txt",
+    "target/p03-k-evidence/native-full-first-fail.json",
+    "target/p03-k-evidence/native-full-first-fail.stderr.txt",
+    "target/p03-k-evidence/native-full-first.json",
+    "target/p03-k-evidence/native-full-first.stderr.txt",
+    "target/p03-k-evidence/native-full-first.stdout.txt",
+    "target/p03-k-evidence/native-full-frozen.json",
+    "target/p03-k-evidence/native-full-frozen.stderr.txt",
+    "target/p03-k-evidence/native-full-frozen.stdout.txt",
+    "target/p03-k-evidence/native-full-r1.json",
+    "target/p03-k-evidence/native-full-r1.stderr.txt",
+    "target/p03-k-evidence/native-full-r1.stdout.txt",
+    "target/p03-k-evidence/native-green.json",
+    "target/p03-k-evidence/native-green.stderr.txt",
+    "target/p03-k-evidence/native-start.json",
+    "target/p03-k-evidence/native-start.stderr.txt",
+    "target/p03-k-evidence/native_run.py",
+    "target/p03-k-evidence/open_gates.py",
+    "target/p03-k-evidence/prepare_closeout.py",
+    "target/p03-k-evidence/provenance.json",
+    "target/p03-k-evidence/r1-A-confirmed.json",
+    "target/p03-k-evidence/r1-A-confirmed.stderr.txt",
+    "target/p03-k-evidence/r1-A-preview.json",
+    "target/p03-k-evidence/r1-A-preview.stderr.txt",
+    "target/p03-k-evidence/r1-B-confirmed.json",
+    "target/p03-k-evidence/r1-B-confirmed.stderr.txt",
+    "target/p03-k-evidence/r1-B-preview.json",
+    "target/p03-k-evidence/r1-B-preview.stderr.txt",
+    "target/p03-k-evidence/r1-accept-boundaries-green.json",
+    "target/p03-k-evidence/r1-accept-boundaries-green.stderr.txt",
+    "target/p03-k-evidence/r1-accept-boundaries-green.stdout.txt",
+    "target/p03-k-evidence/r1-accept-boundaries-red.json",
+    "target/p03-k-evidence/r1-accept-boundaries-red.stderr.txt",
+    "target/p03-k-evidence/r1-accept-boundaries-red.stdout.txt",
+    "target/p03-k-evidence/r1-card.json",
+    "target/p03-k-evidence/r1-card.stderr.txt",
+    "target/p03-k-evidence/r1-native-start.json",
+    "target/p03-k-evidence/r1-native-start.stderr.txt",
+    "target/p03-k-evidence/r1-plan.json",
+    "target/p03-k-evidence/r1-plan.stderr.txt",
+    "target/p03-k-evidence/r1-preflight.json",
+    "target/p03-k-evidence/r1-preflight.stderr.txt",
+    "target/p03-k-evidence/r1-replan.json",
+    "target/p03-k-evidence/r1-replan.stderr.txt",
+    "target/p03-k-evidence/r2-A-confirmed.json",
+    "target/p03-k-evidence/r2-A-confirmed.stderr.txt",
+    "target/p03-k-evidence/r2-A-preview.json",
+    "target/p03-k-evidence/r2-A-preview.stderr.txt",
+    "target/p03-k-evidence/r2-B-confirmed.json",
+    "target/p03-k-evidence/r2-B-confirmed.stderr.txt",
+    "target/p03-k-evidence/r2-B-preview.json",
+    "target/p03-k-evidence/r2-B-preview.stderr.txt",
+    "target/p03-k-evidence/r2-card.json",
+    "target/p03-k-evidence/r2-card.stderr.txt",
+    "target/p03-k-evidence/r2-plan.json",
+    "target/p03-k-evidence/r2-plan.stderr.txt",
+    "target/p03-k-evidence/r2-preflight.json",
+    "target/p03-k-evidence/r2-preflight.stderr.txt",
+    "target/p03-k-evidence/r2-replan.json",
+    "target/p03-k-evidence/r2-replan.stderr.txt",
+    "target/p03-k-evidence/r2-source-start.json",
+    "target/p03-k-evidence/r2-source-start.stderr.txt",
+    "target/p03-k-evidence/receipt-visual-red.txt",
+    "target/p03-k-evidence/receipt_negative_controls.py",
+    "target/p03-k-evidence/refresh_docs.py",
+    "target/p03-k-evidence/replan_r1.py",
+    "target/p03-k-evidence/replan_r2.py",
+    "target/p03-k-evidence/retain_j_sources.py",
+    "target/p03-k-evidence/reviewer-domain-20261018T140956640419Z.json",
+    "target/p03-k-evidence/reviewer-domain-20261018T140956640419Z.stderr.txt",
+    "target/p03-k-evidence/reviewer-domain-20261018T140956640419Z.stdout.txt",
+    "target/p03-k-evidence/reviewer-domain-supporting-checks.json",
+    "target/p03-k-evidence/reviewer-j-source-archive-check.json",
+    "target/p03-k-evidence/root-green.json",
+    "target/p03-k-evidence/root-green.stderr.txt",
+    "target/p03-k-evidence/root-green.stdout.txt",
+    "target/p03-k-evidence/run_current_native_boundary.py",
+    "target/p03-k-evidence/run_reviewer_native_boundary.py",
+    "target/p03-k-evidence/run_source_pre_review_methods.py",
+    "target/p03-k-evidence/setup_plan.py",
+    "target/p03-k-evidence/snapshot_native_boundary.py",
+    "target/p03-k-evidence/source-B-confirmed.json",
+    "target/p03-k-evidence/source-B-confirmed.stderr.txt",
+    "target/p03-k-evidence/source-B-preview.json",
+    "target/p03-k-evidence/source-B-preview.stderr.txt",
+    "target/p03-k-evidence/source-api-red.json",
+    "target/p03-k-evidence/source-api-red.stderr.txt",
+    "target/p03-k-evidence/source-api-red.stdout.txt",
+    "target/p03-k-evidence/source-app-behavior-red.json",
+    "target/p03-k-evidence/source-app-behavior-red.stderr.txt",
+    "target/p03-k-evidence/source-app-behavior-red.stdout.txt",
+    "target/p03-k-evidence/source-app-green.json",
+    "target/p03-k-evidence/source-app-green.stderr.txt",
+    "target/p03-k-evidence/source-app-green.stdout.txt",
+    "target/p03-k-evidence/source-app-more-api-red.json",
+    "target/p03-k-evidence/source-app-more-api-red.stderr.txt",
+    "target/p03-k-evidence/source-app-more-api-red.stdout.txt",
+    "target/p03-k-evidence/source-close-keyboard-red.json",
+    "target/p03-k-evidence/source-close-keyboard-red.stderr.txt",
+    "target/p03-k-evidence/source-close-keyboard-red.stdout.txt",
+    "target/p03-k-evidence/source-full-r2-verification.json",
+    "target/p03-k-evidence/source-full-r2-verification.stderr.txt",
+    "target/p03-k-evidence/source-full-verification.json",
+    "target/p03-k-evidence/source-full-verification.stderr.txt",
+    "target/p03-k-evidence/source-method-green.txt",
+    "target/p03-k-evidence/source-method-r1-green.txt",
+    "target/p03-k-evidence/source-method-r1-red.txt",
+    "target/p03-k-evidence/source-method-red.txt",
+    "target/p03-k-evidence/source-pilot-console.txt",
+    "target/p03-k-evidence/source-pilot-fail-record.json",
+    "target/p03-k-evidence/source-pilot-fail-record.stderr.txt",
+    "target/p03-k-evidence/source-pilot-failure.json",
+    "target/p03-k-evidence/source-pilot-failure.stderr.txt",
+    "target/p03-k-evidence/source-preflight.json",
+    "target/p03-k-evidence/source-preflight.stderr.txt",
+    "target/p03-k-evidence/source-telemetry-worker.json",
+    "target/p03-k-evidence/source-telemetry-worker.stderr.txt",
+    "target/p03-k-evidence/source-telemetry-worker.stdout.txt",
+    "target/p03-k-evidence/source-ui-fail-record.json",
+    "target/p03-k-evidence/source-ui-fail-record.stderr.txt",
+    "target/p03-k-evidence/source-ui-reopen.json",
+    "target/p03-k-evidence/source-ui-reopen.stderr.txt",
+    "target/p03-k-evidence/source-window-start.json",
+    "target/p03-k-evidence/source-window-start.stderr.txt",
+    "target/p03-k-evidence/source-worker-first-fail.json",
+    "target/p03-k-evidence/source-worker-first-fail.stderr.txt",
+    "target/p03-k-evidence/source-worker-green-r1.json",
+    "target/p03-k-evidence/source-worker-green-r1.stderr.txt",
+    "target/p03-k-evidence/source-worker-green-r1.stdout.txt",
+    "target/p03-k-evidence/source-worker-green.json",
+    "target/p03-k-evidence/source-worker-green.stderr.txt",
+    "target/p03-k-evidence/source-worker-green.stdout.txt",
+    "target/p03-k-evidence/source_gate.py"
+  ],
+  "artifact_manifest_sha256": "dc99f0971200064f51adae73fa4ac9463b64a64946d46fc0dc133cf8b117eec2",
+  "retained_browser": {
+    "status": "HISTORICAL_I_NOT_RERUN_IN_K",
+    "reason": "Core/e1-spike/web-app inputs unchanged; Editor/Native changes do not certify a new browser artifact"
+  },
+  "limitations": [
+    "fixed synthetic ordinary worker and GPU readback; no human, physical DPI, Narrator, or OS clipboard acceptance",
+    "callback window runs from entry to final timing sample before buffered frame-row formatting/return; not physical latency",
+    "all captured frames retained; CPU coverage starts at read_complete and excludes I/O, discarded/repeated frames and callbacks outside decode/display preparation",
+    "OS dialogs and bounded OS clipboard read, GPU upload/visible tile work can still block UI; no full G04 budget acceptance",
+    "cancel revokes ownership, CPU continues and slot remains until actual thread exit",
+    "9MP JPEG uses Rust-normalized source and independent composition; not an independent JPEG decoder validation",
+    "pilot excludes noise and all regression commands; product acceptance remains open",
+    "OS input/dialog/drop and real clipboard cross-app not exercised; driver uses owned synthetic File source on ordinary worker",
+    "source CPU cancellation revokes result ownership and retains slot until exit; it does not interrupt CPU work",
+    "ordinary app is featureless debug; release windows are opt-in diagnostics, each with own EXE/source identity",
+    "physical mixed-DPI, Narrator/IME, Win11/8GB, human tasks, independent security audit, package and release remain open"
+  ],
+  "receipt_validation": {
+    "path": "target/p03-k-evidence/receipt-controls-20261019T011410733386Z/report.json",
+    "sha256": "3fe1d28006617db2d20754d3bb9c06b2f5ece8ca2a580562448523d2970a6bd7",
+    "positive": 3,
+    "negative_rejected": 14
+  },
+  "snapshot_scope": "material preparation after steps1-3 completed and step4 entered; includes exact84 compiled inputs and actual V1 producer bytes"
+}

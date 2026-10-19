@@ -1,0 +1,483 @@
+{
+  "schema": "shareready.p03-a.package-validation/1",
+  "validated_at_utc": "2026-10-17T08:32:16.620332+00:00",
+  "status": "DOCUMENT_PACKAGE_CHECKS_PASSED_NOT_PRODUCT_ACCEPTANCE",
+  "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "checks": [
+    {
+      "name": "head_identity",
+      "passed": true,
+      "detail": "Current HEAD equals the pinned source SHA."
+    },
+    {
+      "name": "remote_main_identity",
+      "passed": true,
+      "detail": "Only origin main is present and matches the pinned SHA."
+    },
+    {
+      "name": "product_diff_absent",
+      "passed": true,
+      "detail": "No tracked product/governance/CI code changes in this task."
+    },
+    {
+      "name": "product_untracked_absent",
+      "passed": true,
+      "detail": "No untracked product files were added."
+    },
+    {
+      "name": "source_bytes_Cargo.toml",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_Cargo.toml",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_Cargo.lock",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_Cargo.lock",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_poc/native-egui/Cargo.toml",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_poc/native-egui/Cargo.toml",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_poc/native-egui/Cargo.lock",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_poc/native-egui/Cargo.lock",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_poc/native-egui/src/app.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_poc/native-egui/src/app.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_poc/native-egui/src/main.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_poc/native-egui/src/main.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_poc/native-egui/Run-Renderer-Probes.ps1",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_poc/native-egui/Run-Renderer-Probes.ps1",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-core/Cargo.toml",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-core/Cargo.toml",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-core/src/lib.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-core/src/lib.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-editor/Cargo.toml",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-editor/Cargo.toml",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-editor/src/lib.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-editor/src/lib.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-editor/src/geometry.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-editor/src/geometry.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-editor/src/viewport.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-editor/src/viewport.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_crates/shareready-editor/tests/editor_workflow.rs",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_crates/shareready-editor/tests/editor_workflow.rs",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_.github/workflows/v2-03-native-poc.yml",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_.github/workflows/v2-03-native-poc.yml",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_tests/golden/v1_3_baseline.json",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_tests/golden/v1_3_baseline.json",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_docs/research/fixtures/manifest.json",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_docs/research/fixtures/manifest.json",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "source_bytes_docs/V2/GUI_POC_CONTRACT.md",
+      "passed": true,
+      "detail": "Working bytes preserved from this task entry."
+    },
+    {
+      "name": "source_blob_docs/V2/GUI_POC_CONTRACT.md",
+      "passed": true,
+      "detail": "Pinned source blob hash verified."
+    },
+    {
+      "name": "fixture_T01_CHAT",
+      "passed": true,
+      "detail": "Synthetic input identity only, not a new golden execution."
+    },
+    {
+      "name": "fixture_T02_ORDER",
+      "passed": true,
+      "detail": "Synthetic input identity only, not a new golden execution."
+    },
+    {
+      "name": "fixture_T03_SUPPORT",
+      "passed": true,
+      "detail": "Synthetic input identity only, not a new golden execution."
+    },
+    {
+      "name": "fixture_T04_EDGES",
+      "passed": true,
+      "detail": "Synthetic input identity only, not a new golden execution."
+    },
+    {
+      "name": "fixture_T05_JPEG_EXIF",
+      "passed": true,
+      "detail": "Synthetic input identity only, not a new golden execution."
+    },
+    {
+      "name": "preserved_document_docs/V2/PRODUCT_MODIFICATION_PLAN_2026-10-17.md",
+      "passed": true,
+      "detail": "Previous plan and PDF preserved byte-for-byte."
+    },
+    {
+      "name": "preserved_document_docs/V2/deliverables/ShareReady_V2_Product_Modification_Plan_2026-10-17.pdf",
+      "passed": true,
+      "detail": "Previous plan and PDF preserved byte-for-byte."
+    },
+    {
+      "name": "index_surgical_change",
+      "passed": true,
+      "detail": "Index contains exactly the additional P03 A link; previous content preserved."
+    },
+    {
+      "name": "archive_digest",
+      "passed": true,
+      "detail": "Downloaded original archive matches API digest."
+    },
+    {
+      "name": "exe_digest",
+      "passed": true,
+      "detail": "Archive EXE hash matches fixed CI log identity."
+    },
+    {
+      "name": "raw_renderer_matrix",
+      "passed": true,
+      "detail": "Original CI JSON copied without modification."
+    },
+    {
+      "name": "local_exe_digest",
+      "passed": true,
+      "detail": "Task-local binary bytes are identical; not executed."
+    },
+    {
+      "name": "ci_identity_crosslinks",
+      "passed": true,
+      "detail": "Renderer JSON source and binary identity match."
+    },
+    {
+      "name": "ci_renderer_results",
+      "passed": true,
+      "detail": "Historical renderer outcomes retained with software-adapter limits."
+    },
+    {
+      "name": "case_mapping",
+      "passed": true,
+      "detail": "33 specification IDs have corresponding complete protocol sections."
+    },
+    {
+      "name": "g_coverage",
+      "passed": true,
+      "detail": "All ten G groups are represented."
+    },
+    {
+      "name": "no_fabricated_test_results",
+      "passed": true,
+      "detail": "No human/operator/output results were invented."
+    },
+    {
+      "name": "no_gate_approval",
+      "passed": true,
+      "detail": "Candidate materials are not machine approvals."
+    },
+    {
+      "name": "no_machine_workspace",
+      "passed": true,
+      "detail": "No fabricated Skill machine state created."
+    },
+    {
+      "name": "dependencies_B0.1",
+      "passed": true,
+      "detail": "Dependencies are earlier steps."
+    },
+    {
+      "name": "bounded_B0.1",
+      "passed": true,
+      "detail": "One work-session candidate, no execution claimed."
+    },
+    {
+      "name": "dependencies_B0.2",
+      "passed": true,
+      "detail": "Dependencies are earlier steps."
+    },
+    {
+      "name": "bounded_B0.2",
+      "passed": true,
+      "detail": "One work-session candidate, no execution claimed."
+    },
+    {
+      "name": "dependencies_B0.3",
+      "passed": true,
+      "detail": "Dependencies are earlier steps."
+    },
+    {
+      "name": "bounded_B0.3",
+      "passed": true,
+      "detail": "One work-session candidate, no execution claimed."
+    },
+    {
+      "name": "dependencies_B0.4",
+      "passed": true,
+      "detail": "Dependencies are earlier steps."
+    },
+    {
+      "name": "bounded_B0.4",
+      "passed": true,
+      "detail": "One work-session candidate, no execution claimed."
+    },
+    {
+      "name": "dependencies_B0.5",
+      "passed": true,
+      "detail": "Dependencies are earlier steps."
+    },
+    {
+      "name": "bounded_B0.5",
+      "passed": true,
+      "detail": "One work-session candidate, no execution claimed."
+    },
+    {
+      "name": "success_coverage",
+      "passed": true,
+      "detail": "Gate A success criteria 1-6 covered by B0 candidate."
+    },
+    {
+      "name": "h01_early",
+      "passed": true,
+      "detail": "Highest-risk hypothesis observed within first two candidate steps."
+    },
+    {
+      "name": "required_materials",
+      "passed": true,
+      "detail": "Overview, scope, protocol, changes, gates and identity data present."
+    },
+    {
+      "name": "no_host_paths_BASELINE.json",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "no_host_paths_CI_RENDERER_MATRIX.json",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "no_host_paths_GAP_MATRIX.md",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "fences_GAP_MATRIX.md",
+      "passed": true,
+      "detail": "Code fences balanced."
+    },
+    {
+      "name": "no_host_paths_GATE_B_PLAN_CANDIDATE.json",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "no_host_paths_GATE_REVIEW_CANDIDATES.md",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "fences_GATE_REVIEW_CANDIDATES.md",
+      "passed": true,
+      "detail": "Code fences balanced."
+    },
+    {
+      "name": "no_host_paths_MINIMAL_CHANGES.md",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "fences_MINIMAL_CHANGES.md",
+      "passed": true,
+      "detail": "Code fences balanced."
+    },
+    {
+      "name": "no_host_paths_README.md",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "fences_README.md",
+      "passed": true,
+      "detail": "Code fences balanced."
+    },
+    {
+      "name": "relative_link_README.md_差距表",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_真机测试协议",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_最小修改清单",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_Gate A/B 候选材料",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_版本清单",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_CI 原始渲染矩阵",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "relative_link_README.md_待执行用例表",
+      "passed": true,
+      "detail": "Relative deliverable link resolves."
+    },
+    {
+      "name": "no_host_paths_TEST_CASES.json",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "no_host_paths_WINDOWS_TEST_PROTOCOL.md",
+      "passed": true,
+      "detail": "No absolute host paths, local username or GitHub token patterns found."
+    },
+    {
+      "name": "fences_WINDOWS_TEST_PROTOCOL.md",
+      "passed": true,
+      "detail": "Code fences balanced."
+    }
+  ],
+  "product_tests_run": false,
+  "human_tests_run": false,
+  "exe_executed": false,
+  "gate_previews_generated": false,
+  "independent_review_performed": false,
+  "limits": [
+    "Static document checks and file/CI artifact identity only.",
+    "No GUI behavior, hardware capability, usability, security certification or Gate A/B approval is asserted.",
+    "The test cases and Gate B commands remain candidates with required live parameter binding."
+  ]
+}

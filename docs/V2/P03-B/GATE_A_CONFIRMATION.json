@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "gate": "A",
+  "next": "制定计划，然后 check plan → gate B"
+}

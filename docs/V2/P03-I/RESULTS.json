@@ -1,0 +1,342 @@
+{
+  "schema": "shareready.p03-i.evidence/1",
+  "status": "LOCAL_BATCH_MEASURED_WITH_LIMITS",
+  "full_product": "IN_PROGRESS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "branch": "main",
+  "source_files": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "Cargo.toml": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82",
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/clipboard.rs": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59",
+    "crates/shareready-core/src/lib.rs": "9fed9036944f88e99d54b25c7f683bb69f61438ef96554c5b201012d21984a77",
+    "crates/shareready-core/tests/clipboard_dib.rs": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "e5399f3afb50ab82e9638b3773d009f4b30a47f18b67d9e08cd1d79bb468f477",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "crates/shareready-editor/tests/editor_workflow.rs": "d14dcfc877c21afd5c00a78d2a48fd36e4d4cfd648402a0d0e24770b9e59287b",
+    "crates/shareready-platform-windows/Cargo.toml": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0",
+    "crates/shareready-platform-windows/src/clipboard.rs": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f",
+    "crates/shareready-platform-windows/src/lib.rs": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f",
+    "crates/shareready-platform-windows/src/windows.rs": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230",
+    "docs/research/fixtures/generate.py": "884c6877284eebb84123d29bd9976028a78d26f7cfced7ec058b50304853741f",
+    "docs/research/fixtures/manifest.json": "f8d5f8a8559d274dccf5c0896891030117782ab9a866b5ee198f0e658a44722d",
+    "docs/research/fixtures/T01_CHAT.png": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+    "docs/research/fixtures/T02_ORDER.png": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+    "docs/research/fixtures/T03_SUPPORT.png": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "docs/research/fixtures/T05_JPEG_EXIF.jpg": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+    "e1-spike/Cargo.lock": "f364a635b8abeb43c250f6ec02a8415ebacb2def64b7d7493b820cb4b04824af",
+    "e1-spike/Cargo.toml": "2a74c531d11c383ed959abcd74051abae3998f7b6404bd40f70cf7f5505733b0",
+    "e1-spike/examples/v1_baseline_preview.rs": "bb467a3a9060c3fdea8ff3433e22a7ab4310ca4ce5f8e279cf283b0324d4efb2",
+    "e1-spike/src/lib.rs": "ed1d15620eb42b9bc5b5f8b0c25e8ed66e7676f91c86e2b1ad3848ae7455386e",
+    "e1-spike/src/main.rs": "1e841214a6659b022e831cfa35d3b2e1b85737c0c594d8e095bc44e6faaad7dd",
+    "e1-spike/tests/codec_security.rs": "bab1b612e5daef8d5aeb55b8ccf68c62fa8206bfc149fa76125fdc1b1d553de0",
+    "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "poc/native-egui/assets/fonts/OFL-1.1.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+    "poc/native-egui/assets/fonts/PROVENANCE.json": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a",
+    "poc/native-egui/assets/performance/grid-24mp.png": "29c42e8393907a39e341bdc7d47ebfff8acb4e7a02af9d46a2abe52bf77fffda",
+    "poc/native-egui/assets/performance/PROVENANCE.json": "17891e283eba24302fc1e1ee48fbf0397faba65c3e38031e7549b41a0bf74924",
+    "poc/native-egui/assets/performance/wide-24mp.png": "0c87a1d6786b15b44da9a1bcf912bb2e9f3263ed80ea2289a332cc1c2c097a2e",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "poc/native-egui/Cargo.toml": "6820ca41082155e2d332b58755ff44f38e221cab89d69d2b47f6c72e1fc25010",
+    "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+    "poc/native-egui/examples/generated_artifact_check.rs": "cfa0f5a033c8be411a56d1bc53cc20a13869cf24bb090f8b0ed4b50f788b5099",
+    "poc/native-egui/examples/performance_baseline.rs": "1f88a4414ec09ba323e09d73c6dbeac3befba2bba5361bc3dc68e6bfbd0bb39f",
+    "poc/native-egui/examples/performance_window.rs": "81ba99e584740c0e0088ed9d7c21aaedcbdcc3e586be9d7c20a3b25e700f6044",
+    "poc/native-egui/examples/readback_probe.rs": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474",
+    "poc/native-egui/examples/support/performance_driver.rs": "65f000c79b12f1f362f524f4b5fb2d816badc05181e227f578881aaff6499065",
+    "poc/native-egui/input-bridge/Cargo.toml": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396",
+    "poc/native-egui/input-bridge/src/lib.rs": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f",
+    "poc/native-egui/input-bridge/src/windows.rs": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199",
+    "poc/native-egui/src/app.rs": "5712036fb080259c4a8102d5472570f3a4ea759fa16de627da74e7eff433a278",
+    "poc/native-egui/src/display.rs": "48ec3eb7196c6650826fd19856f0ae8bd7d838794fc6595ccbdcafd259ca8c0a",
+    "poc/native-egui/src/fonts.rs": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e",
+    "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+    "poc/native-egui/src/main.rs": "7003a90df81b53813899ce849184787dd9aaa4569ca836ae1e080dcece70e073",
+    "poc/native-egui/src/trace.rs": "facd1f9a38a5729ca1ce737de041a97d03f45866d080f07d67d81acfbc939d65",
+    "poc/native-egui/src/visual.rs": "e01c457c23fbadadf20b367b2d89357d7b9884d6da263bd14d5eaadd2cd599cb",
+    "tests/golden/v1_3_baseline.json": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9",
+    "tests/golden/verify_v1_baseline.py": "52b4d76c1c81c746475dd68eca130ec3b38cc07735c7dd20b7700135d56eefe9",
+    "tests/native_oracle/make_performance_fixtures.py": "8a6d2130062e5414813330807b5db679275b1f4393b20afff889bc3f96acf8a6",
+    "tests/native_oracle/png_oracle.py": "99d025bedb7707a0c5cf19544636a89d9510abe19224448cddcadfeed2201337",
+    "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+    "tests/native_oracle/run_native_checks.py": "b51fe49de79b60617aacae3f7bfade0b21306db94c06cbd192c2e0d461469195",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859",
+    "tests/performance/fixtures/APNG_PROVENANCE.json": "1a8c005a19df6fd17300d688ffc12eafb1ee3b3625f4a8b028d101e4ae093d37",
+    "tests/performance/fixtures/PROVENANCE.json": "1c8cc5d1aa34ada6608fc28109ca3df64e7896ea00b29334a8cb80cc70a2472d",
+    "tests/performance/fixtures/STRUCTURE_PROVENANCE.json": "4c7ba6926d5b9c7c5a6018e41221c0f24a6bc4f17b3282f2e608b91777c1b494",
+    "tests/performance/fixtures/synthetic-metadata.png": "ad8422d81ecb1602a721ca8382c8ee5a664437eabd7e7445b9c5f270ea67c69f",
+    "tests/performance/fixtures/synthetic-noise-9mp.jpg": "b190d5da92519c12034032004c2c033cbda8296a7ebfd23dd298002dcefecd40",
+    "tests/performance/fixtures/synthetic-split-idat.png": "c723e3639c48f90b512398b5826e9cce0d27ce0bc982b77957eab0a641753b9e",
+    "tests/performance/fixtures/synthetic-two-frame.png": "7f91d137c23ab4701a5931c1cd407a604c620f4ac7284a3669b24ba2d1b4d412",
+    "tests/performance/make_entropy_fixture.py": "a8d3ca0db25c5b39216056db1fd738f903a1d08cf1a170bf1d62a1675b57ebb1",
+    "tests/performance/measure_process.py": "49c7cb7201c911e59625bd17701322fa6899273da1fb070a431b0b12b2452148",
+    "tests/performance/run_component_baseline.py": "c09009df59ac166f4bb003230fbb27d648cfb0cc196e9f008b62817280d5f797",
+    "tests/performance/run_fix_checks.py": "b8d9ffda3272e3dce7002626f3ac2e52336b9f01cc955ebbf8d8f7b4aea5d356",
+    "tests/performance/run_large_artifact_checks.py": "04bee6cc0c30563fa36e9879cd13ac67a5c8f1aa2142824c6473bfbb446efab1",
+    "tests/performance/run_window_checks.py": "9519b807b0f12d5af473ed7932425c1ef8089fa593f636116a7fd27faa03210d",
+    "tests/performance/test_measure_process.py": "abbe2c4484d452cd037490cb6e72fed7f6f8c67f169bf9f75582905adaab5f04",
+    "tests/performance/test_performance_identity.py": "f9054ae77b3eb73b38920470aafba609676717cef84f54970e1c587f6e396aae",
+    "tests/performance/test_window_pixels.py": "e6114e46c84324a24ebf7da6b34874c90f9cf5dcb262d4e6293d06437dfeb24c"
+  },
+  "reports": {
+    "fix": {
+      "path": "target/p03-i-evidence/fix-20261018T074656176100Z/report.json",
+      "sha256": "9f0095235647247bb066dec0df62e36d8c3b843891d55448208df09f5afa359e",
+      "build_id": null,
+      "exe_sha256": null
+    },
+    "ordinary": {
+      "path": "target/p03-c-evidence/native-20261018T074901020222Z/report.json",
+      "sha256": "9d32a81f83d3016cff9ce7421c1ca78dbf3cff23fa9261fd15601353f8d0bb99",
+      "build_id": "2bb6915d4d31a6dcdbebe42c2233c11e3a27e13c6133543e2d7f3e4337fb1c58",
+      "exe_sha256": "1c534cda14c181dc38afff80e50498527818bfc9cf6bb160e558c489780da2cb"
+    },
+    "final": {
+      "path": "target/p03-i-evidence/final-20261018T075445899781Z/report.json",
+      "sha256": "6f05ef2779a166e3c8dd3c503752162c6be8a49353dc3aa935631a54ca0350b4",
+      "build_id": null,
+      "exe_sha256": null
+    },
+    "component": {
+      "path": "target/p03-i-evidence/component-20261018T075446358898Z/report.json",
+      "sha256": "f384b76d207ece415c38911b8a13b7f00ea092e8200f481b04db595685728344",
+      "build_id": "72345b581e5aab2313712fa2e14775c6d8e5b0f64bcd9fb4cd1983a55d2f4a2b",
+      "exe_sha256": "0725be157040aa9c3ae27e61187ef63a74f71ecd15d4c243ff8764e4220aedcf"
+    },
+    "window": {
+      "path": "target/p03-i-evidence/window-20261018T075544687154Z/report.json",
+      "sha256": "36b8b807a02a20b2cb183196b25a8cb645ad3c3f12c9cde933ee1fecca23a157",
+      "build_id": "72345b581e5aab2313712fa2e14775c6d8e5b0f64bcd9fb4cd1983a55d2f4a2b",
+      "exe_sha256": "d3f9c23e656bd92c69e978647f8f37905be6a2ad5b378da90a090ab163f328c1"
+    },
+    "large": {
+      "path": "target/p03-i-evidence/large-20261018T075927695903Z/report.json",
+      "sha256": "04af132875dd7cad2283ed97816cf4d70ddae0f5cadeace37c2c3673da297bcb",
+      "build_id": "72345b581e5aab2313712fa2e14775c6d8e5b0f64bcd9fb4cd1983a55d2f4a2b",
+      "exe_sha256": "05d41b570475b5ce0306b289c939210ed739cdad597913fd9f773c17fa2ad86d"
+    },
+    "browser": {
+      "path": "target/p03-i-evidence/browser-20261018T080311664433Z/report.json",
+      "sha256": "206bab5e408f6bdc373d792b271b612d735e573b375c58586f8bc83054793ad4",
+      "build_id": null,
+      "exe_sha256": null
+    }
+  },
+  "ordinary_exe": "target/p03-c-evidence/native-20261018T074901020222Z/shareready-native-egui-poc.exe",
+  "performance_build_id": "72345b581e5aab2313712fa2e14775c6d8e5b0f64bcd9fb4cd1983a55d2f4a2b",
+  "raw_artifact_manifest_sha256": "4ca85a3681dcbb847773ed5e4b26061e15c7bdef733a4f38a131a84d44b8d8c1",
+  "metrics_sha256": "5a56ea04cd821388787cffae545c9f738e5ff90a7e04dc2aaf8e40d6ef9b3b7b",
+  "machine": {
+    "os": {
+      "Caption": "Microsoft Windows 10 家庭中文版",
+      "Version": "10.0.19045",
+      "BuildNumber": "19045",
+      "TotalVisibleMemorySize": 16596340
+    },
+    "cpu": [
+      {
+        "Name": "Intel(R) Core(TM) i5-10200H CPU @ 2.40GHz",
+        "NumberOfCores": 4,
+        "NumberOfLogicalProcessors": 8
+      }
+    ],
+    "gpu": [
+      {
+        "Name": "GameViewer Virtual Display Adapter",
+        "DriverVersion": "15.6.5.199",
+        "AdapterRAM": null
+      },
+      {
+        "Name": "Intel(R) UHD Graphics",
+        "DriverVersion": "27.20.100.9365",
+        "AdapterRAM": 1073741824
+      },
+      {
+        "Name": "NVIDIA GeForce GTX 1650",
+        "DriverVersion": "31.0.15.5212",
+        "AdapterRAM": 4293918720
+      }
+    ],
+    "timing": "PowerShell metadata only; OS display/DPI not independently measured"
+  },
+  "test_counts": {
+    "root": 58,
+    "ordinary_native": 48,
+    "input_bridge": 4,
+    "feature_native": 53,
+    "python_performance": 8,
+    "png_oracle": 19,
+    "frozen_goldens": 5,
+    "window_cases": 8,
+    "gpu_screenshots": 40,
+    "interactive_distinct_frames_per_case": 30,
+    "repeat_rounds": 20
+  },
+  "large_artifact": {
+    "source_jpeg_bytes": 8077834,
+    "output_png_bytes": 35028967,
+    "copy_rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd",
+    "full_png_oracle": {
+      "ok": true,
+      "dimensions": [
+        3000,
+        3000
+      ],
+      "effective_regions": 1,
+      "rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd",
+      "png_sha256": "ff88b23b3e32424debc40ebf892e5590b1ca90ab471f5d44f6d7ea8bf8f6fb83",
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IEND"
+      ]
+    },
+    "os_clipboard": false
+  },
+  "browser": {
+    "status": "MEASURED",
+    "version": "153.0.8010.12",
+    "sandbox_requested": true,
+    "wasm_bindgen_version": "0.2.105",
+    "tool_archive_sha256": "f70f9439437b0bb856367d70ac747e42116cb5a6f8a603656ccc93ce02c40bf8",
+    "full_image_oracle": {
+      "T01_CHAT": {
+        "ok": true,
+        "dimensions": [
+          1200,
+          800
+        ],
+        "effective_regions": 4,
+        "rgba_sha256": "18ee911240bc7f9c9cf96f391f37754f978fdac44c1572d7bbdba6c00de7d2e2",
+        "png_sha256": "23ca9baafb02af1298b5f3c91538c6dffafe8e1f3fe5bbc60f0b2cfede6af65a",
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ]
+      },
+      "T02_ORDER": {
+        "ok": true,
+        "dimensions": [
+          1200,
+          800
+        ],
+        "effective_regions": 3,
+        "rgba_sha256": "8784c831bd13dba7c98437ca05d1d409a0527b3a09aaf9505a284ef77e2b88a4",
+        "png_sha256": "4f7713902a26c001efa2a3af063b4fa9559036be73c196dee48e37cbe7b7b548",
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ]
+      },
+      "T03_SUPPORT": {
+        "ok": true,
+        "dimensions": [
+          1400,
+          900
+        ],
+        "effective_regions": 3,
+        "rgba_sha256": "e5dda96c65f72dc1b55fb4294ba0edfcfbdb1205277d7b90fce525ffe45e141a",
+        "png_sha256": "7b0deea140419a4c6234375a0bc1729c4a934f3dc28ec013e710f1a64bc868b0",
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ]
+      },
+      "T04_EDGES": {
+        "ok": true,
+        "dimensions": [
+          2400,
+          1600
+        ],
+        "effective_regions": 4,
+        "rgba_sha256": "554f68cc5c99577fd621cb894d535a38c44565a347ef4e1e00bd89e4d04daafc",
+        "png_sha256": "dabbada524174652d48118ecbb20273fc700183b982b776808c37266bd72085f",
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ]
+      },
+      "T05_JPEG_EXIF": {
+        "ok": true,
+        "dimensions": [
+          1200,
+          800
+        ],
+        "effective_regions": 2,
+        "rgba_sha256": "d2d6586997927592c77ee7c96529d58901f529deb1a649804a55e25a6e0d49b5",
+        "png_sha256": "8bb43042c073f50d9e2dd305e4893d8a10118584efffde2616732d04fc6655da",
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ]
+      }
+    },
+    "ui_full_image_oracle": {
+      "ok": true,
+      "dimensions": [
+        640,
+        400
+      ],
+      "effective_regions": 1,
+      "rgba_sha256": "03e23d4aea47a1beca8325bd3e9f393a1fd6d5920553910b20af884d45288cbd",
+      "png_sha256": "2659efe3c78c0a259ec034824aa0e2c3bd1b4f2e84949d87645b1b2ab4d35282",
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IEND"
+      ]
+    },
+    "web_source_files": {
+      "web-app/app.js": "08c7f237db4fd4eb304b2746f505a03a1f19c13fce6e4c0e4aa0e65dc689950d",
+      "web-app/index.html": "defdf01dee54467507ac7390562a82e3cb6aef12b43474a380316eaba6da790a"
+    },
+    "limitations": [
+      "automated isolated Chromium, not Windows WebView2 or physical/human accessibility",
+      "WASM exports checked independently after browser completion; browser success alone not pixel acceptance"
+    ]
+  },
+  "visuals": {
+    "ordinary-review.png": {
+      "source": "target/p03-c-evidence/native-20261018T074901020222Z/visual/review.png",
+      "sha256": "b548cf734238d26d8f3525340ca133c2230df1a67a96905df33cdbe0963ff18b"
+    },
+    "ordinary-small.png": {
+      "source": "target/p03-c-evidence/native-20261018T074901020222Z/visual/small.png",
+      "sha256": "7ff7ec9c9bcf9571b7f445dfca6a223733d5c33d5f6ea632a1cd712e3b9dc23a"
+    },
+    "grid-central.png": {
+      "source": "target/p03-i-evidence/window-20261018T075544687154Z/start-0/stage-4.png",
+      "sha256": "b769379f9ffa4aa6d14afd976a927e2ce9d9e447f389f2c69b7e885dd8aa09fe"
+    },
+    "wide-native-central.png": {
+      "source": "target/p03-i-evidence/window-20261018T075544687154Z/wide-native/stage-4.png",
+      "sha256": "a8dd9b8e392f7d40448f1144cf6bc11f94ef98edeb4584d9690f0fbcd050de25"
+    },
+    "wide-512-central.png": {
+      "source": "target/p03-i-evidence/window-20261018T075544687154Z/wide-tile-512/stage-4.png",
+      "sha256": "a8dd9b8e392f7d40448f1144cf6bc11f94ef98edeb4584d9690f0fbcd050de25"
+    },
+    "browser-review.png": {
+      "source": "target\\p03-i-evidence\\browser-20261018T080311664433Z\\ui-review.png",
+      "sha256": "706a907fc2df2d7c18bdfb6afb47ecba30d1bf3983c928d74720e7705ecf4012"
+    }
+  },
+  "limits": [
+    "candidate budgets not frozen; G04 and full product acceptance open",
+    "Windows10/~16GiB/GTX1650 only; physical mixed DPI, Win11/8GB reference and Narrator not verified",
+    "new processes retain OS caches; CPU callback and frame interval are not GPU/physical response",
+    "20-round sampled release phases retain artifact and may overlap subsequent import, not stable-idle/leak proof",
+    "low-entropy24MP and high-entropy9MP counterexample do not cover all legal inputs",
+    "controlled Copy and browser synthetic tests are not OS clipboard/cross-app/WebView2 acceptance",
+    "ordinary evidence build map is a current consistent55-input subset; final full75-input map also covers performance/E1/golden tests",
+    "historical failed/replanned runs retained; no release/push/commit/deletion performed"
+  ]
+}

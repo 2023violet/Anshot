@@ -1,0 +1,398 @@
+{
+  "scope": "SYNTHETIC_DIAGNOSTIC_SNAPSHOT_NOT_G04_BUDGET_OR_CAUSAL_SPEEDUP",
+  "percentile_method": "nearest rank ceil(.95*n)-1",
+  "callback_scope": "callback start through actual NativeApp.ui return; excludes subsequent row collection, GPU request and integration/GPU time",
+  "app_ui_scope": "NativeApp.ui CPU only; controller is separate; promotion may include synthetic trace PNG write",
+  "gpu_time": "NOT_MEASURED",
+  "cold_start_and_first_human_interaction": "NOT_MEASURED",
+  "cases": [
+    {
+      "fixture": "grid",
+      "tasks": [
+        {
+          "kind": "first",
+          "key": [
+            1,
+            1,
+            1
+          ],
+          "busy_distinct_frames": 216,
+          "trigger_return_ms": 0.06290000000012697,
+          "worker_cpu_ms": 1860.3166999999999,
+          "encode_ms": 1556.3262999999997,
+          "display_prepare_ms": 303.99040000000014,
+          "receive_after_send_ms": 6.6163000000001375,
+          "join_ms": 0.0068000000000000005,
+          "busy_app_ui_ms": {
+            "count": 216,
+            "median": 0.2229,
+            "p95_nearest_rank": 0.3439,
+            "max": 0.5156
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 216,
+            "median": 0.22575,
+            "p95_nearest_rank": 0.3544,
+            "max": 49.545199999999994
+          },
+          "busy_callback_over_33_3ms": 1,
+          "trigger_to_draw_promotion_ms": 1876.0255000000002
+        },
+        {
+          "kind": "cancelled",
+          "key": [
+            1,
+            2,
+            5
+          ],
+          "busy_distinct_frames": 218,
+          "trigger_return_ms": 0.06149999999979627,
+          "worker_cpu_ms": 1807.1609000000003,
+          "encode_ms": 1510.9208999999996,
+          "display_prepare_ms": 296.2400000000007,
+          "receive_after_send_ms": 6.9931999999989785,
+          "join_ms": 0.0063999999999999994,
+          "busy_app_ui_ms": {
+            "count": 218,
+            "median": 0.22545,
+            "p95_nearest_rank": 0.33080000000000004,
+            "max": 0.6486000000000001
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 218,
+            "median": 0.22755,
+            "p95_nearest_rank": 0.33359999999999995,
+            "max": 0.6592
+          },
+          "busy_callback_over_33_3ms": 0,
+          "cancel_return_ms": 0.005400000000008731,
+          "cancel_to_stale_discard_observed_ms": 1801.0085,
+          "remaining_cpu_after_cancel_ms": 1793.9971000000005
+        },
+        {
+          "kind": "retry",
+          "key": [
+            1,
+            4,
+            6
+          ],
+          "busy_distinct_frames": 221,
+          "trigger_return_ms": 0.07060000000092259,
+          "worker_cpu_ms": 1846.6731,
+          "encode_ms": 1529.0859,
+          "display_prepare_ms": 317.58719999999994,
+          "receive_after_send_ms": 3.115600000000086,
+          "join_ms": 0.0062,
+          "busy_app_ui_ms": {
+            "count": 221,
+            "median": 0.22699999999999998,
+            "p95_nearest_rank": 0.3368,
+            "max": 0.3943
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 221,
+            "median": 0.229,
+            "p95_nearest_rank": 0.3396,
+            "max": 0.3984
+          },
+          "busy_callback_over_33_3ms": 0,
+          "trigger_to_draw_promotion_ms": 1858.2978000000003
+        }
+      ],
+      "process": {
+        "schema": 1,
+        "pid": 20076,
+        "started_utc": "2026-10-18T13:31:20.450473+00:00",
+        "start_unix_ns": 1792330280450473900,
+        "exit_code": 0,
+        "wall_seconds": 10.900130100024398,
+        "sample_count": 453,
+        "requested_sample_seconds": 0.02,
+        "max_observed_sample_gap_seconds": 0.022821499966084957,
+        "sampled_max_working_set_bytes": 586711040,
+        "os_peak_working_set_bytes": 593391616,
+        "sampled_max_private_commit_bytes": 760291328,
+        "query_errors": [],
+        "stop": null,
+        "memory_limit_bytes": 2147483648,
+        "stall_limit_seconds": 120,
+        "memory_scope": "owned child process working set/OS lifetime peak/private commit; excludes separate GPU memory; sampled values can miss peaks",
+        "ok": true
+      },
+      "all_logged_callbacks_to_app_return_ms": {
+        "count": 684,
+        "median": 0.2274,
+        "p95_nearest_rank": 0.3526,
+        "max": 354.23510000000005
+      },
+      "outputs": [
+        {
+          "name": "first",
+          "png_sha256": "929bba5d9fea600cb8a11e0bf251989e6a855e3a3503ccb8c366510020a4eaff",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              6000,
+              4000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "faca406c1ff031c121e727504f3297a32f5b4b0aaf342e8cda7d2c033db080b6",
+            "png_sha256": "929bba5d9fea600cb8a11e0bf251989e6a855e3a3503ccb8c366510020a4eaff",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "faca406c1ff031c121e727504f3297a32f5b4b0aaf342e8cda7d2c033db080b6"
+        },
+        {
+          "name": "retry",
+          "png_sha256": "32457e575e319e8d876859430cdd19c1d81cbe6c6f13b26685b3b2ce7e76b3b5",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              6000,
+              4000
+            ],
+            "effective_regions": 3,
+            "rgba_sha256": "e09b97767abdafc5180b5b9b7e662e99b11685f5602321e90503cddb0e908e62",
+            "png_sha256": "32457e575e319e8d876859430cdd19c1d81cbe6c6f13b26685b3b2ce7e76b3b5",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "e09b97767abdafc5180b5b9b7e662e99b11685f5602321e90503cddb0e908e62"
+        }
+      ],
+      "screenshot_pixels": [
+        {
+          "scope": "Fit downsample preview, no native-pixel assertion"
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 429940,
+          "uncovered_samples": 154286,
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "fixture": "noise",
+      "tasks": [
+        {
+          "kind": "first",
+          "key": [
+            1,
+            1,
+            1
+          ],
+          "busy_distinct_frames": 132,
+          "trigger_return_ms": 0.0584999999999809,
+          "worker_cpu_ms": 1202.2241000000004,
+          "encode_ms": 968.5963,
+          "display_prepare_ms": 233.6278000000002,
+          "receive_after_send_ms": 3.261599999999362,
+          "join_ms": 0.009099999999999999,
+          "busy_app_ui_ms": {
+            "count": 132,
+            "median": 0.26865,
+            "p95_nearest_rank": 0.3748,
+            "max": 0.42000000000000004
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 132,
+            "median": 0.2743,
+            "p95_nearest_rank": 0.3796,
+            "max": 61.2024
+          },
+          "busy_callback_over_33_3ms": 1,
+          "trigger_to_draw_promotion_ms": 1214.2666
+        },
+        {
+          "kind": "cancelled",
+          "key": [
+            1,
+            2,
+            5
+          ],
+          "busy_distinct_frames": 139,
+          "trigger_return_ms": 0.05960000000004584,
+          "worker_cpu_ms": 1149.0589,
+          "encode_ms": 917.0438999999997,
+          "display_prepare_ms": 232.01500000000033,
+          "receive_after_send_ms": 7.4167999999999665,
+          "join_ms": 0.0055,
+          "busy_app_ui_ms": {
+            "count": 139,
+            "median": 0.24059999999999998,
+            "p95_nearest_rank": 0.3497,
+            "max": 0.6964
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 139,
+            "median": 0.2428,
+            "p95_nearest_rank": 0.3526,
+            "max": 0.7075
+          },
+          "busy_callback_over_33_3ms": 0,
+          "cancel_return_ms": 0.005500000000211003,
+          "cancel_to_stale_discard_observed_ms": 1141.5348000000004,
+          "remaining_cpu_after_cancel_ms": 1134.1012
+        },
+        {
+          "kind": "retry",
+          "key": [
+            1,
+            4,
+            6
+          ],
+          "busy_distinct_frames": 140,
+          "trigger_return_ms": 0.08820000000014261,
+          "worker_cpu_ms": 1173.6922,
+          "encode_ms": 932.1020999999996,
+          "display_prepare_ms": 241.59010000000035,
+          "receive_after_send_ms": 0.9838999999992666,
+          "join_ms": 0.0056,
+          "busy_app_ui_ms": {
+            "count": 140,
+            "median": 0.23970000000000002,
+            "p95_nearest_rank": 0.3567,
+            "max": 0.4007
+          },
+          "busy_callback_to_app_return_ms": {
+            "count": 140,
+            "median": 0.2421,
+            "p95_nearest_rank": 0.3597,
+            "max": 0.4049
+          },
+          "busy_callback_over_33_3ms": 0,
+          "trigger_to_draw_promotion_ms": 1183.3351000000002
+        }
+      ],
+      "process": {
+        "schema": 1,
+        "pid": 2720,
+        "started_utc": "2026-10-18T13:31:40.104019+00:00",
+        "start_unix_ns": 1792330300104019400,
+        "exit_code": 0,
+        "wall_seconds": 6.3444102999637835,
+        "sample_count": 304,
+        "requested_sample_seconds": 0.02,
+        "max_observed_sample_gap_seconds": 0.022674799954984337,
+        "sampled_max_working_set_bytes": 468246528,
+        "os_peak_working_set_bytes": 485425152,
+        "sampled_max_private_commit_bytes": 660299776,
+        "query_errors": [],
+        "stop": null,
+        "memory_limit_bytes": 2147483648,
+        "stall_limit_seconds": 120,
+        "memory_scope": "owned child process working set/OS lifetime peak/private commit; excludes separate GPU memory; sampled values can miss peaks",
+        "ok": true
+      },
+      "all_logged_callbacks_to_app_return_ms": {
+        "count": 440,
+        "median": 0.2493,
+        "p95_nearest_rank": 0.382,
+        "max": 287.08270000000005
+      },
+      "outputs": [
+        {
+          "name": "first",
+          "png_sha256": "ff88b23b3e32424debc40ebf892e5590b1ca90ab471f5d44f6d7ea8bf8f6fb83",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              3000,
+              3000
+            ],
+            "effective_regions": 1,
+            "rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd",
+            "png_sha256": "ff88b23b3e32424debc40ebf892e5590b1ca90ab471f5d44f6d7ea8bf8f6fb83",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "12bb2e353398fa25988864e2a44c4f3719cf3e72b55b50cb7d02979c5766b0bd"
+        },
+        {
+          "name": "retry",
+          "png_sha256": "5536325f718629866e6abe1d24a52aeb74a3a9adf0d30c68dda052def16e22fb",
+          "oracle": {
+            "ok": true,
+            "dimensions": [
+              3000,
+              3000
+            ],
+            "effective_regions": 3,
+            "rgba_sha256": "3707c663901573a809a99d644420603e57daae5cb72ac0c27043bb85f5a4c31e",
+            "png_sha256": "5536325f718629866e6abe1d24a52aeb74a3a9adf0d30c68dda052def16e22fb",
+            "chunks": [
+              "IHDR",
+              "IDAT",
+              "IEND"
+            ]
+          },
+          "copy_rgba_sha256": "3707c663901573a809a99d644420603e57daae5cb72ac0c27043bb85f5a4c31e"
+        }
+      ],
+      "screenshot_pixels": [
+        {
+          "scope": "Fit downsample preview, no native-pixel assertion"
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 380190,
+          "uncovered_samples": 204036,
+          "mismatches": []
+        },
+        {
+          "scope": "every physical pixel in visible image interior, excluding 3px clip edge and edit mask/handle margin; includes 1px lines and tile seams",
+          "samples": 584226,
+          "covered_samples": 429940,
+          "uncovered_samples": 154286,
+          "mismatches": []
+        }
+      ]
+    }
+  ],
+  "window_regression": {
+    "cases": 8,
+    "gpu_images": 40,
+    "interactive_frames_per_case": [
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "rounds": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      20,
+      1,
+      1
+    ],
+    "note": "old review inclusive_controller_ms now explicitly ASYNC_TRIGGER_ONLY_NOT_COMPLETION"
+  },
+  "worker_phase_frame_scope": "CPU phase ms are captured monotonic instants; frame/pass are context observed at record emission, which may occur after preparation. Only draw/promotion rows and actual UI callback timestamps establish frame authorization/counts."
+}

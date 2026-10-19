@@ -1,0 +1,123 @@
+{
+  "schema": "shareready.p03-a.gate-b-candidate/1",
+  "candidate_status": "REQUIRES_GATE_A_AND_PARAMETER_BINDING_BEFORE_PREVIEW",
+  "is_machine_state": false,
+  "valid_gate_a": false,
+  "valid_gate_b": false,
+  "risk": "standard",
+  "scope": "B0 baseline observation only; no product modifications, commits, pushes, deletions or release",
+  "parameters_to_bind": [
+    "genuine Skill and existing state",
+    "actual code fingerprint",
+    "toolchain",
+    "P03TestExe absolute path and SHA256",
+    "fresh evidence directory",
+    "operator and monitors",
+    "approved temporary DPI/clipboard actions"
+  ],
+  "first_step": "B0.1",
+  "steps": [
+    {
+      "id": "B0.1",
+      "title": "Pin source executable inputs and dirty-state identity",
+      "done_when": "HEAD/source inputs/exe/fixtures match approved identities and unrelated edits are preserved",
+      "verify": "hash records and approved read-only preflight",
+      "verify_cmd_candidate": "git status --short --branch\ngit rev-parse HEAD\n# Bind and hash BASELINE source inputs and P03TestExe before genuine Gate B preview",
+      "depends_on": [],
+      "covers": [
+        1,
+        5
+      ],
+      "estimate_h": 0.5,
+      "irreversible": false,
+      "status": "todo"
+    },
+    {
+      "id": "B0.2",
+      "title": "Observe fixed EXE and minimal physical H01 probe",
+      "done_when": "verified self-test/window outputs, actual adapter and human attempts at existing corner/keyboard paths recorded honestly",
+      "verify": "real stdout/stderr plus operator artifacts or explicit implementation gaps",
+      "verify_cmd_candidate": "& $P03TestExe --self-test\n& $P03TestExe --renderer wgpu --smoke-window",
+      "depends_on": [
+        "B0.1"
+      ],
+      "covers": [
+        1,
+        2,
+        6
+      ],
+      "estimate_h": 1.5,
+      "irreversible": false,
+      "status": "todo",
+      "tests_assumption": "H01"
+    },
+    {
+      "id": "B0.3",
+      "title": "Run main Workspace domain regressions",
+      "done_when": "actual root Workspace test and all-target check output recorded for the approved code fingerprint",
+      "verify": "commands and full outputs, not POC zero-test count",
+      "verify_cmd_candidate": "cargo test --workspace --locked\ncargo check --workspace --all-targets --locked",
+      "depends_on": [
+        "B0.1"
+      ],
+      "covers": [
+        1,
+        5,
+        6
+      ],
+      "estimate_h": 1,
+      "irreversible": false,
+      "status": "todo"
+    },
+    {
+      "id": "B0.4",
+      "title": "Observe physical two-monitor H01 baseline tasks",
+      "done_when": "G01/G02/G03/G08 have honest observed results or explicit implementation/evidence blockers",
+      "verify": "human operator device/DPI/pointer/keyboard/Narrator artifacts; no automatic signature",
+      "depends_on": [
+        "B0.2",
+        "B0.3"
+      ],
+      "covers": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "estimate_h": 4,
+      "tests_assumption": "H01",
+      "irreversible": false,
+      "status": "todo"
+    },
+    {
+      "id": "B0.5",
+      "title": "Review observations and bound next repair",
+      "done_when": "issues classified, coverage limits recorded, one bounded next change proposed without implementation",
+      "verify": "review report with evidence hashes; remaining G groups retain NOT_RUN",
+      "depends_on": [
+        "B0.4"
+      ],
+      "covers": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "estimate_h": 1,
+      "irreversible": false,
+      "status": "todo"
+    }
+  ],
+  "if_then": [
+    "If identity or approved scope differs, stop and regenerate the preview.",
+    "If a baseline task has an implementation gap, record it and select one bounded repair in a later Gate B.",
+    "If actual wgpu fails, distinguish device/session/backend error before changing GUI framework."
+  ],
+  "side_effects": [
+    "Cargo may contact dependency sources and write caches/target; locked does not mean offline.",
+    "EXE commands open windows and allocate image/GPU resources; output capture and timeout must be bound before preview.",
+    "Human tasks may alter clipboard/DPI and create synthetic evidence only within the approved isolated directory."
+  ],
+  "genuine_cli_import_note": "Use genuine init/template and check commands; candidate wrapper is not a drop-in .decision/plan.json and verify_cmd_candidate is not an executable approved verify_cmd."
+}

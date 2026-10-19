@@ -1,6 +1,6 @@
 # ShareReady — Rust-first image-sharing preparation tool (working title)
 
-> **STATUS: V2-02 RUST EDITOR DOMAIN ENGINEERING INTEGRATED / NOT RELEASED.** V1.3 remains the current user-facing Windows/Web edition. This repository contains a working Rust/WASM screenshot redaction editor and Windows WebView2 desktop host, alongside historical research records. Exact-code CI passed on 2026-10-17; this is not an independent security certification or human usability sign-off.
+> **STATUS: V2-03 RUST NATIVE POC UNDER LOCAL DEVELOPMENT / NOT RELEASED.** V1.3 remains the current user-facing Windows/Web edition. The native POC has guarded image/edit/export paths, a Chinese workbench and measured synthetic 24MP GPU/output evidence; [latest completed source-intake evidence and remaining acceptance](docs/V2/P03-K/README.md) and [previous completed batch](docs/V2/P03-J/README.md) distinguish exact artifacts from historical CI, security certification and human usability sign-off.
 
 ShareReady is a **temporary project code name**, not a cleared public-facing product name. An unrelated image-sharing product already uses the name; trademark/branding checks remain open.
 
@@ -9,7 +9,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 我们正在验证：普通人在分享截图前，能否比使用已有截图工具更快、更准确地遮挡自己不想公开的信息，并检查**实际导出的图像**。目前没有证据证明我们已优于 Redacted、ShareX 或系统截图工具。
 
 - **Rust-first**: 已实现 Rust 图片解码、实心遮挡与 PNG 输出；浏览器使用 Rust/WASM，Windows 桌面使用 WinForms + WebView2 承载同一编辑器。
-- **Free and open source**: repository currently licensed under [MIT](LICENSE); no paid tier planned for MVP.
+- **Free and open source**: project code is licensed under [MIT](LICENSE); bundled [Noto font resources retain their OFL license](poc/native-egui/assets/fonts/OFL-1.1.txt). No paid tier planned for MVP.
 - **Local by default**: 不上传用户图片、不依赖账号；安全承诺必须经过后续测试才可发布。
 - **No false safety claim**: 我们不会承诺自动发现所有私人信息或“绝对匿名”。
 
@@ -22,7 +22,7 @@ ShareReady is a **temporary project code name**, not a cleared public-facing pro
 
 ## V2 Rust Native refactor (current planned track)
 
-V2-00 完成旧版基线与五张逐像素金样本冻结；V2-01 完成 Rust Workspace 和独立 Core；**V2-02 已实现 Rust Editor 完整领域层**，包括真实图片源字节、稳定遮挡 ID、八方向缩放、移动、手势一次提交、撤销重做、原图坐标、版本绑定的 Rust 新 PNG、旧异步结果失效。技术合同见 [docs/V2/](docs/V2/README.md)。**新 Rust Editor 尚未接入当前 JS UI；Windows 程序仍为 C# / WebView2，不是 Rust 原生 GUI。** 下一阶段 V2-03 验证 egui / iced。
+V2-00 完成旧版基线与五张逐像素金样本冻结；V2-01 完成 Rust Workspace 和独立 Core；V2-02 已实现 Rust Editor 领域层。**V2-03 已有连接 Core/Editor 的 egui 原生样机**，24MP、大 PNG 和后台复核已有历史本地受限审查；后台导入现已完成精确产物的本地机器验证及独立受限审查。继续处理交付阻塞、设备和辅助功能缺口，详见 [P03-K](docs/V2/P03-K/README.md) 和 [V2 技术合同](docs/V2/README.md)。对用户交付的 V1.3 仍使用 C# / WebView2；原生样机尚未替换它，GUI 方向与完整验收仍未冻结。
 
 ## Historical Stage 01 research status / 历史研究阶段记录
 

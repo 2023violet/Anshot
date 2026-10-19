@@ -1,0 +1,439 @@
+{
+  "schema": "shareready.p03-a.baseline/1",
+  "collected_at_utc": "2026-10-17T08:21:17.288927+00:00",
+  "repo": "2023violet/ShareReady",
+  "branch": "main",
+  "source_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "ci_run": {
+    "id": 39010891632,
+    "head_sha": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+    "head_branch": "main",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-17T06:42:15Z",
+    "updated_at": "2026-10-17T06:49:31Z",
+    "html_url": "https://github.com/2023violet/ShareReady/actions/runs/39010891632"
+  },
+  "artifact": {
+    "id": 12092468260,
+    "name": "shareready-v2-03-egui-windows-poc",
+    "size_in_bytes": 4902745,
+    "digest": "sha256:07e47508af118dacf0b09f0e4b38746056a51ca85e5df23edcf3fca2b32d211d",
+    "expired": false,
+    "created_at": "2026-10-17T06:49:28Z",
+    "expires_at": "2026-10-31T06:49:27Z",
+    "archive_download_url": "https://api.github.com/repos/2023violet/ShareReady/actions/artifacts/12092468260/zip"
+  },
+  "downloaded_archive_sha256": "07e47508af118dacf0b09f0e4b38746056a51ca85e5df23edcf3fca2b32d211d",
+  "exe": {
+    "member": "target/release/shareready-native-egui-poc.exe",
+    "bytes": 11279872,
+    "sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d",
+    "matches_ci_log": true,
+    "executed_in_this_task": false
+  },
+  "artifact_lock": {
+    "member": "Cargo.lock",
+    "sha256": "20ab491a04245bee12b2687f7fa85f5a1bddcc4302212203f02c55235619b51e",
+    "git_blob_sha256": "606f88a116f2c4020d4424eff3125462f3b02e82ff99a4fb7ad12917e1107459",
+    "newline_normalized_equal": true
+  },
+  "ci_toolchain": {
+    "cargo": "1.99.0 (5f94df478 2026-08-27)",
+    "rustc": "1.99.0 (b940084d7 2026-09-28)"
+  },
+  "artifact_members": [
+    {
+      "name": "target/release/shareready-native-egui-poc.exe",
+      "bytes": 11279872,
+      "sha256": "386200cc23ff8015258b655a6911c1993c8d08e8fef3e57ca826e9757fc76b9d"
+    },
+    {
+      "name": "Cargo.lock",
+      "bytes": 103422,
+      "sha256": "20ab491a04245bee12b2687f7fa85f5a1bddcc4302212203f02c55235619b51e"
+    },
+    {
+      "name": "evidence/glow.stderr.txt",
+      "bytes": 64,
+      "sha256": "bdc665fe8fd8bc7db2a577f304a448096f48086b18819ea6fbd58ed91afda180"
+    },
+    {
+      "name": "evidence/glow.stdout.txt",
+      "bytes": 50,
+      "sha256": "68363bc7cb12c22f15cec81aa0c327c669ae17d4ddc86158db64218e522f5947"
+    },
+    {
+      "name": "evidence/renderer-matrix.json",
+      "bytes": 2239,
+      "sha256": "ffc610b4678df008de573571c55c1b4957b7dbca8f98a55be5a5b04844016ca6"
+    },
+    {
+      "name": "evidence/wgpu_auto.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "evidence/wgpu_auto.stdout.txt",
+      "bytes": 260,
+      "sha256": "2d3b6f16d6a2259deda24f19053c610703dbc631c666ebb5d13ae9511dccd3ac"
+    },
+    {
+      "name": "evidence/wgpu_dx12.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "evidence/wgpu_dx12.stdout.txt",
+      "bytes": 260,
+      "sha256": "0f7497b5e18a82356b7838faf0632645b47a71a56deb7b0f7baaaddb0bddceaf"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "Cargo.toml",
+      "git_blob_sha256": "5b38eb350d52ed1a52e830deade91854d671ba89e52c568408a033942db7a038",
+      "working_bytes_sha256": "d1d934b84749e92c762d17029e8ce8ffe7f61e3b141f407b4487b3e465ae7b53",
+      "bytes": 365
+    },
+    {
+      "path": "Cargo.lock",
+      "git_blob_sha256": "dd43247e0a7ae4e242327c51408ddaacf3e92fe359cf2eb16894b036f24acd8d",
+      "working_bytes_sha256": "4c8481624337434eddbf1a219a8aaf3d9a07f2d153b18a687d9f84d8f240551a",
+      "bytes": 7397
+    },
+    {
+      "path": "poc/native-egui/Cargo.toml",
+      "git_blob_sha256": "b23dae7bdefb9f7cab00d925ceaea4b241a453688209ab8b977dd8d66e4ac898",
+      "working_bytes_sha256": "4b155b230226332237288ddccc0309c9bc78b95150f2742f0718baf6c5189137",
+      "bytes": 733
+    },
+    {
+      "path": "poc/native-egui/Cargo.lock",
+      "git_blob_sha256": "606f88a116f2c4020d4424eff3125462f3b02e82ff99a4fb7ad12917e1107459",
+      "working_bytes_sha256": "20ab491a04245bee12b2687f7fa85f5a1bddcc4302212203f02c55235619b51e",
+      "bytes": 99424
+    },
+    {
+      "path": "poc/native-egui/src/app.rs",
+      "git_blob_sha256": "5a72dcc6bac30d39c2139e2ef85c169d72b91f82ba70b944cd969671d5bdd94d",
+      "working_bytes_sha256": "d476cee1136a8c44c7cd7d746c6b1f5faff7d99a6e8b0314bd64ffb3d6ba253b",
+      "bytes": 18024
+    },
+    {
+      "path": "poc/native-egui/src/main.rs",
+      "git_blob_sha256": "8a141aea5f1bddefbddcb8ec5ffaea433d21ccdd336f6d274487167d04a9bc2f",
+      "working_bytes_sha256": "a97e08b538d524e0f7beeb3b0320ed130b9d5fcef7fa62e52361813f5d1eb1ea",
+      "bytes": 3155
+    },
+    {
+      "path": "poc/native-egui/Run-Renderer-Probes.ps1",
+      "git_blob_sha256": "a6319b2e2708de9cad7a1310a6a328cedffb5fc16c7af638ca29f740cbd51fd8",
+      "working_bytes_sha256": "564e5614a5304cb30ecd68406c0dabb2ecb9ca0b225d3f7554ddd11a974f744f",
+      "bytes": 5190
+    },
+    {
+      "path": "crates/shareready-core/Cargo.toml",
+      "git_blob_sha256": "334cb2eabd72a5a54504571e6f30e3eb04276b827ecf36deb8673431e6770187",
+      "working_bytes_sha256": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+      "bytes": 348
+    },
+    {
+      "path": "crates/shareready-core/src/lib.rs",
+      "git_blob_sha256": "5252dd37f8309f7627cd3d714a6e23d909d2a1304cf83771e1793f2372c2bdbe",
+      "working_bytes_sha256": "c9e2bec7a65b6e0e764548123c877e492c61e954d4bf42d5157c85b90cfc5d36",
+      "bytes": 11881
+    },
+    {
+      "path": "crates/shareready-editor/Cargo.toml",
+      "git_blob_sha256": "23495c9174cf9650576771c4567aec778065c6b318e059985f436a1c3c93634b",
+      "working_bytes_sha256": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+      "bytes": 326
+    },
+    {
+      "path": "crates/shareready-editor/src/lib.rs",
+      "git_blob_sha256": "1257358d7c5244c6c0b6df3b13fe0f532ab1a9e4f0767f8e6e2614a0a4e1a1e5",
+      "working_bytes_sha256": "c8db7cf964f26acfa56a386c64018f6770135b768efaa9ecbf8c01ea1a276441",
+      "bytes": 21996
+    },
+    {
+      "path": "crates/shareready-editor/src/geometry.rs",
+      "git_blob_sha256": "c4b6b09e97e1a2d31dd3f18e555065d0efc4a7beeccb693b23d8290a73a1ae52",
+      "working_bytes_sha256": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+      "bytes": 3433
+    },
+    {
+      "path": "crates/shareready-editor/src/viewport.rs",
+      "git_blob_sha256": "1962a6ae39d155c22c80067b8552e0f800d14bf455c6004de22b33f352a0ae56",
+      "working_bytes_sha256": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+      "bytes": 4122
+    },
+    {
+      "path": "crates/shareready-editor/tests/editor_workflow.rs",
+      "git_blob_sha256": "44e9c15f9d1863c55e10240c4e30b23baaf62123cbf241765c57806797fece08",
+      "working_bytes_sha256": "d14dcfc877c21afd5c00a78d2a48fd36e4d4cfd648402a0d0e24770b9e59287b",
+      "bytes": 2782
+    },
+    {
+      "path": ".github/workflows/v2-03-native-poc.yml",
+      "git_blob_sha256": "98ed400e9cb6121c727154a1a19fd544a9399f52839e4a53e921d1e0efe7f2f6",
+      "working_bytes_sha256": "897cae33b53357930f835c55ba7223562b356b823e5876eb2bc64c5aa4ba50b1",
+      "bytes": 2841
+    },
+    {
+      "path": "tests/golden/v1_3_baseline.json",
+      "git_blob_sha256": "d16e37ccb853f6c1e8ac405e01d5bbb1ebceefa8045a6ffb4ee60f16daec3aba",
+      "working_bytes_sha256": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9",
+      "bytes": 3402
+    },
+    {
+      "path": "docs/research/fixtures/manifest.json",
+      "git_blob_sha256": "d88e3d02f99d725e74f115a9f64df91de2ddce3deed46e86636677bae1d899bc",
+      "working_bytes_sha256": "f8d5f8a8559d274dccf5c0896891030117782ab9a866b5ee198f0e658a44722d",
+      "bytes": 6538
+    },
+    {
+      "path": "docs/V2/GUI_POC_CONTRACT.md",
+      "git_blob_sha256": "3f18aa7387fc0475f8e74d2cb599a1eda23b7f3cb49c0c97e6213231c34d581a",
+      "working_bytes_sha256": "ca8a932b1014737d527cbb60c1265646882d7e17705de9933abce9f7e770cc5e",
+      "bytes": 2442
+    }
+  ],
+  "frozen_fixtures": [
+    {
+      "id": "T01_CHAT",
+      "input": "T01_CHAT.png",
+      "sha256": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          84,
+          154,
+          166,
+          237
+        ],
+        [
+          184,
+          154,
+          387,
+          197
+        ],
+        [
+          184,
+          205,
+          379,
+          249
+        ],
+        [
+          858,
+          148,
+          1119,
+          262
+        ]
+      ],
+      "expected_pixel_sha256": "18ee911240bc7f9c9cf96f391f37754f978fdac44c1572d7bbdba6c00de7d2e2"
+    },
+    {
+      "id": "T02_ORDER",
+      "input": "T02_ORDER.png",
+      "sha256": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          105,
+          469,
+          568,
+          518
+        ],
+        [
+          105,
+          536,
+          508,
+          586
+        ],
+        [
+          105,
+          604,
+          679,
+          654
+        ]
+      ],
+      "expected_pixel_sha256": "8784c831bd13dba7c98437ca05d1d409a0527b3a09aaf9505a284ef77e2b88a4"
+    },
+    {
+      "id": "T03_SUPPORT",
+      "input": "T03_SUPPORT.png",
+      "sha256": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+      "dimensions": [
+        1400,
+        900
+      ],
+      "masks": [
+        [
+          90,
+          332,
+          545,
+          385
+        ],
+        [
+          90,
+          413,
+          942,
+          467
+        ],
+        [
+          90,
+          494,
+          1045,
+          549
+        ]
+      ],
+      "expected_pixel_sha256": "e5dda96c65f72dc1b55fb4294ba0edfcfbdb1205277d7b90fce525ffe45e141a"
+    },
+    {
+      "id": "T04_EDGES",
+      "input": "T04_EDGES.png",
+      "sha256": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "masks": [
+        [
+          15,
+          12,
+          950,
+          90
+        ],
+        [
+          1550,
+          12,
+          2394,
+          90
+        ],
+        [
+          8,
+          1497,
+          905,
+          1595
+        ],
+        [
+          1490,
+          1497,
+          2398,
+          1595
+        ]
+      ],
+      "expected_pixel_sha256": "554f68cc5c99577fd621cb894d535a38c44565a347ef4e1e00bd89e4d04daafc"
+    },
+    {
+      "id": "T05_JPEG_EXIF",
+      "input": "T05_JPEG_EXIF.jpg",
+      "sha256": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+      "dimensions": [
+        1200,
+        800
+      ],
+      "masks": [
+        [
+          78,
+          539,
+          627,
+          588
+        ],
+        [
+          78,
+          612,
+          675,
+          664
+        ]
+      ],
+      "expected_pixel_sha256": "d2d6586997927592c77ee7c96529d58901f529deb1a649804a55e25a6e0d49b5",
+      "decoder_anchor": "V1_RUST_NORMALIZED_PREVIEW_NOT_INDEPENDENT_PILLOW_JPEG"
+    }
+  ],
+  "preexisting_uncommitted_documents": [
+    {
+      "path": "docs/V2/README.md",
+      "sha256": "bf8ff2a441ee84621a4971cdca17d6cb12a254ad4fb0567bccdd2f6cbe226ff5"
+    },
+    {
+      "path": "docs/V2/PRODUCT_MODIFICATION_PLAN_2026-10-17.md",
+      "sha256": "3f4d601a35f528f7ee41c82270888fcbde3c4be8570929a44a22037755433456"
+    },
+    {
+      "path": "docs/V2/deliverables/ShareReady_V2_Product_Modification_Plan_2026-10-17.pdf",
+      "sha256": "471b0f2948214e1da83a4f86142433a2811e20d38bbd6f35ff9394d6ed912d70"
+    }
+  ],
+  "limitations": [
+    "Archive and binary identity verified; no EXE execution, product test, build or human acceptance in this task.",
+    "Downloaded task-local archive is not independently approved permanent rollback storage."
+  ],
+  "resource_inventory": {
+    "device_label": "DEV-A",
+    "observation_kind": "READ_ONLY_CIM_NOT_APPLICATION_TEST",
+    "device": {
+      "os": "Microsoft Windows 10 家庭中文版",
+      "version": "10.0.19045",
+      "build": "19045",
+      "architecture": "64 位",
+      "ram_gib": 15.8,
+      "gpu": [
+        {
+          "Name": "GameViewer Virtual Display Adapter",
+          "DriverVersion": "15.6.5.199",
+          "VideoModeDescription": null
+        },
+        {
+          "Name": "Intel(R) UHD Graphics",
+          "DriverVersion": "27.20.100.9365",
+          "VideoModeDescription": "1920 x 1080 x 4294967296 种颜色"
+        },
+        {
+          "Name": "NVIDIA GeForce GTX 1650",
+          "DriverVersion": "31.0.15.5212",
+          "VideoModeDescription": null
+        }
+      ]
+    },
+    "user_confirmed": {
+      "current_windows_pc_available": true,
+      "two_displays_available": true,
+      "source": "direct_user_reply_in_current_chat"
+    },
+    "not_yet_observed": [
+      "monitor_resolutions",
+      "per_monitor_dpi",
+      "monitor_topology",
+      "application_adapter",
+      "local_or_remote_session",
+      "operator",
+      "second_paste_application"
+    ],
+    "not_covered": [
+      "Windows 11 physical device",
+      "8 GiB RAM reference device"
+    ]
+  },
+  "workflow": {
+    "upstream_sha": "1eb9624ee2037e4a2b253ee8120fa274dad1ef21",
+    "version": "4.1.0 candidate",
+    "gate_a": "NOT_SUBMITTED",
+    "gate_b": "NOT_SUBMITTED",
+    "machine_workspace_created": false,
+    "independent_review": "NOT_PERFORMED"
+  },
+  "signature": {
+    "status": "NotSigned",
+    "method": "Get-AuthenticodeSignature",
+    "exe_executed": false
+  }
+}

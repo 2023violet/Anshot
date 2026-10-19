@@ -1,0 +1,262 @@
+{
+  "schema": "shareready.p03-d.evidence/1",
+  "status": "LOCAL_M05_IMPLEMENTED_AND_MACHINE_VERIFIED_WITH_LIMITS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "build_id": "7abe58dff940b983c5bede944a73a32e2e3bb96ffb7c378bfd400ae22959e787",
+  "exe_sha256": "1c310bf769a82b58e8099d89ceb018bfe5830e233493ca131fc59342434530cc",
+  "source_files": {
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/lib.rs": "c9e2bec7a65b6e0e764548123c877e492c61e954d4bf42d5157c85b90cfc5d36",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "e5399f3afb50ab82e9638b3773d009f4b30a47f18b67d9e08cd1d79bb468f477",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "poc/native-egui/Cargo.lock": "20ab491a04245bee12b2687f7fa85f5a1bddcc4302212203f02c55235619b51e",
+    "poc/native-egui/Cargo.toml": "4b155b230226332237288ddccc0309c9bc78b95150f2742f0718baf6c5189137",
+    "poc/native-egui/src/app.rs": "9d206efdee8b475b8167ced6489d2dac4995fe47a47683c50bee2e7fb860c0f1",
+    "poc/native-egui/src/display.rs": "c449a41eefece48a20761ca6f378739d2ab559ff0e07b3043d2732bef39030f8",
+    "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+    "poc/native-egui/src/main.rs": "e9b4c88c6d375a8c8cb3e9438f0c80f21b6498d3827f10228f4ef2b949b8ea65",
+    "poc/native-egui/src/trace.rs": "8cc2b9058579e4282771df2b2d380e21e90e4c0f651643d466666ef8f15e8453",
+    "tests/native_oracle/png_oracle.py": "57ac3ae5a7f7c6ad0ed7972b05622b339eac0c6d4154f0d08713e14a673e387e",
+    "tests/native_oracle/run_native_checks.py": "721047aaa8efaf3f026d8bc4280e8596a67c8aa490c0de2b53063c22fe9c9123",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "native_report": "target/p03-c-evidence/native-20261017T135217353702Z/report.json",
+  "native_report_sha256": "7cb54a4868398c06a197bf837e423b6e27a6f4af66b69b5f165359d23777d289",
+  "independent_review": "target/p03-d-evidence/INDEPENDENT_REVIEW.md",
+  "independent_review_sha256": "5f09ab5c844804889a878b54a88ab723cefa18fd63bd3f8e11be1c19f7a47408",
+  "tests": {
+    "native_app": 25,
+    "workspace": 34,
+    "png_checker_prior_version_tests": 19
+  },
+  "selftest_oracle": {
+    "ok": true,
+    "dimensions": [
+      2400,
+      1600
+    ],
+    "effective_regions": 1,
+    "rgba_sha256": "b983aa4b8039d92d57d76370af66579b3538f9ce3348ab635545b44e6db96865",
+    "png_sha256": "d19b1540029ff9578db3a89d11316eae39f6bbed02cb32da9cc5ce5ba69cd7a2",
+    "chunks": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ]
+  },
+  "actual_window_review_oracle": {
+    "ok": true,
+    "dimensions": [
+      2400,
+      1600
+    ],
+    "effective_regions": 1,
+    "rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4",
+    "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+    "chunks": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ]
+  },
+  "window_trace": [
+    {
+      "type": "synthetic_trace",
+      "fixture": "T04_EDGES",
+      "build": "7abe58dff940b983c5bede944a73a32e2e3bb96ffb7c378bfd400ae22959e787",
+      "private_import": false
+    },
+    {
+      "time_seconds": 2.7130369,
+      "type": "frame",
+      "document": 1,
+      "revision": 0,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": null,
+      "pointer_source": null,
+      "pointer_events": [],
+      "preview": null,
+      "regions": [],
+      "reviewed": false
+    },
+    {
+      "type": "review",
+      "document": 1,
+      "revision": 1,
+      "operation": 1,
+      "png": "review-1-r1.png",
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ]
+    },
+    {
+      "time_seconds": 3.7905954,
+      "type": "frame",
+      "document": 1,
+      "revision": 1,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": null,
+      "pointer_source": null,
+      "pointer_events": [],
+      "preview": null,
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ],
+      "reviewed": true
+    },
+    {
+      "time_seconds": 9.0098645,
+      "type": "frame",
+      "document": 1,
+      "revision": 1,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": [
+        913,
+        645
+      ],
+      "pointer_source": [
+        2075,
+        1338.6364
+      ],
+      "pointer_events": [
+        {
+          "kind": "move",
+          "point": [
+            913,
+            645
+          ]
+        }
+      ],
+      "preview": null,
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ],
+      "reviewed": true
+    },
+    {
+      "time_seconds": 9.0249974,
+      "type": "frame",
+      "document": 1,
+      "revision": 1,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "image_rect_points": [
+        0,
+        56,
+        1056,
+        760
+      ],
+      "pixels_per_point": 1,
+      "pointer_points": [
+        913,
+        645
+      ],
+      "pointer_source": [
+        2075,
+        1338.6364
+      ],
+      "pointer_events": [],
+      "preview": null,
+      "regions": [
+        [
+          900,
+          600,
+          1500,
+          1000
+        ]
+      ],
+      "reviewed": true
+    }
+  ],
+  "commands": [
+    {
+      "name": "rustc-version",
+      "exit_code": 0,
+      "stdout_sha256": "2073de5abf149185c2f4d7473dc833bc921b99135560d24ae7b2293f33a9c376",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "6f78631762787a1e7e70cd5fd693c6c9b9ba0524ca3c849b671bd490f24113c1"
+    },
+    {
+      "name": "selftest",
+      "exit_code": 0,
+      "stdout_sha256": "e6ed0eecac1571a226f75bc1463b40c7204425916d3db8026664bbddcf0167be",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "dx12-smoke",
+      "exit_code": 0,
+      "stdout_sha256": "0140a521196d9a0745a9d1d0f24b9cf432b47d4be8a22af8f7d16713bfe14260",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "limits": [
+    "headless Modal and egui events are not human or physical HWND acceptance",
+    "smoke shutdown is programmatic, not user discard acknowledgment",
+    "Windows file dialogs, Explorer drop, mixed DPI, physical pointer, visual rendering, Narrator and ordinary human tasks remain NOT_VERIFIED",
+    "M04 clipboard import, M06 safe delivery, M07/M08/M09 and full G01-G10 remain open"
+  ],
+  "authority": "docs/governance/AUTONOMOUS_LOCAL_DEVELOPMENT.md",
+  "gate_confirmation_actor": "agent under explicit user-approved policy",
+  "preservation": {
+    "v1_removed": false,
+    "dependencies_upgraded": false,
+    "goldens_replaced": false,
+    "commit_push_release": false
+  }
+}

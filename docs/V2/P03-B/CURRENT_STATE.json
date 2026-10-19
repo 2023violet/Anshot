@@ -1,0 +1,43 @@
+{
+  "schema": "shareready.b0.gate-state/1",
+  "stage": "knowledge_synced_workspace_preserved",
+  "gate_a": "valid",
+  "gate_b": "valid",
+  "gate_b_preview_token": "458cf737c7",
+  "steps": 5,
+  "all_steps_todo": false,
+  "product_commands_executed": true,
+  "human_acceptance": "NOT_RUN",
+  "independent_review": "NOT_PERFORMED",
+  "check_plan": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "preflight_warning": "Uncommitted documents retained; no automatic cleanup.",
+  "context_sha256": "7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+  "runner_sha256": "67d3cf6713a2510063c7aad59418fd14aed9c88789a34f10757332aaef0218bf",
+  "upstream_sha": "1eb9624ee2037e4a2b253ee8120fa274dad1ef21",
+  "upstream_version": "4.1.0 candidate",
+  "historical_files": [
+    "GATE_A_PREVIEW.json",
+    "WORKFLOW_PROVENANCE.json"
+  ],
+  "raw_gate_b_preview_sha256": "a8505b2fdd9136be56c29881cc15ccc62917e3f2818d5a3f4f3b6bcaa94954d8",
+  "raw_plan_sha256": "b25f9184d4beb8c89552d20b4320d390d31fb86070b91d71f29e35bd7f32c16b",
+  "step_status": {
+    "1": "done",
+    "2": "done",
+    "3": "done",
+    "4": "done",
+    "5": "done"
+  },
+  "baseline_collection": "COMPLETE_WITH_GAPS",
+  "automation_acceptance": "PARTIAL_UIA_OBSERVATIONS_ONLY",
+  "full_g01_g10": "NOT_VERIFIED",
+  "archive_outcome": "止损",
+  "archive_scope": "stop expanding limited B0 observation; continue product implementation",
+  "current_implementation": "../P03-C/README.md",
+  "archive_confirmation_actor": "agent_under_user_approved_local_policy",
+  "knowledge_sync": "genuine CLI sync passed; static audit error 0 complete true",
+  "workspace_deleted": false
+}

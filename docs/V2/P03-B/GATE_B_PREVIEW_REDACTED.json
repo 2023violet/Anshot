@@ -1,0 +1,59 @@
+{
+  "kind": "PATH_REDACTED_DISPLAY_COPY_NOT_EXECUTABLE_NOT_RAW_STDOUT",
+  "original_sha256": "a8505b2fdd9136be56c29881cc15ccc62917e3f2818d5a3f4f3b6bcaa94954d8",
+  "copy": {
+    "ok": false,
+    "refused": true,
+    "reason": "向用户展示 preview，用户明确同意后带 --confirm 458cf737c7 重新运行",
+    "needs_confirmation": true,
+    "token": "458cf737c7",
+    "preview": {
+      "risk": "standard",
+      "first_step": 1,
+      "steps": [
+        {
+          "id": 1,
+          "title": "B0.1 固定身份与执行前检查",
+          "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py identity <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+          "irreversible": false,
+          "verify_command_review_required": true,
+          "verify_command_risk_hints": []
+        },
+        {
+          "id": 2,
+          "title": "B0.2 固定 EXE 自检与 DX12 最小窗口探测",
+          "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py probe <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+          "irreversible": false,
+          "verify_command_review_required": true,
+          "verify_command_risk_hints": []
+        },
+        {
+          "id": 3,
+          "title": "B0.3 本机 Rust workspace 回归",
+          "verify_cmd": "<BOUND_PYTHON> <REPO>/docs/V2/P03-B/commands/run_b0.py regression <LOCAL_BOUND_CONTEXT> 7cdec5e579a863beb5460f6094f0a30b8ff39dec03da031861ec63c58f28a379",
+          "irreversible": false,
+          "verify_command_review_required": true,
+          "verify_command_risk_hints": []
+        },
+        {
+          "id": 4,
+          "title": "B0.4 双屏、指针、键盘和 Narrator 人工基线",
+          "verify_cmd": "",
+          "irreversible": false,
+          "verify_command_review_required": false,
+          "verify_command_risk_hints": []
+        },
+        {
+          "id": 5,
+          "title": "B0.5 基线分类与下一批有界修改建议",
+          "verify_cmd": "",
+          "irreversible": false,
+          "verify_command_review_required": false,
+          "verify_command_risk_hints": []
+        }
+      ],
+      "说明": "确认计划即同意脚本在验证时执行上面列出的 verify_cmd",
+      "warnings": []
+    }
+  }
+}

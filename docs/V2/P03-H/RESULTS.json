@@ -1,0 +1,653 @@
+{
+  "schema": "shareready.p03-h.evidence/1",
+  "status": "LOCAL_BATCH_MEASURED_WITH_LIMITS",
+  "full_product": "IN_PROGRESS",
+  "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+  "branch": "main",
+  "native_report": "target/p03-c-evidence/native-20261018T014537145596Z/report.json",
+  "native_report_sha256": "ef61869d967e8376501e03371a3ffa8d6605428017ef37b138cafd377a6d64c6",
+  "build_id": "84a7f011ac420decfcc07f3a0c822abe9c2fa9dabec94070d7d7d44e18a93860",
+  "exe": "target/p03-c-evidence/native-20261018T014537145596Z/shareready-native-egui-poc.exe",
+  "exe_sha256": "4eeab7fa9584291b1004fa1631e2fafc427bdb8f66072de91b57ba1302095a5b",
+  "debug_exe_bytes": 65658880,
+  "source_files": {
+    "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+    "Cargo.toml": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82",
+    "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+    "crates/shareready-core/src/clipboard.rs": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59",
+    "crates/shareready-core/src/lib.rs": "6f739cb846395b578023f181a7a2f19b8ca03805f03a33c1694bc8547d70e595",
+    "crates/shareready-core/tests/clipboard_dib.rs": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118",
+    "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+    "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+    "crates/shareready-editor/src/lib.rs": "e5399f3afb50ab82e9638b3773d009f4b30a47f18b67d9e08cd1d79bb468f477",
+    "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+    "crates/shareready-platform-windows/Cargo.toml": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0",
+    "crates/shareready-platform-windows/src/clipboard.rs": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f",
+    "crates/shareready-platform-windows/src/lib.rs": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f",
+    "crates/shareready-platform-windows/src/windows.rs": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230",
+    "docs/research/fixtures/T01_CHAT.png": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+    "docs/research/fixtures/T02_ORDER.png": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+    "docs/research/fixtures/T03_SUPPORT.png": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+    "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+    "docs/research/fixtures/T05_JPEG_EXIF.jpg": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+    "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "poc/native-egui/assets/fonts/OFL-1.1.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+    "poc/native-egui/assets/fonts/PROVENANCE.json": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a",
+    "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+    "poc/native-egui/Cargo.toml": "84744780e3dc83688a58cf385436e22769679efe67aa6c30a25ea51ec61af350",
+    "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+    "poc/native-egui/examples/readback_probe.rs": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474",
+    "poc/native-egui/input-bridge/Cargo.toml": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396",
+    "poc/native-egui/input-bridge/src/lib.rs": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f",
+    "poc/native-egui/input-bridge/src/windows.rs": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199",
+    "poc/native-egui/src/app.rs": "e7e8c24487cad0ec93ff2da99313863b8593129e0d994a82b67e3617f570e049",
+    "poc/native-egui/src/display.rs": "c449a41eefece48a20761ca6f378739d2ab559ff0e07b3043d2732bef39030f8",
+    "poc/native-egui/src/fonts.rs": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e",
+    "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+    "poc/native-egui/src/main.rs": "71ca0770dc2f42e1b197c8c1f24fd092e9691dde63233bcb72645a04df4d3948",
+    "poc/native-egui/src/trace.rs": "c12a0b7193c016f3a91d2e48c04b8ee6d2bf4f11cf7d21687124557c960e7acf",
+    "poc/native-egui/src/visual.rs": "e01c457c23fbadadf20b367b2d89357d7b9884d6da263bd14d5eaadd2cd599cb",
+    "tests/native_oracle/png_oracle.py": "57ac3ae5a7f7c6ad0ed7972b05622b339eac0c6d4154f0d08713e14a673e387e",
+    "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+    "tests/native_oracle/run_native_checks.py": "9a4eeb4e2d1faa4c428d71e7ed2d88a27091da06c6e78cbfa9c8cc9d924fd666",
+    "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859"
+  },
+  "additional_evidence_inputs": {
+    "tests/golden/v1_3_baseline.json": "96a46f6866cb7f81ea75c76ce278fc414dea49bd8fd0fe85585b491b6be1b8f9",
+    "tests/golden/verify_v1_baseline.py": "52b4d76c1c81c746475dd68eca130ec3b38cc07735c7dd20b7700135d56eefe9",
+    "docs/V2/PRODUCT_MODIFICATION_PLAN_2026-10-17.md": "3f4d601a35f528f7ee41c82270888fcbde3c4be8570929a44a22037755433456",
+    "docs/V2/deliverables/ShareReady_V2_Product_Modification_Plan_2026-10-17.pdf": "471b0f2948214e1da83a4f86142433a2811e20d38bbd6f35ff9394d6ed912d70"
+  },
+  "test_counts": {
+    "native_app": 47,
+    "input_bridge": 4,
+    "root_workspace_including_core_editor_platform": 53,
+    "independent_oracle_tests": 19,
+    "frozen_goldens": 5,
+    "gpu_frames": 8,
+    "counts_overlap_not_added": true
+  },
+  "native_checks": {
+    "schema": 1,
+    "utc": "20261018T014537145596Z",
+    "build_id": "84a7f011ac420decfcc07f3a0c822abe9c2fa9dabec94070d7d7d44e18a93860",
+    "source_files": {
+      "Cargo.lock": "574836ca69c075b9844928fcc320d89ce2742001ae4f0596b67558b6ff1f5266",
+      "Cargo.toml": "b977f38e8a5619e12b045c3ce9cf67f2d0aa29097424b79363679eb8a66aca82",
+      "crates/shareready-core/Cargo.toml": "2be34408f6bba4a36543832137fef87f928f2ba3ba8fdccd302d2815e0ed8352",
+      "crates/shareready-core/src/clipboard.rs": "b1426568bb5f7127ed4a4182945a3050156dd902d6c2b5cffb6314c398ed0a59",
+      "crates/shareready-core/src/lib.rs": "6f739cb846395b578023f181a7a2f19b8ca03805f03a33c1694bc8547d70e595",
+      "crates/shareready-core/tests/clipboard_dib.rs": "941fa0e99cffbd8638f28d0c86e15dc2d793233bd655aaecebd3fc3cbdadc118",
+      "crates/shareready-editor/Cargo.toml": "682d459e4d020ed6b0206952319ec26553f731e56b6ee1dafcb60baa04013a07",
+      "crates/shareready-editor/src/geometry.rs": "ec99f1bf59ba2886d690ceab74e762f067dd48cf4012a71a8d3472da96165a5e",
+      "crates/shareready-editor/src/lib.rs": "e5399f3afb50ab82e9638b3773d009f4b30a47f18b67d9e08cd1d79bb468f477",
+      "crates/shareready-editor/src/viewport.rs": "1b0babe65c9cd45209f80fb5550407ce555699e0b688611c2ffba3248b5bbff9",
+      "crates/shareready-platform-windows/Cargo.toml": "21caf51d781f11fbc49ffaa02540f8f9cd819b3c4f483d04db3aac6126db3df0",
+      "crates/shareready-platform-windows/src/clipboard.rs": "9f58b50536799d752a8b2d87dd191a1b6188a30b60653df2acb43c221e20799f",
+      "crates/shareready-platform-windows/src/lib.rs": "54654b8db840252d97dba566394fe40f96bffe39251f97888ec1bc91be4eeb2f",
+      "crates/shareready-platform-windows/src/windows.rs": "6dc37cc3ba7474bc73cecd7639867403fa7654f369d5fd9f57ef815fc3e85230",
+      "docs/research/fixtures/T01_CHAT.png": "32eb61e571e11405e83619863ea0070da732ef04df8c40b519e0a7865626d5d6",
+      "docs/research/fixtures/T02_ORDER.png": "2ccad22113adb43caf017818d1fe80245ea9cb765901978d89e092ef65c89eb2",
+      "docs/research/fixtures/T03_SUPPORT.png": "0a082044e7513771d8a5fda182d583ff8d65b69525529c3e75f23e223967952e",
+      "docs/research/fixtures/T04_EDGES.png": "b50f6070f4704ef7753ba58493b8e629b51507723ac4c4c8ccff9b629461f83d",
+      "docs/research/fixtures/T05_JPEG_EXIF.jpg": "97466f35a057c671195c3ec8902c941336e5d61fd24648abe3abe6698142ce95",
+      "poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+      "poc/native-egui/assets/fonts/OFL-1.1.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "poc/native-egui/assets/fonts/PROVENANCE.json": "bae98c2afca0e7a6d3acb97e63fdac55285d13eb06af23202c46a6779d2c261a",
+      "poc/native-egui/Cargo.lock": "b62d2d0993d34cc363317faa89d0cc56fcdd3610f3ffef57b16ae3e910a35038",
+      "poc/native-egui/Cargo.toml": "84744780e3dc83688a58cf385436e22769679efe67aa6c30a25ea51ec61af350",
+      "poc/native-egui/examples/clipboard_probe.rs": "5f5d4a0d17ffcf6b345761ec0ae5b7771689edefd410d0ad394f147abbebccf9",
+      "poc/native-egui/examples/readback_probe.rs": "63bef545f4c4919d98d1b9feff3d8f584849521703e8252c2529b90e3154e474",
+      "poc/native-egui/input-bridge/Cargo.toml": "f8232f602d6c93705c021fb3967abe6da049068ac7b5eaf14618a7ab53e46396",
+      "poc/native-egui/input-bridge/src/lib.rs": "5a21da863d907461727437e75be44e62eee536083390fc6ca543197214827d5f",
+      "poc/native-egui/input-bridge/src/windows.rs": "028e7874d2d6719b9c049ded5a5038ecec2edeff73435c9d8aee07ef9967c199",
+      "poc/native-egui/src/app.rs": "e7e8c24487cad0ec93ff2da99313863b8593129e0d994a82b67e3617f570e049",
+      "poc/native-egui/src/display.rs": "c449a41eefece48a20761ca6f378739d2ab559ff0e07b3043d2732bef39030f8",
+      "poc/native-egui/src/fonts.rs": "ad2f2b8cb991eea03f46e2de8cde530b6af0866288fa8267bd2e552d88f3269e",
+      "poc/native-egui/src/input.rs": "cf505a1ccc39086feb1e7ac0b9038e95c9037708c08922616b5dd3037d5ba4fa",
+      "poc/native-egui/src/main.rs": "71ca0770dc2f42e1b197c8c1f24fd092e9691dde63233bcb72645a04df4d3948",
+      "poc/native-egui/src/trace.rs": "c12a0b7193c016f3a91d2e48c04b8ee6d2bf4f11cf7d21687124557c960e7acf",
+      "poc/native-egui/src/visual.rs": "e01c457c23fbadadf20b367b2d89357d7b9884d6da263bd14d5eaadd2cd599cb",
+      "tests/native_oracle/png_oracle.py": "57ac3ae5a7f7c6ad0ed7972b05622b339eac0c6d4154f0d08713e14a673e387e",
+      "tests/native_oracle/run_clipboard_checks.py": "1c4a98cb99b0ba6326ae44a07e5355e2ef31080cc1fd8aa1b2b1759daacfdbe0",
+      "tests/native_oracle/run_native_checks.py": "9a4eeb4e2d1faa4c428d71e7ed2d88a27091da06c6e78cbfa9c8cc9d924fd666",
+      "tests/native_oracle/test_png_oracle.py": "5170834dbb9b2a80b9e22e9e23e51596f9aa50e7dfbe500e89bf31e9a08b9859"
+    },
+    "head": "94f7f419aee91faf6f846349d40a897d0d72d7d0",
+    "window_scope": "automatic DX12 lifecycle only; no physical pointer/DPI, human usability or Narrator claim",
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "pillow": "12.3.0",
+    "checks": [
+      {
+        "name": "oracle-tests",
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "507f446062ec0ba97a91cf6d1e93c4f36a41243ae773b3fc26f6321e6812f22b"
+      },
+      {
+        "name": "rustc-version",
+        "exit_code": 0,
+        "stdout_sha256": "2073de5abf149185c2f4d7473dc833bc921b99135560d24ae7b2293f33a9c376",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "build",
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "425bcbc755ece6d062d3256f4dcfec72169390ed8d1a4d89d81d3feb7bce5b19"
+      },
+      {
+        "name": "selftest",
+        "exit_code": 0,
+        "stdout_sha256": "98c4ba1949d089913c5fa12615eef0269777198993d2b126f13e110a50b30bc5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "dx12-smoke",
+        "exit_code": 0,
+        "stdout_sha256": "0140a521196d9a0745a9d1d0f24b9cf432b47d4be8a22af8f7d16713bfe14260",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "visual",
+        "exit_code": 0,
+        "stdout_sha256": "f6c0581c5451b9a1873a4bf5cfd88eb2158617d3409177dd794dd2102afe4c0b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "oracle_test_count": 19,
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "exe_sha256": "4eeab7fa9584291b1004fa1631e2fafc427bdb8f66072de91b57ba1302095a5b",
+    "handle_bound_selftest_save": true,
+    "independent_file_oracle": {
+      "ok": true,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "effective_regions": 1,
+      "rgba_sha256": "b983aa4b8039d92d57d76370af66579b3538f9ce3348ab635545b44e6db96865",
+      "png_sha256": "d19b1540029ff9578db3a89d11316eae39f6bbed02cb32da9cc5ce5ba69cd7a2",
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IEND"
+      ]
+    },
+    "trace_frames": [
+      {
+        "type": "synthetic_trace",
+        "fixture": "T04_EDGES",
+        "build": "84a7f011ac420decfcc07f3a0c822abe9c2fa9dabec94070d7d7d44e18a93860",
+        "private_import": false
+      },
+      {
+        "time_seconds": 2.4382688,
+        "type": "frame",
+        "document": 1,
+        "revision": 0,
+        "dimensions": [
+          2400,
+          1600
+        ],
+        "image_rect_points": [
+          0,
+          56,
+          843,
+          618
+        ],
+        "pixels_per_point": 1,
+        "pointer_points": null,
+        "pointer_source": null,
+        "pointer_events": [],
+        "preview": null,
+        "regions": [],
+        "reviewed": false
+      },
+      {
+        "type": "review",
+        "document": 1,
+        "revision": 1,
+        "operation": 1,
+        "png": "review-1-r1.png",
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ]
+        ]
+      },
+      {
+        "time_seconds": 2.9129605,
+        "type": "frame",
+        "document": 1,
+        "revision": 1,
+        "dimensions": [
+          2400,
+          1600
+        ],
+        "image_rect_points": [
+          0,
+          56,
+          843,
+          618
+        ],
+        "pixels_per_point": 1,
+        "pointer_points": null,
+        "pointer_source": null,
+        "pointer_events": [],
+        "preview": null,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ]
+        ],
+        "reviewed": true
+      }
+    ],
+    "window_review_oracle": {
+      "ok": true,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "effective_regions": 1,
+      "rgba_sha256": "6be3f5e6fcdd58affaf8ad199ecef518aa35fd18f0c5fd3133cfaa860c77fed4",
+      "png_sha256": "dd420118b7784e0a41ae11739a07089f6da640a51d88435de91d5badf889ce31",
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IEND"
+      ]
+    },
+    "visual_screenshots": [
+      {
+        "type": "gpu_screenshot",
+        "state": "edit",
+        "png": "edit.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 1,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ]
+        ],
+        "review_view": false,
+        "reviewed": false,
+        "pixels_per_point": 1,
+        "sha256": "aa8603a622e6e0b81c90cac832146077d40df81c0cc2dd7d3163761374c1895d"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "multi",
+        "png": "multi.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": false,
+        "pixels_per_point": 1,
+        "sha256": "384eba36fa9f3496e8acd060ee7135cd9be881516ac0475c67e62ddada652a8c"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "review",
+        "png": "review.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": true,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "63737ca51393a5acdee198a10e6bac4858b4067b0cd1ff38c3193365978397f4"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "back-edit",
+        "png": "back-edit.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "f9f609c610c1ca0d051c172345db3f47815e63e5c0cf1e942b0e0f071357948a"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "error",
+        "png": "error.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "18b17d32115b4bb2d3f3c8ffee9112bf136853d22a7286d7f95806322ca5571d"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "discard",
+        "png": "discard.png",
+        "size": [
+          1120,
+          760
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "4756e161214ea77d1cb39cdfc341eca4b3c4c21315bfaa3e471e62457d2bb83f"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "small",
+        "png": "small.png",
+        "size": [
+          700,
+          480
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "6a0ebb45afea64fb537d36777f38d66aa642db8ff0b328abbc6c81409e716db0"
+      },
+      {
+        "type": "gpu_screenshot",
+        "state": "dark",
+        "png": "dark.png",
+        "size": [
+          700,
+          480
+        ],
+        "document": 1,
+        "revision": 2,
+        "regions": [
+          [
+            900,
+            600,
+            1500,
+            1000
+          ],
+          [
+            30,
+            30,
+            750,
+            230
+          ]
+        ],
+        "review_view": false,
+        "reviewed": true,
+        "pixels_per_point": 1,
+        "sha256": "78014e048b0707ab644a35778321fbf01234f3654e17f19725f0f717a444b212"
+      }
+    ],
+    "visual_review_oracle": {
+      "ok": true,
+      "dimensions": [
+        2400,
+        1600
+      ],
+      "effective_regions": 2,
+      "rgba_sha256": "8d6a62218a85952751bdf3a81981417ca67d48e39387c573e606ed338624973e",
+      "png_sha256": "e7d577ef15e8a9443c0cb4de838f8b691c4a39eda4cbe0adc5dae298242f7e4b",
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IEND"
+      ]
+    },
+    "ok": true
+  },
+  "goldens": {
+    "status": "FROZEN_GOLDEN_VERIFIED",
+    "git_sha": "LOCAL",
+    "cases": [
+      {
+        "id": "T01_CHAT",
+        "rgba_sha256": "18ee911240bc7f9c9cf96f391f37754f978fdac44c1572d7bbdba6c00de7d2e2",
+        "png_sha256": "23ca9baafb02af1298b5f3c91538c6dffafe8e1f3fe5bbc60f0b2cfede6af65a",
+        "png_bytes": 54421,
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "oracle_source": "PILLOW_FOR_LOSSLESS_SOURCE"
+      },
+      {
+        "id": "T02_ORDER",
+        "rgba_sha256": "8784c831bd13dba7c98437ca05d1d409a0527b3a09aaf9505a284ef77e2b88a4",
+        "png_sha256": "4f7713902a26c001efa2a3af063b4fa9559036be73c196dee48e37cbe7b7b548",
+        "png_bytes": 56136,
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "oracle_source": "PILLOW_FOR_LOSSLESS_SOURCE"
+      },
+      {
+        "id": "T03_SUPPORT",
+        "rgba_sha256": "e5dda96c65f72dc1b55fb4294ba0edfcfbdb1205277d7b90fce525ffe45e141a",
+        "png_sha256": "7b0deea140419a4c6234375a0bc1729c4a934f3dc28ec013e710f1a64bc868b0",
+        "png_bytes": 62383,
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "oracle_source": "PILLOW_FOR_LOSSLESS_SOURCE"
+      },
+      {
+        "id": "T04_EDGES",
+        "rgba_sha256": "554f68cc5c99577fd621cb894d535a38c44565a347ef4e1e00bd89e4d04daafc",
+        "png_sha256": "dabbada524174652d48118ecbb20273fc700183b982b776808c37266bd72085f",
+        "png_bytes": 105058,
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "oracle_source": "PILLOW_FOR_LOSSLESS_SOURCE"
+      },
+      {
+        "id": "T05_JPEG_EXIF",
+        "rgba_sha256": "d2d6586997927592c77ee7c96529d58901f529deb1a649804a55e25a6e0d49b5",
+        "png_sha256": "8bb43042c073f50d9e2dd305e4893d8a10118584efffde2616732d04fc6655da",
+        "png_bytes": 64765,
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "oracle_source": "RUST_V1_NORMALIZED_JPEG_PREVIEW_PLUS_INDEPENDENT_PILLOW_COMPOSITOR"
+      }
+    ]
+  },
+  "font_provenance": {
+    "repository": "https://github.com/notofonts/noto-cjk",
+    "commit": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+    "unmodified": true,
+    "files": {
+      "NotoSansCJKsc-Regular.otf": {
+        "upstream_path": "Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+        "bytes": 16437364,
+        "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+      },
+      "OFL-1.1.txt": {
+        "upstream_path": "Sans/LICENSE",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/LICENSE",
+        "bytes": 4301,
+        "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+      }
+    }
+  },
+  "font_inspection": {
+    "font_sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+    "static_weight": 400,
+    "font_family": "Noto Sans CJK SC",
+    "font_style": "Regular",
+    "postscript_name": "NotoSansCJKsc-Regular",
+    "sample": "打开图片粘贴新增遮挡撤销重做生成复核返回编辑复制图像另存文件取消保留当前放弃错误失败重试关闭所有原始尺寸位置源像素上下左右全屏适合窗口尚未验证本地处理不上传确定…，。：；！？（）《》—·测试截图会议记录张三订单已遮挡臺灣香港繁體中文",
+    "unique_sample_characters": 106,
+    "missing": [],
+    "coverage_scope": "sample cmap presence, not renderer/glyph appearance, all Unicode coverage or IME acceptance",
+    "names": {
+      "0": "© 2014-2021 Adobe (http://www.adobe.com/).",
+      "1": "Noto Sans CJK SC",
+      "2": "Regular",
+      "6": "NotoSansCJKsc-Regular",
+      "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.",
+      "14": "http://scripts.sil.org/OFL"
+    }
+  },
+  "independent_review": "target/p03-h-evidence/INDEPENDENT_REVIEW.md",
+  "independent_review_sha256": "eae28f1ad0806a26a36ed04fdd2b1152d380f607defe9a7cb416ac2d8e3d7cd2",
+  "reviewer_verification_sha256": "3adcabef86984ffc3a0fc394fd5a41ee9d48eb44e8f2517ff4dafa90d0be8807",
+  "baseline_sha256": "42138ec9919e260dd309711d78ef576ff24c6cec29201fb0917b771729cf9ec8",
+  "window_observation_sha256": "038467719388104b475eda69f843a4cd3bcc67ad0dde0fbd0e017918d248b32a",
+  "baseline_scope": "separate RGB capability probe and failed OS-window observations, not final product UI acceptance",
+  "superseded_candidate": {
+    "report": "target/p03-c-evidence/native-20261018T014049206699Z/report.json",
+    "status": "FAILED_IDENTITY_CHANGED_DURING_VERIFICATION",
+    "used_as_final_pass": false
+  },
+  "intermediate_candidate": {
+    "report": "target/p03-c-evidence/native-20261018T014256391249Z/report.json",
+    "status": "PASS_FOR_ITS_SOURCE_THEN_SUPERSEDED_BY_CHINESE_RECOVERY_TEXT",
+    "used_as_final_pass": false
+  },
+  "limits": [
+    "GPU framebuffer is not Windows composed display or physical pointer evidence",
+    "synthetic visual sequence uses controller intents, not human/OS click routing",
+    "trace import/copy/save controls intentionally disabled; not normal-mode enabled-state evidence",
+    "sample glyph/raster tests do not cover arbitrary Unicode or Chinese IME",
+    "G03 actual mixed-DPI/dual-display NOT_VERIFIED",
+    "G06 physical Ctrl+V, actual clipboard, Paint and second-app roundtrip NOT_VERIFIED; G isolation branch stopped",
+    "G08 Narrator/accessibility/human complete task NOT_VERIFIED",
+    "G04 24MP/RSS/frame time/startup budgets NOT_VERIFIED",
+    "offline/release packaging, all dependency licenses/security and remote CI NOT_RUN",
+    "V1 exit/product migration/public release NOT_COMPLETE"
+  ],
+  "preservation": {
+    "master_plan_and_pdf_unchanged": true,
+    "v1_and_frozen_goldens_unchanged": true,
+    "root_and_native_locks_unchanged_from_p03_g": true,
+    "user_clipboard_content_accessed": false,
+    "push_release_or_deletion": false
+  },
+  "gate_confirmation_actor": "agent under explicitly approved docs/governance/AUTONOMOUS_LOCAL_DEVELOPMENT.md; not human-reviewed tokens"
+}
