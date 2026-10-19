@@ -1,0 +1,11 @@
+[package]
+name = "spike-iced"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone: not part of the root product workspace.
+[workspace]
+
+[dependencies]
+iced = { version = "=0.14.0", features = ["canvas", "image"] }

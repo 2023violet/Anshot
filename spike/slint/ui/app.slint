@@ -1,0 +1,239 @@
+// Gate 03 spike: 04_DESIGN tokens rendered as Slint components.
+import "../../../poc/native-egui/assets/fonts/NotoSansCJKsc-Regular.otf";
+
+global T {
+    out property <color> bg-canvas: #f7f7f4;
+    out property <color> bg-soft: #fafaf7;
+    out property <color> bg-card: #ffffff;
+    out property <color> bg-work: #ecebe5;
+    out property <color> bg-hover: #efeee8;
+    out property <color> bg-pressed: #e6e5e0;
+    out property <color> line: #e6e5e0;
+    out property <color> line-strong: #cfcdc4;
+    out property <color> ink: #26251e;
+    out property <color> body: #5a5852;
+    out property <color> mute: #6b6960;
+    out property <color> dis: #a09c92;
+    out property <color> sel-fg: #f7f7f4;
+    out property <color> brand: #f54e00;
+    out property <color> primary: #d04200;
+    out property <color> primary-hover: #bf3d00;
+    out property <color> secure: #1f8a65;
+    out property <color> error: #cf2d56;
+    out property <color> pill-secure: #9fc9a2;
+    out property <color> pill-done: #c08532;
+    out property <color> red: #e5342b;
+    out property <color> black: #1a1915;
+    out property <string> ui: "Noto Sans CJK SC";
+    out property <string> mono: "Consolas";
+}
+
+component Icon inherits Path {
+    in property <string> d;
+    width: 18px; height: 18px;
+    viewbox-width: 24; viewbox-height: 24;
+    commands: d;
+    stroke-width: 1.5px;
+    fill: transparent;
+    stroke-line-cap: round;
+    stroke-line-join: round;
+}
+
+component Shield inherits Path {
+    viewbox-width: 2; viewbox-height: 2;
+    commands: "M 1 0 L 1.9 0.35 L 1.9 1.05 L 1.55 1.65 L 1 2 L 0.45 1.65 L 0.1 1.05 L 0.1 0.35 Z";
+    stroke-width: 0;
+}
+
+component Tool inherits Rectangle {
+    in property <string> d;
+    in property <bool> selected;
+    in property <bool> focused;
+    in property <bool> badge;
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    ta := TouchArea { }
+    background: selected ? T.ink : ta.has-hover ? T.bg-hover : transparent;
+    Icon { d: root.d; stroke: root.selected ? T.sel-fg : T.body; }
+    if focused: Rectangle { x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px; border-radius: 8px; border-width: 2px; border-color: T.brand; }
+    if badge: Shield { x: 21px; y: 20px; width: 8px; height: 9px; fill: T.secure; }
+}
+
+component Keycap inherits Rectangle {
+    in property <string> label;
+    in property <bool> on-primary;
+    height: 18px;
+    width: tx.preferred-width + 10px;
+    border-radius: 4px;
+    background: on-primary ? #ffffff2e : T.bg-card;
+    border-width: on-primary ? 0 : 1px;
+    border-color: T.line-strong;
+    tx := Text { text: label; font-family: T.mono; font-size: 11px; color: on-primary ? white : T.mute; vertical-alignment: center; }
+}
+
+component TextButton inherits Rectangle {
+    in property <string> label;
+    in property <string> key;
+    in property <int> kind; // 0 secondary, 1 primary, 2 danger
+    height: 32px;
+    width: row.preferred-width + 24px;
+    border-radius: 8px;
+    ta := TouchArea { }
+    background: kind == 1 ? (ta.has-hover ? T.primary-hover : T.primary) : kind == 2 ? transparent : (ta.has-hover ? T.bg-hover : T.bg-card);
+    border-width: kind == 0 ? 1px : 0;
+    border-color: T.line-strong;
+    row := HorizontalLayout {
+        padding-left: 12px; padding-right: 12px; spacing: 8px; alignment: center;
+        Text { text: label; font-size: 13px; color: kind == 1 ? white : kind == 2 ? T.error : T.ink; vertical-alignment: center; }
+        VerticalLayout { alignment: center; Keycap { label: key; on-primary: kind == 1; } }
+    }
+}
+
+component VSep inherits Rectangle { width: 1px; height: 22px; background: T.line-strong; }
+
+component Pill inherits Rectangle {
+    in property <string> label;
+    in property <color> fill;
+    in property <bool> secure;
+    height: 20px; border-radius: 10px; background: fill;
+    width: lay.preferred-width;
+    lay := HorizontalLayout {
+        padding-left: 8px; padding-right: 8px; spacing: 5px; alignment: center;
+        if secure: VerticalLayout { alignment: center; Shield { width: 9px; height: 10px; fill: T.secure; } }
+        Text { text: label; font-size: 11px; color: T.ink; vertical-alignment: center; }
+    }
+}
+
+component Field inherits Rectangle {
+    in property <string> value;
+    width: 48px; height: 28px; border-radius: 8px; background: T.bg-card; border-width: 1px; border-color: T.line-strong;
+    Text { x: 8px; text: value; font-family: T.mono; font-size: 12px; color: T.ink; vertical-alignment: center; height: parent.height; }
+}
+
+component Label inherits Text { font-size: 12px; color: T.mute; vertical-alignment: center; }
+
+component Overlay inherits Rectangle {
+    // safe mosaic: generated palette, independent of source pixels
+    for i in 17 * 4: Rectangle {
+        x: 374px + mod(i, 17) * 6px; y: 143px + floor(i / 17) * 6px;
+        width: min(6px, 102px - mod(i, 17) * 6px); height: min(6px, 20px - floor(i / 17) * 6px);
+        background: [#3a3934, #4b4a44, #5d5b54, #6f6d65][mod(mod(i, 17) * 7 + floor(i / 17) * 3, 4)];
+    }
+    // dashed secure outline (Slint Path has no dash: emulate with segments)
+    for i in 26: Rectangle { x: 374px + i * 5px - 1px; y: 143px; width: 3px; height: 1px; background: T.secure; }
+    for i in 26: Rectangle { x: 374px + i * 5px - 1px; y: 162px; width: 3px; height: 1px; background: T.secure; }
+    Rectangle { x: 368px; y: 137px; width: 12px; height: 12px; border-radius: 3px; background: T.secure;
+        Shield { width: 8px; height: 9px; fill: white; } }
+    // solid + selection (white inner, ink outer) + handles
+    Rectangle { x: 516px; y: 143px; width: 80px; height: 20px; background: T.black; }
+    Rectangle { x: 515px; y: 142px; width: 82px; height: 22px; border-width: 1px; border-color: white; }
+    Rectangle { x: 514px; y: 141px; width: 84px; height: 24px; border-width: 1px; border-color: T.ink; }
+    for h in [{x: 516px, y: 143px}, {x: 556px, y: 143px}, {x: 596px, y: 143px}, {x: 516px, y: 153px}, {x: 596px, y: 153px}, {x: 516px, y: 163px}, {x: 556px, y: 163px}, {x: 596px, y: 163px}]: Rectangle {
+        x: h.x - 4px; y: h.y - 4px; width: 8px; height: 8px; border-radius: 2px; background: white; border-width: 1.5px; border-color: T.ink;
+    }
+    // annotations (content colours)
+    Rectangle { x: 10px; y: 264px; width: 340px; height: 46px; border-radius: 2px; border-width: 3px; border-color: T.red; }
+    Rectangle { x: 337px; y: 251px; width: 26px; height: 26px; border-radius: 13px; background: T.red;
+        Text { text: "1"; color: white; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; } }
+    Path { x: 0; y: 0; width: 620px; height: 430px; viewbox-width: 620; viewbox-height: 430;
+        commands: "M 398 362 L 360 311"; stroke: T.red; stroke-width: 4px; stroke-line-cap: round; }
+    Path { x: 0; y: 0; width: 620px; height: 430px; viewbox-width: 620; viewbox-height: 430;
+        commands: "M 353.6 302.8 L 356.0 321.5 L 368.8 312.0 Z"; fill: T.red; stroke-width: 0; }
+    Text { x: 404px; y: 352px; text: "这里看凭证"; color: T.red; font-size: 18px; }
+}
+
+export component AppWindow inherits Window {
+    title: "spike-slint";
+    preferred-width: 1180px; preferred-height: 700px;
+    background: T.bg-canvas;
+    default-font-family: T.ui;
+
+    VerticalLayout {
+        // toolbar
+        Rectangle { height: 52px; background: T.bg-canvas;
+            HorizontalLayout { padding-left: 10px; padding-right: 10px; spacing: 4px; alignment: stretch;
+                HorizontalLayout { spacing: 8px; padding-right: 10px;
+                    VerticalLayout { alignment: center; Rectangle { width: 12px; height: 12px; border-radius: 3px; background: T.brand; } }
+                    Text { text: "ShareReady"; font-size: 13px; color: T.ink; vertical-alignment: center; }
+                }
+                VerticalLayout { alignment: center; HorizontalLayout { spacing: 4px;
+                    Tool { d: "M 4 4 L 11 21 L 13.5 13.5 L 21 11 Z"; }
+                    Tool { d: "M 5 19 L 19 5 M 9 5 L 19 5 L 19 15"; }
+                    Tool { d: "M 4 5 L 20 5 L 20 19 L 4 19 Z"; }
+                    Tool { d: "M 5 6 L 5 4 L 19 4 L 19 6 M 12 4 L 12 20 M 9 20 L 15 20"; focused: true; }
+                    Tool { d: "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 M 11 9 L 12.5 8 L 12.5 16"; }
+                    Tool { d: "M 9 11 L 4 16 L 4 20 L 8 20 L 13 15 M 9 11 L 14 6 L 18 10 L 13 15 Z"; }
+                    VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
+                    Tool { d: "M 12 3 L 20 6 L 20 12 L 17 18 L 12 21 L 7 18 L 4 12 L 4 6 Z"; selected: true; }
+                    Tool { d: "M 4 4 L 11 4 L 11 11 L 4 11 Z M 13 13 L 20 13 L 20 20 L 13 20 Z"; badge: true; }
+                    VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
+                    Tool { d: "M 6 2 L 6 18 L 22 18 M 2 6 L 18 6 L 18 22"; }
+                } }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout { alignment: center; HorizontalLayout { spacing: 4px;
+                    Tool { d: "M 9 14 L 4 9 L 9 4 M 4 9 L 15 9 L 18 10 L 20 14 L 18 18 L 15 19 L 12 19"; }
+                    Rectangle { width: 32px; height: 32px; Icon { d: "M 15 14 L 20 9 L 15 4 M 20 9 L 9 9 L 6 10 L 4 14 L 6 18 L 9 19 L 12 19"; stroke: T.dis; } }
+                    VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
+                    TextButton { label: "保存"; key: "Ctrl S"; kind: 0; }
+                    TextButton { label: "复制"; key: "Ctrl C"; kind: 1; }
+                } }
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: T.line; }
+        }
+        // property bar
+        Rectangle { height: 40px; background: T.bg-soft;
+            HorizontalLayout { padding-left: 12px; padding-right: 10px; spacing: 8px;
+                Label { text: "遮挡样式"; }
+                VerticalLayout { alignment: center; Rectangle { height: 28px; width: seg.preferred-width; border-radius: 8px; background: T.bg-pressed;
+                    seg := HorizontalLayout { padding: 2px; spacing: 2px;
+                        Rectangle { width: 44px; border-radius: 6px; background: T.bg-card; border-width: 1px; border-color: T.line-strong;
+                            Text { text: "实心"; font-size: 12px; color: T.ink; vertical-alignment: center; horizontal-alignment: center; } }
+                        Text { text: "安全马赛克"; font-size: 12px; color: T.body; vertical-alignment: center; horizontal-alignment: center; width: 84px; }
+                    } } }
+                Label { text: "颜色"; }
+                VerticalLayout { alignment: center; Rectangle { width: 24px; height: 24px; border-radius: 8px; border-width: 2px; border-color: T.ink;
+                    Rectangle { width: 18px; height: 18px; border-radius: 5px; background: T.black; } } }
+                VerticalLayout { alignment: center; Rectangle { width: 20px; height: 20px; border-radius: 6px; background: white; border-width: 1px; border-color: T.line-strong; } }
+                VerticalLayout { alignment: center; padding-left: 4px; padding-right: 4px; VSep { } }
+                Label { text: "X"; } VerticalLayout { alignment: center; Field { value: "412"; } }
+                Label { text: "Y"; } VerticalLayout { alignment: center; Field { value: "142"; } }
+                Label { text: "W"; } VerticalLayout { alignment: center; Field { value: "176"; } }
+                Label { text: "H"; } VerticalLayout { alignment: center; Field { value: "22"; } }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout { alignment: center; TextButton { label: "删除"; key: "Del"; kind: 2; } }
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: T.line; }
+        }
+        // canvas
+        Rectangle { background: T.bg-work; vertical-stretch: 1;
+            Rectangle { width: 622px; height: 432px; background: T.line-strong;
+                Image { x: 1px; y: 1px; width: 620px; height: 430px; source: @image-url("../../assets/shot.png"); image-rendering: pixelated; }
+                Overlay { x: 1px; y: 1px; width: 620px; height: 430px; }
+            }
+            Rectangle { x: parent.width - 296px; y: parent.height - 72px; width: 280px; height: 56px;
+                border-radius: 12px; background: T.bg-card; border-width: 1px; border-color: T.line-strong;
+                HorizontalLayout { padding-left: 14px; spacing: 10px; alignment: start;
+                    VerticalLayout { alignment: center; Pill { label: "✓ 已复制"; fill: T.pill-done; } }
+                    VerticalLayout { alignment: center;
+                        Text { text: "已复制到剪贴板"; font-size: 13px; color: T.ink; }
+                        Text { text: "620 × 430 · 已遮挡 2 处"; font-size: 12px; color: T.mute; }
+                    }
+                }
+            }
+        }
+        // status bar
+        Rectangle { height: 30px; background: T.bg-canvas;
+            Rectangle { y: 0; height: 1px; background: T.line; }
+            HorizontalLayout { padding-left: 12px; padding-right: 12px; spacing: 12px;
+                Text { text: "620 × 430"; font-family: T.mono; font-size: 12px; color: T.mute; vertical-alignment: center; }
+                VerticalLayout { alignment: center; Pill { label: "已遮挡 2 处"; fill: T.pill-secure; secure: true; } }
+                Rectangle { horizontal-stretch: 1; }
+                Label { text: "适应"; }
+                VerticalLayout { alignment: center; Keycap { label: "Ctrl 0"; } }
+                VerticalLayout { alignment: center; Rectangle { width: 46px; height: 22px; border-radius: 6px; background: T.bg-pressed;
+                    Text { text: "100%"; font-family: T.mono; font-size: 12px; color: T.ink; } } }
+                Label { text: "−"; } Label { text: "+"; }
+            }
+        }
+    }
+}

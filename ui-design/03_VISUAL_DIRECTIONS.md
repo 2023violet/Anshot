@@ -45,8 +45,29 @@ v0.1 选了 A；用户评审意见：**需要更有个性/品牌感**，并从 B
 
 截图与 HTML 样稿对比后选定框架，记录在第 5 节。
 
-## 5. 框架选定
-（spike 后填写）
+## 5. 框架选定（暂定，待条件验证）
+
+证据：[spike/README.md](../spike/README.md)；独立代理审查：[spike/REVIEW.md](../spike/REVIEW.md)（ACCEPT_WITH_LIMITS，非真人审查）。
+
+**暂定顺序：Slint 1.18.1 首选 → iced 0.14.0 备选 → egui 降级（保留 POC 历史作参考）。**
+
+| 依据（MEASURED / DOCUMENTED） | Slint | iced | egui |
+|---|---|---|---|
+| 设计稿还原方式 | 声明式 `.slint` + `global` token，最贴近 04_DESIGN | 控件样式闭包，可还原 | 需手工绘制全部界面 |
+| 中文/等宽文字垂直居中 | 正确 | 按钮内偏上 | 两种字体偏差明显 |
+| 150% 发丝线 | 清晰（取整为 2px） | 最清晰（1px） | 模糊 |
+| 空闲私有内存 | 35 MB | 238 MB | 411 MB |
+| 无障碍 | AccessKit 默认开启 | 无 AccessKit | 仅真实控件 |
+| 许可证 | GPL-3.0 或 Royalty-free 2.0（须 AboutSlint 署名）或商业 | MIT | MIT/Apache-2.0 |
+
+**Slint 转为正式选定前必须取得的证据**（任一 2 或 4 失败 → 对 iced 做同样验证）：
+1. **你的许可证决定**：接受 Royalty-free 2.0（在“关于”中显示 AboutSlint）或另选。
+2. 24MP `SharedPixelBuffer` 更新延迟与峰值内存，系统 125% / 150% 实测。
+3. 选中框拖拽，16×16 手柄命中区。
+4. `TextInput` 中文输入法。
+5. Narrator 读出工具按钮名称。
+6. 修复虚线与工具栏布局后重截对比，并加入 Inter / JetBrains Mono / 粗体（字体下载需你授权）。
+7. 无 OpenGL 环境的渲染器回退。
 
 ## 修订记录
 - v0.1（2026-10-19）：选定 A（Raycast+Linear 暗夜工作台）。
