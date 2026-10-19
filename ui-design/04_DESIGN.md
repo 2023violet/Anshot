@@ -1,6 +1,6 @@
 # 04 DESIGN.md — ShareReady「奶油编辑台」
 
-版本 v0.2 草稿　日期 2026-10-19　状态：**待 Gate 04 冻结**（依赖 Gate 03 框架 spike）
+版本 **v1.0（冻结基线）**　日期 2026-10-19　状态：**Gate 04 已冻结（用户，2026-10-19）**；GUI 框架 Slint 1.18.1。变更需递增版本并记录。
 来源：[03_VISUAL_DIRECTIONS.md](03_VISUAL_DIRECTIONS.md) v0.2 —— Cursor 暖奶油编辑风为主，Raycast keycap。样稿：[03_VISUAL_SAMPLE.html](03_VISUAL_SAMPLE.html)
 
 ## 1. 设计原则
@@ -211,7 +211,8 @@ pub mod size { pub const TOOLBAR_H: f32 = 52.0; pub const CONTROL: f32 = 32.0; /
 ```
 
 - 内容色（§2.3）会进入导出像素，属于产品语义，放在 `shareready-editor` 的标注颜色枚举；界面 token 只在 GUI crate。
-- 框架适配层在 Gate 03 选定后，把常量映射为 egui `Visuals` / iced `Theme` / Slint 全局属性。
+- 框架为 Slint 1.18.1：token 以 `.slint` 中的 `global Theme` 为界面单一来源（已在 spike 中验证写法），Rust 侧只保留会进入导出像素的内容色。
+- Slint 落地约束（来自 Gate 03 验证）：按钮内部文字节点设为不可访问，避免 Narrator 重复朗读；Slint Path 无原生虚线，遮挡对象虚线用分段绘制；画布拖拽中由 Slint 绘制轮廓，松手后由 Rust 合成不超过屏幕分辨率的显示预览。
 
 ## 8. 验收方法
 - 每个组件在真实应用截图，与 [03_VISUAL_SAMPLE.html](03_VISUAL_SAMPLE.html) 并排对照（100% 与 150% DPI）。
@@ -220,11 +221,12 @@ pub mod size { pub const TOOLBAR_H: f32 = 52.0; pub const CONTROL: f32 = 32.0; /
 
 ## 修订记录
 - v0.1（2026-10-19）：Raycast + Linear 暗夜工作台。
+- v1.0（2026-10-19）：Gate 04 冻结；补充 Slint 落地约束。
 - v0.2（2026-10-19）：按用户“更有个性/品牌感”意见改为 Cursor 暖奶油编辑风；主按钮改用 `#d04200` 以满足白字 AA（`#f54e00` 仅 3.52:1）；次要文字 `#6b6960` 替代 Cursor muted（3.84:1）；新增状态胶囊、遮挡深绿身份、等宽数值。
 
 ---
 
 ## Gate 04 检查
 - [x] Token、排版、密度、组件、交互状态、适配规则已定义
-- [ ] Gate 03 框架 spike 后确认 token 可在原生框架实现
-- [ ] **用户确认冻结基线**：＿＿＿＿
+- [x] Gate 03 spike 确认 token 可在 Slint 实现（spike/slint）
+- [x] **用户确认冻结基线**：2026-10-19，v1.0。
