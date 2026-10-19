@@ -28,7 +28,7 @@ pub struct GestureTicket {pub document_id:u64,pub gesture_id:u64}
 pub enum EditError {
     InvalidImageDimensions, NoEffectiveMask, MaskLimit, InvalidMaskIndex, EmptyHistory,
     OperationPending, OutputNotReviewed, IdentityOverflow, MissingSource,
-    GestureInProgress, WrongGesture, NoChange, CoreFailure(String),
+    GestureInProgress, WrongGesture, NoChange, StaleReview, CoreFailure(String),
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Snapshot {masks:Vec<Mask>,selected:Option<u64>}
@@ -36,6 +36,48 @@ struct Snapshot {masks:Vec<Mask>,selected:Option<u64>}
 struct Gesture {ticket:GestureTicket,id:u64,base:Region,kind:GestureKind,preview:Region}
 #[derive(Clone, Debug)]
 struct Artifact {stamp:Stamp,bytes:Arc<[u8]>}
+
+/// Opaque ownership of one review, including failure/cancellation cleanup.
+/// Equal source bytes and numeric tickets in another Editor are not authority.
+#[derive(Clone)]
+pub struct ReviewKey {ticket:Ticket,source:Arc<[u8]>}
+impl ReviewKey {
+    pub fn ticket(&self)->Ticket{self.ticket}
+}
+pub struct ReviewWork {key:ReviewKey,dimensions:(u32,u32),regions:Vec<Region>}
+pub struct ReviewResult {key:ReviewKey,dimensions:(u32,u32),bytes:Arc<[u8]>}
+/// A validated source, not a reviewed output or an authority to discard edits.
+/// Presentation code cannot forge dimensions or duplicate this owned candidate.
+/// ```compile_fail
+/// use shareready_editor::SourceCandidate;
+/// let forged=SourceCandidate{bytes:std::sync::Arc::from([]),dimensions:(1,1)};
+/// ```
+/// ```compile_fail
+/// use shareready_editor::SourceCandidate;
+/// fn duplicate(source:SourceCandidate){let second=source.clone();}
+/// ```
+pub struct SourceCandidate {bytes:Arc<[u8]>,dimensions:(u32,u32)}
+impl SourceCandidate {
+    /// Run Core validation before touching an existing Editor; may run off-thread.
+    pub fn decode(bytes:Vec<u8>)->Result<Self,EditError>{
+        let dimensions=decode_source(&bytes).map_err(EditError::CoreFailure)?.dimensions();
+        Ok(Self{bytes:Arc::from(bytes),dimensions})
+    }
+    pub fn bytes(&self)->&[u8]{self.bytes.as_ref()}
+    pub fn dimensions(&self)->(u32,u32){self.dimensions}
+}
+impl ReviewWork {
+    pub fn key(&self)->ReviewKey{self.key.clone()}
+    /// Core owns transformation and complete PNG validation. No Editor is shared.
+    pub fn run(self)->Result<ReviewResult,EditError>{
+        let bytes=redact(self.key.source.as_ref(),&self.regions).map_err(EditError::CoreFailure)?;
+        Ok(ReviewResult{key:self.key,dimensions:self.dimensions,bytes:Arc::from(bytes)})
+    }
+}
+impl ReviewResult {
+    pub fn bytes(&self)->&[u8]{self.bytes.as_ref()}
+    pub fn dimensions(&self)->(u32,u32){self.dimensions}
+}
 
 /// This type deliberately does not implement Clone: a second editor must not share
 /// an operation token, pending OS action, or an implicitly valid output version.
@@ -55,6 +97,16 @@ pub struct Editor {
 }
 
 impl Editor {
+    /// Consume a validated source without decoding again or marking it reviewed.
+    pub fn from_candidate(source:SourceCandidate)->Result<Self,EditError>{
+        let mut doc=Self::new(source.dimensions.0,source.dimensions.1)?;
+        doc.source=Some(source.bytes);Ok(doc)
+    }
+    /// The caller owns discard confirmation. Overflow leaves the old document intact.
+    pub fn replace_candidate(&mut self,source:SourceCandidate)->Result<(),EditError>{
+        self.replace_document(source.dimensions.0,source.dimensions.1)?;
+        self.source=Some(source.bytes);Ok(())
+    }
     /// Geometry-only document for UI layout/tests. Review requires from_source.
     pub fn new(width:u32,height:u32)->Result<Self,EditError>{
         Self::check_dimensions(width,height)?;
@@ -67,11 +119,7 @@ impl Editor {
     }
     /// Decode before changing existing document. An invalid input cannot erase a good edit.
     pub fn from_source(bytes:Vec<u8>)->Result<Self,EditError>{
-        let image=decode_source(&bytes).map_err(EditError::CoreFailure)?;
-        let (width,height)=image.dimensions();
-        let mut doc=Self::new(width,height)?;
-        doc.source=Some(Arc::from(bytes));
-        Ok(doc)
+        Self::from_candidate(SourceCandidate::decode(bytes)?)
     }
     fn check_dimensions(w:u32,h:u32)->Result<(),EditError>{
         if w==0 || h==0 || u64::from(w)*u64::from(h)>MAX_PIXELS {
@@ -173,9 +221,15 @@ impl Editor {
         next.selected=Some(id);
         self.change(next)
     }
+    /// Starting a new rectangle revokes output and OS tickets before any committed edit.
+    /// The GUI owns the uncommitted rectangle; cancellation creates no history entry.
+    pub fn begin_draw_preview(&mut self)->Result<(),EditError>{
+        self.ensure_idle()?;
+        self.invalidate();
+        Ok(())
+    }
     /// Pointer movement only updates a preview. Commit creates exactly one history item.
-    /// The gesture start invalidates old output/operations, so an old OS callback
-    /// can never claim success after a user begins changing a different image region.
+    /// Starting the gesture revokes output and pending OS tickets.
     pub fn begin_gesture(&mut self,id:u64,kind:GestureKind)->Result<GestureTicket,EditError>{
         self.ensure_idle()?;
         let base=self.masks.iter().find(|m|m.id==id)
@@ -249,33 +303,54 @@ impl Editor {
         Ok(())
     }
     pub fn replace_source(&mut self,bytes:Vec<u8>)->Result<(),EditError>{
-        let img=decode_source(&bytes).map_err(EditError::CoreFailure)?;
-        let (w,h)=img.dimensions();
-        self.replace_document(w,h)?;
-        self.source=Some(Arc::from(bytes));
-        Ok(())
+        self.replace_candidate(SourceCandidate::decode(bytes)?)
     }
-    /// Core builds bytes BEFORE a review can complete. The caller must still
-    /// show the actual decoded PNG to the person before an OS Save/Copy.
-    pub fn begin(&mut self,kind:OperationKind)->Result<Ticket,EditError>{
+    /// Reserve work without encoding. The caller retains its key for any failure.
+    /// Work/results cannot be constructed or cloned by presentation code.
+    pub fn prepare_review(&mut self)->Result<ReviewWork,EditError>{
         self.ensure_idle()?;
         if self.pending.is_some(){return Err(EditError::OperationPending);}
-        let fresh_png=match kind {
-            OperationKind::Review=>{
-                if self.masks.is_empty(){return Err(EditError::NoEffectiveMask);}
-                let src=self.source.as_ref().ok_or(EditError::MissingSource)?;
-                let regions:Vec<Region>=self.masks.iter().map(|m|m.region).collect();
-                Some(Arc::from(redact(src.as_ref(),&regions).map_err(EditError::CoreFailure)?))
-            },
-            OperationKind::Copy|OperationKind::Save=>{
-                if !self.is_reviewed(){return Err(EditError::OutputNotReviewed);}
-                None
-            },
-        };
+        if self.masks.is_empty(){return Err(EditError::NoEffectiveMask);}
+        let source=self.source.as_ref().ok_or(EditError::MissingSource)?.clone();
+        let regions=self.masks.iter().map(|m|m.region).collect();
+        let op=self.next_op;
+        let next=op.checked_add(1).ok_or(EditError::IdentityOverflow)?;
+        let ticket=Ticket{stamp:self.stamp,operation_id:op,kind:OperationKind::Review};
+        self.invalidate();self.next_op=next;self.pending=Some(ticket);
+        Ok(ReviewWork{key:ReviewKey{ticket,source},dimensions:self.dimensions(),regions})
+    }
+    pub fn review_is_current(&self,key:&ReviewKey)->bool{
+        key.ticket.kind==OperationKind::Review && self.pending==Some(key.ticket) &&
+            key.ticket.stamp==self.stamp && self.source.as_ref().is_some_and(|s|Arc::ptr_eq(s,&key.source))
+    }
+    /// A stale failure must not cancel a different Editor or newer operation.
+    pub fn cancel_review(&mut self,key:&ReviewKey)->bool{
+        if !self.review_is_current(key){return false;}
+        self.invalidate();true
+    }
+    /// Accept only Core-produced bytes for this exact owner and operation.
+    /// This does not grant delivery: the adapter must show this PNG, then finish.
+    pub fn accept_review(&mut self,result:ReviewResult)->Result<Ticket,EditError>{
+        if !self.review_is_current(&result.key) || result.dimensions!=self.dimensions(){
+            return Err(EditError::StaleReview);
+        }
+        let ticket=result.key.ticket;self.pending_png=Some(result.bytes);Ok(ticket)
+    }
+    /// Synchronous compatibility path. Adapters still own actual display/finish.
+    pub fn begin(&mut self,kind:OperationKind)->Result<Ticket,EditError>{
+        if kind==OperationKind::Review {
+            let work=self.prepare_review()?;let key=work.key();
+            let result=work.run().and_then(|result|self.accept_review(result));
+            if result.is_err(){self.cancel_review(&key);}
+            return result;
+        }
+        self.ensure_idle()?;
+        if self.pending.is_some(){return Err(EditError::OperationPending);}
+        if !self.is_reviewed(){return Err(EditError::OutputNotReviewed);}
         let op=self.next_op;
         self.next_op=op.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         let ticket=Ticket{stamp:self.stamp,operation_id:op,kind};
-        self.pending_png=fresh_png;self.pending=Some(ticket);
+        self.pending_png=None;self.pending=Some(ticket);
         self.last_delivery=None;
         Ok(ticket)
     }
@@ -292,6 +367,7 @@ impl Editor {
     /// A result for a stale document, revision, or operation is always ignored.
     pub fn finish(&mut self,ticket:Ticket,succeeded:bool)->bool{
         if self.pending!=Some(ticket)||ticket.stamp!=self.stamp{return false;}
+        if ticket.kind==OperationKind::Review && succeeded && self.pending_png.is_none(){return false;}
         self.pending=None;
         match ticket.kind{
             OperationKind::Review=>{
@@ -320,6 +396,56 @@ mod tests{
         let t=e.begin(OperationKind::Review).unwrap();
         assert!(e.bytes_for(t).unwrap().starts_with(b"\x89PNG\r\n\x1a\n"));
         assert!(e.finish(t,true));
+    }
+    #[test] fn source_candidate_keeps_exact_validated_bytes_and_dimensions(){
+        let candidate=SourceCandidate::decode(FIX.to_vec()).unwrap();
+        assert_eq!(candidate.bytes(),FIX);assert_eq!(candidate.dimensions(),(1200,800));
+        let mut prepared=Editor::from_candidate(candidate).unwrap();
+        assert_eq!(prepared.source_bytes(),Some(FIX));assert_eq!(prepared.dimensions(),(1200,800));
+        assert!(!prepared.is_reviewed());
+        let mut synchronous=editor();reviewed(&mut prepared);reviewed(&mut synchronous);
+        assert_eq!(prepared.output_png(),synchronous.output_png());
+    }
+    #[test] fn source_candidate_replacement_revokes_old_review_and_history(){
+        let mut e=editor();reviewed(&mut e);let copy=e.begin(OperationKind::Copy).unwrap();
+        e.replace_candidate(SourceCandidate::decode(FIX.to_vec()).unwrap()).unwrap();
+        assert_eq!(e.stamp(),Stamp{document_id:2,revision:0});
+        assert!(!e.finish(copy,true) && e.bytes_for(copy).is_none());
+        assert!(e.masks().is_empty() && e.selected().is_none());
+        assert!(!e.can_undo() && !e.can_redo() && !e.is_reviewed());
+        assert!(e.output_png().is_none() && e.last_delivery().is_none());
+        e.add_mask(region()).unwrap();let work=e.prepare_review().unwrap();let key=work.key();
+        let result=work.run().unwrap();
+        e.replace_candidate(SourceCandidate::decode(FIX.to_vec()).unwrap()).unwrap();
+        assert!(!e.review_is_current(&key) && !e.cancel_review(&key));
+        assert_eq!(e.accept_review(result),Err(EditError::StaleReview));
+        let id=e.add_mask(region()).unwrap();let gesture=e.begin_gesture(id,GestureKind::Move).unwrap();
+        e.replace_candidate(SourceCandidate::decode(FIX.to_vec()).unwrap()).unwrap();
+        assert!(!e.active_gesture());assert_eq!(e.cancel_gesture(gesture),Err(EditError::WrongGesture));
+        assert_eq!(e.stamp(),Stamp{document_id:4,revision:0});
+    }
+    #[test] fn source_candidate_overflow_preserves_entire_existing_document(){
+        let mut e=editor();reviewed(&mut e);
+        e.stamp.document_id=u64::MAX;e.output.as_mut().unwrap().stamp=e.stamp;
+        let source=e.source.as_ref().unwrap().clone();let stamp=e.stamp();
+        let output=e.output_png().unwrap().to_vec();let snapshot=e.snapshot();
+        let undo=e.undo.clone();let redo=e.redo.clone();let next_mask=e.next_mask_id;
+        let copy=e.begin(OperationKind::Copy).unwrap();
+        assert_eq!(e.replace_candidate(SourceCandidate::decode(FIX.to_vec()).unwrap()),Err(EditError::IdentityOverflow));
+        assert_eq!(e.stamp(),stamp);assert_eq!(e.dimensions(),(1200,800));
+        assert!(Arc::ptr_eq(e.source.as_ref().unwrap(),&source));
+        assert_eq!(e.snapshot(),snapshot);assert_eq!(e.undo,undo);assert_eq!(e.redo,redo);
+        assert_eq!(e.next_mask_id,next_mask);assert_eq!(e.bytes_for(copy),Some(output.as_slice()));
+        assert!(e.is_reviewed() && e.finish(copy,false));
+    }
+    #[test] fn source_candidate_invalid_input_preserves_existing_review(){
+        let mut e=editor();reviewed(&mut e);let stamp=e.stamp();let snapshot=e.snapshot();
+        let output=e.output_png().unwrap().to_vec();let copy=e.begin(OperationKind::Copy).unwrap();
+        assert!(matches!(SourceCandidate::decode(b"bad image".to_vec()),Err(EditError::CoreFailure(_))));
+        assert!(matches!(e.replace_source(b"bad image".to_vec()),Err(EditError::CoreFailure(_))));
+        assert_eq!(e.stamp(),stamp);assert_eq!(e.snapshot(),snapshot);
+        assert_eq!(e.bytes_for(copy),Some(output.as_slice()));assert!(e.finish(copy,true));
+        assert_eq!(e.last_delivery(),Some((copy,true)));
     }
     #[test] fn invalid_input_never_replaces_current_document(){
         let mut e=editor();reviewed(&mut e);let stamp=e.stamp();
@@ -380,6 +506,15 @@ mod tests{
         e.cancel_gesture(g).unwrap();
         assert_eq!(e.begin(OperationKind::Copy),Err(EditError::OutputNotReviewed));
     }
+    #[test] fn new_rectangle_preview_revokes_output_without_changing_history(){
+        let mut e=editor();reviewed(&mut e);let stamp=e.stamp();
+        let copy=e.begin(OperationKind::Copy).unwrap();
+        e.begin_draw_preview().unwrap();
+        assert!(e.bytes_for(copy).is_none() && !e.finish(copy,true));
+        assert!(!e.is_reviewed() && e.last_delivery().is_none());
+        assert_eq!(e.stamp(),stamp);assert_eq!(e.masks()[0].region,region());
+        e.undo().unwrap();assert!(e.masks().is_empty());
+    }
     #[test] fn resize_eight_handles_and_noop_edit_does_not_change_revision(){
         let mut e=editor();let id=e.add_mask(region()).unwrap();let stamp=e.stamp();
         for h in [Handle::N,Handle::Ne,Handle::E,Handle::Se,Handle::S,Handle::Sw,Handle::W,Handle::Nw]{
@@ -438,5 +573,90 @@ mod tests{
         assert_eq!(e.masks()[0].region,Region::new(14,15,15,16));
         let r=e.move_mask(id,i64::MIN,i64::MAX).unwrap();assert!(r);
         assert_eq!(e.masks()[0].region,Region::new(0,799,1,800));
+    }
+    #[test] fn deferred_review_requires_accept_and_finish_before_delivery(){
+        let mut e=editor();e.add_mask(region()).unwrap();
+        let work=e.prepare_review().unwrap();let key=work.key();let ticket=key.ticket();
+        assert!(e.review_is_current(&key));assert!(e.bytes_for(ticket).is_none());
+        assert!(!e.is_reviewed());assert!(e.output_png().is_none());
+        assert!(!e.finish(ticket,true));assert!(e.review_is_current(&key));
+        assert_eq!(e.begin(OperationKind::Copy),Err(EditError::OperationPending));
+        let result=work.run().unwrap();assert_eq!(result.dimensions(),(1200,800));
+        let expected=redact(FIX,&[region()]).unwrap();assert_eq!(result.bytes(),expected);
+        assert_eq!(e.accept_review(result),Ok(ticket));assert_eq!(e.bytes_for(ticket),Some(expected.as_slice()));
+        assert!(!e.is_reviewed());assert!(e.finish(ticket,true));assert!(e.is_reviewed());
+        assert!(!e.review_is_current(&key));assert!(!e.finish(ticket,true));
+    }
+    #[test] fn deferred_equal_numbers_do_not_authorize_another_editor(){
+        let mut first=editor();let mut second=editor();
+        first.add_mask(region()).unwrap();second.add_mask(region()).unwrap();
+        let a=first.prepare_review().unwrap();let a_key=a.key();
+        let b=second.prepare_review().unwrap();let b_key=b.key();
+        assert_eq!(a_key.ticket(),b_key.ticket());
+        assert!(!second.review_is_current(&a_key));assert!(!second.cancel_review(&a_key));
+        assert!(second.review_is_current(&b_key));
+        assert_eq!(second.accept_review(a.run().unwrap()),Err(EditError::StaleReview));
+        assert!(second.review_is_current(&b_key));assert!(second.bytes_for(b_key.ticket()).is_none());
+        assert_eq!(second.accept_review(b.run().unwrap()),Ok(b_key.ticket()));
+        assert!(second.finish(b_key.ticket(),true));assert!(second.is_reviewed());
+        assert!(first.review_is_current(&a_key));
+    }
+    #[test] fn deferred_old_result_and_cleanup_preserve_new_pending(){
+        let mut e=editor();e.add_mask(region()).unwrap();
+        let old=e.prepare_review().unwrap();let old_key=old.key();let result=old.run().unwrap();
+        e.add_mask(Region::new(10,10,20,20)).unwrap();
+        let current=e.prepare_review().unwrap();let key=current.key();
+        assert_eq!(e.accept_review(result),Err(EditError::StaleReview));
+        assert!(!e.cancel_review(&old_key));assert!(e.review_is_current(&key));
+        assert_eq!(e.accept_review(current.run().unwrap()),Ok(key.ticket()));
+        assert!(e.finish(key.ticket(),true));
+    }
+    #[test] fn deferred_source_replacement_rejects_old_owned_result(){
+        let mut e=editor();e.add_mask(region()).unwrap();
+        let old=e.prepare_review().unwrap();let old_key=old.key();
+        e.replace_source(FIX.to_vec()).unwrap();e.add_mask(region()).unwrap();
+        let current=e.prepare_review().unwrap();let key=current.key();
+        assert_eq!(e.accept_review(old.run().unwrap()),Err(EditError::StaleReview));
+        assert!(!e.cancel_review(&old_key));assert!(e.review_is_current(&key));
+        assert_eq!(e.accept_review(current.run().unwrap()),Ok(key.ticket()));
+        assert!(e.finish(key.ticket(),true));
+    }
+    #[test] fn deferred_gesture_revokes_result_before_revision_changes(){
+        let mut e=editor();let id=e.add_mask(region()).unwrap();
+        let work=e.prepare_review().unwrap();let key=work.key();let stamp=e.stamp();
+        let gesture=e.begin_gesture(id,GestureKind::Move).unwrap();assert_eq!(e.stamp(),stamp);
+        assert!(!e.review_is_current(&key));assert!(!e.cancel_review(&key));
+        assert_eq!(e.accept_review(work.run().unwrap()),Err(EditError::StaleReview));
+        assert_eq!(e.active_gesture(),true);e.cancel_gesture(gesture).unwrap();
+        let retry=e.prepare_review().unwrap();let next=retry.key();
+        assert_eq!(e.accept_review(retry.run().unwrap()),Ok(next.ticket()));assert!(e.finish(next.ticket(),true));
+    }
+    #[test] fn deferred_cancelled_work_cannot_replay_into_retry(){
+        let mut e=editor();e.add_mask(region()).unwrap();
+        let old=e.prepare_review().unwrap();let old_key=old.key();
+        assert!(e.cancel_review(&old_key));assert!(!e.cancel_review(&old_key));
+        let retry=e.prepare_review().unwrap();let key=retry.key();
+        assert_eq!(e.accept_review(old.run().unwrap()),Err(EditError::StaleReview));
+        assert!(!e.cancel_review(&old_key));assert!(e.review_is_current(&key));
+        assert_eq!(e.accept_review(retry.run().unwrap()),Ok(key.ticket()));assert!(e.finish(key.ticket(),true));
+    }
+    #[test] fn deferred_failure_key_and_sync_failure_are_recoverable(){
+        let mut e=editor();e.add_mask(region()).unwrap();
+        // Controlled impossible-in-normal-intake corruption exercises Core failure cleanup.
+        e.source=Some(Arc::from(&b"synthetic invalid source"[..]));
+        let work=e.prepare_review().unwrap();let key=work.key();
+        assert!(matches!(work.run(),Err(EditError::CoreFailure(_))));
+        let mut other=editor();other.add_mask(region()).unwrap();let current=other.prepare_review().unwrap();let current_key=current.key();
+        assert_eq!(key.ticket(),current_key.ticket());
+        assert!(!other.cancel_review(&key));assert!(other.review_is_current(&current_key));
+        assert!(e.cancel_review(&key));
+        assert!(matches!(e.begin(OperationKind::Review),Err(EditError::CoreFailure(_))));
+        e.source=Some(Arc::from(FIX));
+        let recovered=e.begin(OperationKind::Review).unwrap();assert!(e.finish(recovered,true));
+        assert_eq!(other.accept_review(current.run().unwrap()),Ok(current_key.ticket()));assert!(other.finish(current_key.ticket(),true));
+    }
+    #[test] fn deferred_work_result_and_key_are_send_without_editor_clone(){
+        fn send<T:Send>(){}
+        send::<ReviewWork>();send::<ReviewResult>();send::<ReviewKey>();
     }
 }

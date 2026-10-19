@@ -1,10 +1,16 @@
 //! ShareReady headless Rust image core. ABI/presentation live in the adapters.
-use image::{DynamicImage, GenericImageView, ImageFormat, Rgba, RgbaImage};
+use image::{DynamicImage, GenericImageView, ImageDecoder, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 
 pub const MAX_INPUT_BYTES: usize = 25 * 1024 * 1024;
 pub const MAX_PIXELS: u64 = 24_000_000;
+// Locked RGBA8/Fast/no-metadata writer: filtered bytes <=5*MAX_PIXELS,
+// plus stored-deflate/PNG overhead <=120009223B. Recheck on encoder changes.
+pub const MAX_GENERATED_PNG_BYTES: usize = 128 * 1024 * 1024;
 pub const COVER: Rgba<u8> = Rgba([17, 24, 39, 255]);
+
+mod clipboard;
+pub use clipboard::{dib_to_png,MAX_DIB_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Region {
@@ -142,6 +148,66 @@ pub fn decode_source(input: &[u8]) -> Result<RgbaImage, String> {
     Ok(oriented)
 }
 
+// Validate only the current writer's IHDR/IDAT/IEND stream, not general PNG
+// input. The image decoder stops at image data and need not consume its tail.
+fn generated_chunk_stream(input:&[u8])->bool{
+    const CRC_TABLE:[u32;256]={
+        let mut table=[0;256];let mut n=0;
+        while n<256{let mut value=n as u32;let mut bit=0;
+            while bit<8{value=if value&1!=0{(value>>1)^0xedb8_8320}else{value>>1};bit+=1;}
+            table[n]=value;n+=1;
+        }
+        table
+    };
+    let mut at=8usize;let mut image_data=false;
+    while at.checked_add(12).is_some_and(|end|end<=input.len()){
+        let length=u32::from_be_bytes(input[at..at+4].try_into().unwrap()) as usize;
+        let Some(end)=at.checked_add(length).and_then(|n|n.checked_add(12)).filter(|&n|n<=input.len()) else{return false;};
+        let kind=&input[at+4..at+8];
+        let mut crc=u32::MAX;
+        for &byte in &input[at+4..end-4]{crc=CRC_TABLE[((crc^u32::from(byte))&255) as usize]^(crc>>8);}
+        if !crc!=u32::from_be_bytes(input[end-4..end].try_into().unwrap()){return false;}
+        match kind{
+            b"IHDR" if at==8 && length==13=>{},
+            b"IDAT" if at>8=>image_data=true,
+            b"IEND" if length==0 && image_data=>return end==input.len(),
+            _=>return false,
+        }
+        at=end;
+    }
+    false
+}
+
+/// Read back PNG bytes owned by a current Rust-generated artifact, never source intake.
+/// The caller must establish ownership/version; this decoder cannot prove provenance
+/// or redaction coverage. User input must continue through `decode_source`.
+pub fn decode_generated_png(input:&[u8],expected:(u32,u32))->Result<RgbaImage,String>{
+    let invalid=||"invalid generated PNG or artifact dimensions".to_string();
+    if input.len()<45 || input.len()>MAX_GENERATED_PNG_BYTES || !is_png(input) ||
+        expected.0==0 || expected.1==0 || u64::from(expected.0)*u64::from(expected.1)>MAX_PIXELS{
+        return Err(invalid());
+    }
+    // Current writer emits one noninterlaced RGBA8 image. Require its fixed
+    // header shape before a decoder allocates image storage, and a complete end.
+    if input[8..16]!=[0,0,0,13,b'I',b'H',b'D',b'R'] || input[24..29]!=[8,6,0,0,0] ||
+        input[input.len()-12..]!=[0,0,0,0,b'I',b'E',b'N',b'D',174,66,96,130]{return Err(invalid());}
+    let dimensions=(u32::from_be_bytes(input[16..20].try_into().unwrap()),
+        u32::from_be_bytes(input[20..24].try_into().unwrap()));
+    if dimensions!=expected || !generated_chunk_stream(input){return Err(invalid());}
+    let mut limits=image::Limits::default();
+    limits.max_image_width=Some(expected.0);limits.max_image_height=Some(expected.1);
+    // Decoder allocation accounting is best-effort, not an OS memory ceiling.
+    limits.max_alloc=Some(512*1024*1024);
+    let decoder=image::codecs::png::PngDecoder::with_limits(Cursor::new(input),limits)
+        .map_err(|e|format!("generated PNG header failed: {e}"))?;
+    if decoder.dimensions()!=expected || decoder.color_type()!=image::ColorType::Rgba8 ||
+        decoder.is_apng().map_err(|e|format!("generated PNG animation check failed: {e}"))?{return Err(invalid());}
+    let decoded=DynamicImage::from_decoder(decoder)
+        .map_err(|e|format!("generated PNG readback failed: {e}"))?.into_rgba8();
+    if decoded.dimensions()!=expected{return Err(invalid());}
+    Ok(decoded)
+}
+
 pub fn redact(input: &[u8], regions: &[Region]) -> Result<Vec<u8>, String> {
     // The export boundary must never produce a valid-looking PNG of an unmasked
     // source. Reject zero effective coverage even if a caller supplied rectangles
@@ -161,9 +227,7 @@ pub fn redact(input: &[u8], regions: &[Region]) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("new PNG encode failed: {e}"))?;
     let bytes = out.into_inner();
     // Fail closed if the newly encoded output cannot be reopened at its source-pixel dimensions.
-    let readback = image::load_from_memory_with_format(&bytes, ImageFormat::Png)
-        .map_err(|e| format!("new PNG readback failed: {e}"))?;
-    if readback.dimensions() != dimensions { return Err("output dimensions changed".into()); }
+    let _ = decode_generated_png(&bytes,dimensions)?;
     Ok(bytes)
 }
 
@@ -190,6 +254,58 @@ pub fn preview_png(input: &[u8]) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn encoded(image:DynamicImage,format:ImageFormat)->Vec<u8>{
+        let mut out=Cursor::new(Vec::new());image.write_to(&mut out,format).unwrap();out.into_inner()
+    }
+    #[test] fn generated_readback_rejects_a_real_rgba8_animation(){
+        let apng=include_bytes!("../../../tests/performance/fixtures/synthetic-two-frame.png");
+        assert!(decode_source(apng).is_ok(),"source decoder can read the default frame");
+        assert!(decode_generated_png(apng,(2,3)).is_err(),"a generated artifact cannot contain animation");
+    }
+    #[test] fn generated_stream_accepts_split_image_data_but_rejects_metadata(){
+        let split=include_bytes!("../../../tests/performance/fixtures/synthetic-split-idat.png");
+        assert_eq!(decode_generated_png(split,(2,3)).unwrap(),RgbaImage::from_pixel(2,3,Rgba([1,2,3,255])));
+        let metadata=include_bytes!("../../../tests/performance/fixtures/synthetic-metadata.png");
+        assert!(decode_source(metadata).is_ok());
+        assert!(decode_generated_png(metadata,(2,3)).is_err());
+    }
+    #[test] fn generated_readback_rejects_payload_after_first_end(){
+        let png=encoded(DynamicImage::ImageRgba8(RgbaImage::from_pixel(2,3,Rgba([1,2,3,255]))),ImageFormat::Png);
+        let mut accepted=Vec::new();
+        for junk in [&b""[..],&b"unexpected trailing payload"[..]]{
+            let mut extra=png.clone();extra.extend_from_slice(junk);extra.extend_from_slice(&png[png.len()-12..]);
+            assert!(decode_source(&extra).is_ok(),"default image decoder ignores trailing bytes");
+            if decode_generated_png(&extra,(2,3)).is_ok(){accepted.push(junk.len());}
+        }
+        assert!(accepted.is_empty(),"generated decoder accepted tail lengths {accepted:?}");
+    }
+    #[test] fn generated_readback_requires_expected_rgba8_png_and_preserves_pixels(){
+        let original=RgbaImage::from_pixel(2,3,Rgba([123,7,91,0]));
+        let png=encoded(DynamicImage::ImageRgba8(original.clone()),ImageFormat::Png);
+        assert_eq!(decode_generated_png(&png,(2,3)).unwrap(),original);
+        assert!(decode_generated_png(&png,(3,2)).is_err(),"must bind dimensions to current Editor");
+        assert!(decode_generated_png(&png,(0,3)).is_err());
+        assert!(decode_generated_png(&png,(24_000_001,1)).is_err());
+        let rgb=image::RgbImage::from_pixel(2,3,image::Rgb([12,13,14]));
+        assert!(decode_generated_png(&encoded(DynamicImage::ImageRgb8(rgb.clone()),ImageFormat::Png),(2,3)).is_err(),"generated encoder contract is RGBA8");
+        assert!(decode_generated_png(&encoded(DynamicImage::ImageRgb8(rgb),ImageFormat::Jpeg),(2,3)).is_err(),"no JPEG fallback for artifacts");
+        let wide=image::ImageBuffer::from_pixel(2,3,Rgba([1u16,2,3,u16::MAX]));
+        assert!(decode_generated_png(&encoded(DynamicImage::ImageRgba16(wide),ImageFormat::Png),(2,3)).is_err());
+    }
+    #[test] fn generated_readback_rejects_truncated_corrupt_and_oversized_data(){
+        let png=encoded(DynamicImage::ImageRgba8(RgbaImage::from_pixel(2,3,Rgba([1,2,3,255]))),ImageFormat::Png);
+        for bytes in [&b""[..],&b"\x89PNG\r\n\x1a\n"[..],&png[..png.len()/2],&png[..png.len()-1]]{
+            assert!(decode_generated_png(bytes,(2,3)).is_err());
+        }
+        let mut corrupt=png.clone();corrupt[44]^=1;
+        assert!(decode_generated_png(&corrupt,(2,3)).is_err());
+        let mut huge_header=png.clone();huge_header[16..20].copy_from_slice(&u32::MAX.to_be_bytes());
+        huge_header[20..24].copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(decode_generated_png(&huge_header,(2,3)).is_err());
+        let mut oversized=vec![0;MAX_GENERATED_PNG_BYTES+1];oversized[..png.len()].copy_from_slice(&png);
+        assert!(decode_generated_png(&oversized,(2,3)).is_err());
+        assert!(decode_source(&oversized[..MAX_INPUT_BYTES+1]).is_err(),"untrusted source ceiling stays 25MiB");
+    }
     #[test]
     fn negative_direction_one_pixel_and_clamp() {
         let mut im=RgbaImage::from_pixel(4,3,Rgba([1,2,3,255]));
