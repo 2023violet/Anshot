@@ -25,3 +25,48 @@ pub use windows::save_new;
 pub fn save_new(_path:&std::path::Path,_bytes:&[u8])->std::io::Result<()> {
     Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"Windows delivery adapter requires Windows"))
 }
+
+/// Physical virtual-desktop rectangle.
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub struct ScreenRect {pub x:i32,pub y:i32,pub w:i32,pub h:i32}
+impl ScreenRect {
+    pub fn contains(self,x:i32,y:i32)->bool{x>=self.x && y>=self.y && x<self.x+self.w && y<self.y+self.h}
+    pub fn intersect(self,o:ScreenRect)->Option<ScreenRect>{
+        let (l,t)=(self.x.max(o.x),self.y.max(o.y));
+        let (r,b)=((self.x+self.w).min(o.x+o.w),(self.y+self.h).min(o.y+o.h));
+        (l<r && t<b).then_some(ScreenRect{x:l,y:t,w:r-l,h:b-t})
+    }
+}
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub struct Monitor {pub bounds:ScreenRect,pub work:ScreenRect,pub primary:bool}
+/// Straight RGBA8 pixels of `area`, row-major, opaque.
+pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
+
+#[cfg(windows)]
+mod screen;
+#[cfg(windows)]
+pub use screen::{capture,claim_single_instance,cursor,monitors,spawn_hotkey,visible_windows};
+
+#[cfg(not(windows))]
+pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
+#[cfg(not(windows))]
+pub fn capture(_area:ScreenRect)->std::io::Result<Capture>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
+#[cfg(not(windows))]
+pub fn visible_windows()->Vec<ScreenRect>{Vec::new()}
+#[cfg(not(windows))]
+pub fn claim_single_instance()->bool{true}
+#[cfg(not(windows))]
+pub fn cursor()->Option<(i32,i32)>{None}
+#[cfg(not(windows))]
+pub fn spawn_hotkey(_on_press:impl Fn()+Send+'static)->std::io::Result<()>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"hotkey requires Windows"))}
+
+#[cfg(test)]
+mod rect_tests {
+    use super::ScreenRect;
+    #[test] fn intersection_and_containment_are_half_open(){
+        let a=ScreenRect{x:-1920,y:0,w:1920,h:1080};let b=ScreenRect{x:-100,y:500,w:300,h:300};
+        assert_eq!(a.intersect(b),Some(ScreenRect{x:-100,y:500,w:100,h:300}));
+        assert!(a.contains(-1,1079) && !a.contains(0,0));
+        assert_eq!(a.intersect(ScreenRect{x:0,y:0,w:10,h:10}),None);
+    }
+}

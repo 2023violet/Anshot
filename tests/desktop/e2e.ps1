@@ -21,6 +21,26 @@ public static class E {
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, uint d, IntPtr e);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  public static System.Collections.Generic.List<IntPtr> Visible(uint pid, string title) {
+    var r = new System.Collections.Generic.List<IntPtr>();
+    EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
+      if (p == pid && IsWindowVisible(h) && sb.ToString() == title) r.Add(h); return true; }, IntPtr.Zero);
+    return r;
+  }
+  // Largest visible top-level window of the process whose title mentions ShareReady.
+  public static IntPtr Editor(uint pid) {
+    IntPtr best = IntPtr.Zero; long area = 0;
+    EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
+      RECT r; if (p == pid && IsWindowVisible(h) && sb.ToString().Contains("ShareReady") && GetWindowRect(h, out r)) {
+        long a = (long)(r.R - r.L) * (r.B - r.T); if (a > area && a > 300000) { area = a; best = h; } } return true; }, IntPtr.Zero);
+    return best;
+  }
 }
 '@
 [void][E]::SetProcessDPIAware()
@@ -31,9 +51,9 @@ function Log($s) { $log.Add($s); $s }
 function Launch([string[]] $argv) {
     $p = Start-Process $Exe -ArgumentList $argv -PassThru
     $d = (Get-Date).AddSeconds(20)
-    while ((Get-Date) -lt $d) { Start-Sleep -Milliseconds 200; $p.Refresh(); if ($p.MainWindowHandle -ne 0) { break } }
-    Start-Sleep -Milliseconds 1500; $p.Refresh()
-    $h = $p.MainWindowHandle
+    $h = [IntPtr]::Zero
+    while ((Get-Date) -lt $d) { Start-Sleep -Milliseconds 200; $h = [E]::Editor([uint32]$p.Id); if ($h -ne [IntPtr]::Zero) { break } }
+    Start-Sleep -Milliseconds 1500
     [void][E]::SetWindowPos($h, [IntPtr]::Zero, -8, 0, 0, 0, 0x0015); Start-Sleep -Milliseconds 500
     [void][E]::SetForegroundWindow($h); Start-Sleep -Milliseconds 400
     $o = New-Object E+POINT; [void][E]::ClientToScreen($h, [ref]$o)
@@ -57,11 +77,27 @@ function Drag($w, $x0, $y0, $x1, $y1) {
     foreach ($i in 1..12) { [void][E]::SetCursorPos($w.O.X + $x0 + ($x1 - $x0) * $i / 12, $w.O.Y + $y0 + ($y1 - $y0) * $i / 12); Start-Sleep -Milliseconds 25 }
     Start-Sleep -Milliseconds 80; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
 }
-function Key([byte] $vk, [switch] $Ctrl) {
+function Key([byte] $vk, [switch] $Ctrl, [switch] $Shift) {
     if ($Ctrl) { [E]::keybd_event(0x11, 0, 0, [IntPtr]::Zero) }
+    if ($Shift) { [E]::keybd_event(0x10, 0, 0, [IntPtr]::Zero) }
     [E]::keybd_event($vk, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 50; [E]::keybd_event($vk, 0, 2, [IntPtr]::Zero)
+    if ($Shift) { [E]::keybd_event(0x10, 0, 2, [IntPtr]::Zero) }
     if ($Ctrl) { [E]::keybd_event(0x11, 0, 2, [IntPtr]::Zero) }
     Start-Sleep -Milliseconds 250
+}
+function ScreenDrag($x0, $y0, $x1, $y1) {
+    [void][E]::SetCursorPos($x0, $y0); Start-Sleep -Milliseconds 200
+    [E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 80
+    foreach ($i in 1..15) { [void][E]::SetCursorPos($x0 + ($x1 - $x0) * $i / 15, $y0 + ($y1 - $y0) * $i / 15); Start-Sleep -Milliseconds 25 }
+    Start-Sleep -Milliseconds 100; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+}
+function ScreenCrop($x, $y, $w, $h, [string] $name) {
+    $bmp = New-Object System.Drawing.Bitmap $w, $h; $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.CopyFromScreen($x, $y, 0, 0, (New-Object System.Drawing.Size $w, $h)); $g.Dispose(); $bmp.Save((Join-Path $Out $name)); $bmp.Dispose()
+}
+function WaitEditor($p) {
+    $d = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $d) { $p.Refresh(); $hs = [E]::Visible([uint32]$p.Id, '') ; Start-Sleep -Milliseconds 200; if ($p.MainWindowHandle -ne 0 -and [E]::IsWindowVisible($p.MainWindowHandle)) { return } }
 }
 function UiaNames($w) {
     $root = [System.Windows.Automation.AutomationElement]::FromHandle($w.H)
@@ -83,15 +119,17 @@ Shot $w '02-drawn-selected.png'
 Key 0x27; Key 0x27; Key 0x27            # Right arrow x3 -> region (521,143)-(599,163)
 Key 0x43 -Ctrl                          # Ctrl+C
 Start-Sleep -Milliseconds 1500
-Shot $w '03-copied-toast.png'
+# The editor hides after copy (U07): never screenshot its area now, it would show the real desktop.
 $names = UiaNames $w
 Log ("UIA toast=" + (($names | Where-Object { $_ -match '已复制|复制失败|内容已变化' }) -join ' | '))
 $clip = [System.Windows.Forms.Clipboard]::GetImage()
 if ($clip) { $clip.Save((Join-Path $Out 'clipboard.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "CLIPBOARD image=$($clip.Width)x$($clip.Height)" } else { Log "CLIPBOARD image=none" }
-# Close: delivered, so no dialog expected.
-[void][E]::PostMessage($w.H, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero); Start-Sleep -Milliseconds 1200
-Log "CLOSE_AFTER_COPY exited=$($w.P.HasExited)"
-if (-not $w.P.HasExited) { $w.P.Kill() }
+# 02 U07: after copy the editor hides, the process stays in the tray, a system toast shows.
+$toast = [E]::Visible([uint32]$w.P.Id, 'ShareReady')
+Log "AFTER_COPY editor_visible=$([E]::IsWindowVisible($w.H)) running=$(-not $w.P.HasExited) toast_windows=$($toast.Count)"
+# Inset by 14 px so rounded transparent corners never include desktop pixels.
+if ($toast.Count -gt 0) { $tr = New-Object E+RECT; [void][E]::GetWindowRect($toast[0], [ref]$tr); ScreenCrop ($tr.L + 14) ($tr.T + 14) ($tr.R - $tr.L - 28) ($tr.B - $tr.T - 28) '03-system-toast-inner.png' }
+$w.P.Kill(); Start-Sleep -Milliseconds 500
 
 # ---- 2. close guard with unsaved edits ----
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
@@ -117,4 +155,59 @@ Shot $w '07-pasted.png'
 Log ("PASTE status=" + (((UiaNames $w) | Where-Object { $_ -match '×|已遮挡' }) -join ' | '))
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
+# ---- 4. global hotkey capture of a synthetic window, drag-select, edit, copy ----
+$fx = 200; $fy = 150
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+[System.Windows.Forms.Clipboard]::Clear()
+$app = Start-Process $Exe -PassThru
+Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift                   # Ctrl+Shift+A (global hotkey)
+Start-Sleep -Milliseconds 1500
+$ov = [E]::Visible([uint32]$app.Id, 'ShareReady 截图')
+Log "CAPTURE overlays=$($ov.Count)"
+ScreenDrag $fx $fy ($fx + $iw) ($fy + $ih)
+# Crop strictly inside the synthetic window: only synthetic pixels are ever saved.
+ScreenCrop $fx $fy $iw $ih '08-overlay-selected-inner.png'
+Key 0x0D                                # Enter
+Start-Sleep -Milliseconds 1200
+Stop-Process -Id $fixture.Id -Force     # the top-most fixture must not cover the editor
+Start-Sleep -Milliseconds 1300
+$w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
+[void][E]::SetWindowPos($w.H, [IntPtr]::Zero, -8, 0, 0, 0, 0x0015); Start-Sleep -Milliseconds 500; [void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+$o = New-Object E+POINT; [void][E]::ClientToScreen($w.H, [ref]$o); $cr = New-Object E+RECT; [void][E]::GetClientRect($w.H, [ref]$cr)
+$w.O = $o; $w.W = $cr.R; $w.Hh = $cr.B
+Log ("CAPTURE editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+Shot $w '09-captured-in-editor.png'
+Key 0x43 -Ctrl
+Start-Sleep -Milliseconds 1500
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) { $clip.Save((Join-Path $Out 'clipboard-capture.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "CAPTURE clipboard=$($clip.Width)x$($clip.Height)" } else { Log "CAPTURE clipboard=none" }
+
+# ---- 5. click-to-snap on the synthetic window ----
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+Key 0x41 -Ctrl -Shift
+Start-Sleep -Milliseconds 1500
+[void][E]::SetCursorPos($fx + 300, $fy + 200); Start-Sleep -Milliseconds 300
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 400
+ScreenCrop $fx $fy $iw $ih '10-overlay-snapped-inner.png'
+Key 0x0D
+Start-Sleep -Milliseconds 1200
+Stop-Process -Id $fixture.Id -Force
+Start-Sleep -Milliseconds 1300
+Log ("SNAP editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+
+# ---- 6. Esc cancels the overlay ----
+Key 0x41 -Ctrl -Shift
+Start-Sleep -Milliseconds 1200
+$before = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图')).Count
+Key 0x1B
+Start-Sleep -Milliseconds 600
+Log "ESC overlays_before=$before after=$(([E]::Visible([uint32]$app.Id, 'ShareReady 截图')).Count)"
+
+if (-not $app.HasExited) { $app.Kill() }
+if (-not $fixture.HasExited) { Stop-Process -Id $fixture.Id -Force }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

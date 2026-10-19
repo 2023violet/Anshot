@@ -1,0 +1,12 @@
+LAYOUT client=1180x760 image_origin=280,196 scale=1
+UIA toast=
+CLIPBOARD image=620x430
+AFTER_COPY editor_visible=False running=True toast_windows=1
+CLOSE_GUARD exited=False dialog=True
+CLOSE_GUARD_CANCEL still_running=True
+PASTE status=620 × 430 | 已遮挡 0 处
+CAPTURE overlays=1
+CAPTURE editor_status=620 × 430
+CAPTURE clipboard=620x430
+SNAP editor_status=620 × 430
+ESC overlays_before=1 after=0

@@ -1,0 +1,49 @@
+// S0 tray (02 U05) and the standalone S4 toast shown after the editor closes.
+import { Theme } from "theme.slint";
+import { Pill } from "widgets.slint";
+
+export component Tray inherits SystemTrayIcon {
+    icon: @image-url("../assets/icon-32.png");
+    tooltip: "ShareReady · Ctrl+Shift+A 截图";
+    callback capture();
+    callback open-image();
+    callback show-editor();
+    callback about();
+    callback quit();
+    clicked => { root.capture(); }
+    Menu {
+        MenuItem { title: "截图 (Ctrl+Shift+A)"; activated => { root.capture(); } }
+        MenuItem { title: "打开图片…"; activated => { root.open-image(); } }
+        MenuItem { title: "显示编辑窗口"; activated => { root.show-editor(); } }
+        MenuSeparator { }
+        MenuItem { title: "关于"; activated => { root.about(); } }
+        MenuItem { title: "退出"; activated => { root.quit(); } }
+    }
+}
+
+export component ToastWindow inherits Window {
+    no-frame: true;
+    always-on-top: true;
+    title: "ShareReady";
+    width: 300px; height: 64px;
+    background: transparent;
+    default-font-family: Theme.font-ui;
+    in property <string> kind; // "done" | "error" | "warn"
+    in property <string> heading;
+    in property <string> detail;
+    Rectangle {
+        border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+        accessible-role: text; accessible-label: root.heading + " " + root.detail;
+        HorizontalLayout { padding-left: 14px; padding-right: 14px; spacing: 10px; alignment: start;
+            VerticalLayout { alignment: center;
+                if root.kind == "done": Pill { label: "✓ 完成"; fill: Theme.pill-done; }
+                if root.kind != "done": Rectangle { width: 18px; height: 18px; border-radius: 9px; background: root.kind == "error" ? Theme.error : Theme.warn;
+                    Text { text: "!"; color: root.kind == "error" ? white : Theme.ink; font-size: 12px; font-weight: 600; } }
+            }
+            VerticalLayout { alignment: center;
+                Text { text: root.heading; font-size: 13px; font-weight: 500; color: Theme.ink; }
+                if root.detail != "": Text { text: root.detail; font-size: 12px; color: Theme.mute; }
+            }
+        }
+    }
+}

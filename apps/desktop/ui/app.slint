@@ -1,6 +1,9 @@
 // ShareReady main window (02 S2/S3/S5, 05 H01-H16). Logic lives in Rust; this file only renders state.
 import { Theme } from "theme.slint";
 import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Shield, ToolButton, VSep } from "widgets.slint";
+import { AboutSlint } from "std-widgets.slint";
+export { CaptureOverlay, Box } from "overlay.slint";
+export { Tray, ToastWindow } from "shell.slint";
 
 export struct MaskBox { x: length, y: length, w: length, h: length, selected: bool }
 
@@ -31,7 +34,7 @@ export component AppWindow inherits Window {
     in property <string> sel-x; in property <string> sel-y; in property <string> sel-w; in property <string> sel-h;
     in property <string> toast-kind; // "", "done", "error", "warn"
     in property <string> toast-title; in property <string> toast-detail; in property <string> toast-action;
-    in property <string> dialog; // "", "close", "replace"
+    in property <string> dialog; // "", "close", "replace", "about"
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
 
@@ -179,7 +182,7 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
-                        Text { text: "截图、拖放与托盘将在后续版本加入"; font-size: 12px; color: Theme.mute; horizontal-alignment: center; }
+                        Text { text: "按 Ctrl+Shift+A 截图，或从托盘图标开始"; font-size: 12px; color: Theme.mute; horizontal-alignment: center; }
                     }
                 }
 
@@ -234,10 +237,17 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: min(400px, parent.width - 32px); height: dlay.preferred-height;
+                width: min(420px, parent.width - 32px); height: root.dialog == "about" ? 330px : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : "替换确认";
-                dlay := VerticalLayout { padding: 24px; spacing: 6px;
+                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : "替换确认";
+                if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
+                    Text { text: "关于 ShareReady（临时代号）"; font-size: 15px; font-weight: 600; color: Theme.ink; }
+                    Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
+                    Text { text: "版本 0.1.0 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
+                    Rectangle { height: 150px; AboutSlint { } }
+                    HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
+                }
+                if root.dialog != "about": dlay := VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: root.dialog == "close" ? "有未复制或保存的编辑" : "替换当前图片？"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: root.dialog == "close" ? "关闭后这些编辑会丢失。" : "当前图片有未复制或保存的编辑，替换后会丢失。"; color: Theme.body; wrap: word-wrap; }
                     HorizontalLayout { padding-top: 16px; spacing: 8px; alignment: end;

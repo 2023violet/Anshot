@@ -80,6 +80,15 @@ impl Controller {
         Ok(())
     }
 
+    /// Drop the document after the user chose to discard it.
+    pub fn close_document(&mut self) {
+        self.drag = None;
+        self.editor = None;
+        self.busy = None;
+        self.delivered = None;
+        self.source_name = None;
+    }
+
     // ---- pointer ----
     pub fn pointer_down(&mut self, p: Point) {
         if self.busy.is_some() || self.drag.is_some() { return; }
