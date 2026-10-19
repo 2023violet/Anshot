@@ -1,0 +1,17 @@
+{
+  "license": "MIT",
+  "origin": "project-generated synthetic pseudorandom RGB pixels; no user image",
+  "size": [
+    3000,
+    3000
+  ],
+  "seed": 5460562,
+  "generator": "Python random.Random(seed).randbytes(width*height*3)",
+  "python": "3.12.14",
+  "pillow": "12.3.0",
+  "jpeg_quality": 90,
+  "jpeg_subsampling": 2,
+  "bytes": 8077834,
+  "sha256": "b190d5da92519c12034032004c2c033cbda8296a7ebfd23dd298002dcefecd40",
+  "scope": "9MP generated-artifact readback counterexample; not all high-entropy24MP coverage"
+}

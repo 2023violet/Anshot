@@ -1,0 +1,28 @@
+{
+  "license": "MIT",
+  "origin": "project synthetic RGBA8 two-frame PNG",
+  "size": [
+    2,
+    3
+  ],
+  "frames": 2,
+  "rgba": [
+    [
+      1,
+      2,
+      3,
+      255
+    ],
+    [
+      200,
+      100,
+      50,
+      255
+    ]
+  ],
+  "duration_ms": 100,
+  "loop": 0,
+  "pillow": "12.3.0",
+  "bytes": 211,
+  "sha256": "7f91d137c23ab4701a5931c1cd407a604c620f4ac7284a3669b24ba2d1b4d412"
+}

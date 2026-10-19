@@ -37,7 +37,8 @@ def main(args):
     if not args.capture:
         assert contract["status"]=="FROZEN"
         assert all(e["expected_pixel_sha256"] for e in contract["cases"])
-    exe=ROOT/"target/release/shareready-e1"
+    suffix=".exe" if os.name=="nt" else ""
+    exe=ROOT/("target/release/shareready-e1"+suffix)
     assert exe.is_file(),"cargo build --release --locked --manifest-path e1-spike/Cargo.toml first"
     results=[]
     with tempfile.TemporaryDirectory(prefix="shareready-v2-golden-") as out:
@@ -55,7 +56,7 @@ def main(args):
                 # JPEG decoders can differ by rounding and IDCT/color conversion.
                 # Freeze V1 Rust's EXIF-normalized source pixels; Pillow still independently
                 # composes mask truth and decodes/compares every output pixel.
-                preview_bin=ROOT/"target/release/examples/v1_baseline_preview"
+                preview_bin=ROOT/("target/release/examples/v1_baseline_preview"+suffix)
                 assert preview_bin.is_file(),"Build V1 Rust preview example first"
                 preview=Path(out)/(n+"-normalized.png")
                 p0=subprocess.run([str(preview_bin),str(path),str(preview)],capture_output=True,text=True,timeout=120)

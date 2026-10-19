@@ -1,0 +1,17 @@
+{
+  "license": "MIT",
+  "origin": "project synthetic RGBA8(1,2,3,255)2x3 PNGs",
+  "pillow": "12.3.0",
+  "metadata": "tEXt fixture=synthetic-public",
+  "split_rule": "split IDAT body in half into two consecutive IDATs, independent stdlib CRC32",
+  "files": {
+    "synthetic-metadata.png": {
+      "bytes": 114,
+      "sha256": "ad8422d81ecb1602a721ca8382c8ee5a664437eabd7e7445b9c5f270ea67c69f"
+    },
+    "synthetic-split-idat.png": {
+      "bytes": 90,
+      "sha256": "c723e3639c48f90b512398b5826e9cce0d27ce0bc982b77957eab0a641753b9e"
+    }
+  }
+}
