@@ -346,13 +346,15 @@ $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0xBC -Ctrl                            # Ctrl+,
 Start-Sleep -Milliseconds 500
 Log "SETTINGS dialog=$(((UiaNames $w) -contains '设置'))"
-Log "SETTINGS pick_hotkey=$(Invoke-Uia $w 'Ctrl+Alt+A') pick_stay=$(Invoke-Uia $w '保留编辑窗')"
+# Ctrl+Alt+A is often owned by another app (e.g. QQ); then ShareReady must keep the old key and say so.
+[void](Invoke-Uia $w 'Ctrl+Alt+A')
+Log "SETTINGS taken_key_warning=$(((UiaNames $w) -match '被其他程序占用').Count -gt 0)"
+Log "SETTINGS pick_hotkey=$(Invoke-Uia $w 'Ctrl+Shift+X') pick_stay=$(Invoke-Uia $w '保留编辑窗')"
 Shot $w '13-settings.png'
 Key 0x1B
 $sf = Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'
 Log ("SETTINGS file=" + ((Get-Content $sf -ErrorAction SilentlyContinue) -join ' | '))
-[E]::keybd_event(0x11, 0, 0, [IntPtr]::Zero); [E]::keybd_event(0x12, 0, 0, [IntPtr]::Zero); [E]::keybd_event(0x41, 0, 0, [IntPtr]::Zero)
-Start-Sleep -Milliseconds 50; [E]::keybd_event(0x41, 0, 2, [IntPtr]::Zero); [E]::keybd_event(0x12, 0, 2, [IntPtr]::Zero); [E]::keybd_event(0x11, 0, 2, [IntPtr]::Zero)
+Key 0x58 -Ctrl -Shift                     # Ctrl+Shift+X, the newly chosen hotkey
 Start-Sleep -Milliseconds 1200
 Log "SETTINGS new_hotkey_overlays=$(([E]::Visible([uint32]$w.P.Id, 'ShareReady 截图')).Count)"
 Key 0x1B; Start-Sleep -Milliseconds 500
@@ -392,5 +394,119 @@ Key 0x0D
 Shot $w '14-multiline.png'
 Log "MULTILINE copy=$(CopyTo 'clipboard-multiline.png')"
 if (-not $w.P.HasExited) { $w.P.Kill() }
+
+Start-Sleep -Milliseconds 500
+
+# ---- 15. (0.1.1 R1) the editor leaves the screen before the freeze and returns on Esc ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ov = ([E]::Visible([uint32]$w.P.Id, 'ShareReady 截图')).Count
+Log "HIDE overlays=$ov editor_visible_during_capture=$([E]::IsWindowVisible($w.H))"
+Key 0x1B; Start-Sleep -Milliseconds 800
+Log "HIDE editor_visible_after_esc=$([E]::IsWindowVisible($w.H))"
+
+# ---- 16. (R3) hovering a tool shows its tooltip ----
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+[void][E]::SetCursorPos($w.O.X + 160, $w.O.Y + 26); Start-Sleep -Milliseconds 100
+[void][E]::SetCursorPos($w.O.X + 169, $w.O.Y + 26); Start-Sleep -Milliseconds 1200
+Shot $w '15-tooltip.png'
+[void][E]::SetCursorPos($w.O.X + 600, $w.O.Y + 700); Start-Sleep -Milliseconds 300
+
+# ---- 17. (R4) Shift while drawing a redaction gives a square ----
+$io = ImageOrigin $w $iw $ih
+[E]::keybd_event(0x10, 0, 0, [IntPtr]::Zero)
+Drag $w ($io.X + 300) ($io.Y + 300) ($io.X + 360) ($io.Y + 320)
+[E]::keybd_event(0x10, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 200
+Log "SHIFT copy=$(CopyTo 'clipboard-shift-square.png')"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 18. (R2) unreadable files get plain wording ----
+$broken = Join-Path $Out 'broken.png'
+[System.IO.File]::WriteAllBytes($broken, [byte[]](0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A) + [System.Text.Encoding]::ASCII.GetBytes('not really a png'))
+foreach ($case in @(@('broken', $broken), @('missing', (Join-Path $Out 'no-such-file.png')))) {
+    $w = Launch @("`"$($case[1])`"")
+    Start-Sleep -Milliseconds 800
+    $names = (UiaNames $w) -join ' | '
+    $raw = $names -match 'CoreFailure|os error|ChunkType|\{'
+    $msg = (UiaNames $w) | Where-Object { $_ -match '不是有效|找不到' } | Select-Object -First 1
+    Log "ERRORS case=$($case[0]) message=$msg raw_text=$raw"
+    if (-not $w.P.HasExited) { $w.P.Kill() }
+    Start-Sleep -Milliseconds 500
+}
+[System.IO.File]::Delete($broken)
+
+# ---- 19. (R5) start at login: written to a scratch key only, --background stays in the tray ----
+$env:SHAREREADY_RUN_KEY = 'Software\ShareReady-e2e\Run'
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Key 0xBC -Ctrl; Start-Sleep -Milliseconds 500
+Log "AUTOSTART on=$(Invoke-Uia $w '登录后在托盘待命')"
+$val = (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name ShareReady -ErrorAction SilentlyContinue).ShareReady
+Log "AUTOSTART value_has_exe=$($val -like "*$(Split-Path $Exe -Leaf)*") background=$($val -like '* --background')"
+Shot $w '16-settings-autostart.png'
+Log "AUTOSTART off=$(Invoke-Uia $w '不启动')"
+$gone = $null -eq (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name ShareReady -ErrorAction SilentlyContinue)
+Log "AUTOSTART removed=$gone"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+$p = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 3
+Log "BACKGROUND running=$(-not $p.HasExited) editor_windows=$(if ([E]::Editor([uint32]$p.Id) -eq [IntPtr]::Zero) { 0 } else { 1 })"
+if (-not $p.HasExited) { $p.Kill() }
+Remove-Item -Path 'HKCU:\Software\ShareReady-e2e' -Recurse -ErrorAction SilentlyContinue
+Remove-Item Env:SHAREREADY_RUN_KEY
+Start-Sleep -Milliseconds 500
+
+# ---- 20. (R6) capture selection: drag the corner to resize, drag inside to move ----
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru
+Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1500
+ScreenDrag ($fx + 100) ($fy + 100) ($fx + 300) ($fy + 200)
+ScreenDrag ($fx + 300) ($fy + 200) ($fx + 340) ($fy + 230)
+ScreenDrag ($fx + 200) ($fy + 150) ($fx + 220) ($fy + 160)
+ScreenCrop $fx $fy $iw $ih '17-overlay-adjusted-inner.png'
+Key 0x0D; Start-Sleep -Milliseconds 1200
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 1300
+$w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+Log ("ADJUST editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+Log "ADJUST copy=$(CopyTo 'clipboard-adjusted.png')"
+if (-not $app.HasExited) { $app.Kill() }
+
+Start-Sleep -Milliseconds 500
+
+# ---- 21. (R1, pixels) a full-screen capture taken while the editor is open never contains the editor ----
+# A synthetic backdrop fills the primary screen behind the editor. Captured pixels are compared in
+# memory only and never written to disk (other apps' top-most windows could be in them).
+$sb = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$backdrop = Join-Path $Out 'backdrop-synthetic.png'
+$bmp = New-Object System.Drawing.Bitmap $sb.Width, $sb.Height; $g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.Clear([System.Drawing.Color]::FromArgb(52, 58, 70)); $tile = [System.Drawing.Image]::FromFile((Resolve-Path $Image))
+for ($ty = 0; $ty -lt $sb.Height; $ty += $tile.Height + 37) { for ($tx = 0; $tx -lt $sb.Width; $tx += $tile.Width + 53) { $g.DrawImageUnscaled($tile, $tx, $ty) } }
+$tile.Dispose(); $g.Dispose(); $bmp.Save($backdrop, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$backdrop`"", '-X', 0, '-Y', 0, '-Behind') -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+[void][E]::SetCursorPos($w.O.X + 400, $w.O.Y + 300); Start-Sleep -Milliseconds 200
+Key 0x0D; Start-Sleep -Milliseconds 2000            # Enter: the whole screen
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 500
+[System.Windows.Forms.Clipboard]::Clear(); Key 0x43 -Ctrl; Start-Sleep -Milliseconds 2000
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) {
+    $cb = New-Object System.Drawing.Bitmap $clip; $ref = New-Object System.Drawing.Bitmap $backdrop
+    $n = 0; $bad = 0
+    for ($y = $w.O.Y + 2; $y -lt [math]::Min($w.O.Y + $w.Hh - 2, $cb.Height); $y += 7) {
+        for ($x = [math]::Max(0, $w.O.X + 2); $x -lt [math]::Min($w.O.X + $w.W - 2, $cb.Width); $x += 7) {
+            $n++; if ($cb.GetPixel($x, $y).ToArgb() -ne $ref.GetPixel($x, $y).ToArgb()) { $bad++ }
+        }
+    }
+    Log "FREEZE capture=$($cb.Width)x$($cb.Height) editor_area_samples=$n mismatches=$bad"
+    $cb.Dispose(); $ref.Dispose(); $clip.Dispose()
+} else { Log "FREEZE capture=none" }
+[System.Windows.Forms.Clipboard]::Clear()
+if (-not $w.P.HasExited) { $w.P.Kill() }
+[System.IO.File]::Delete($backdrop)
 
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

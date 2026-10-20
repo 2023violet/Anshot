@@ -128,3 +128,14 @@
 | 中文输入法（`tests/desktop/ime.ps1`） | 微软拼音真实按键：nihao → 候选栏出现 → 空格选“你好”；组字中输入 ma 按 Enter → 字母上屏、文字框仍在编辑；再按 Enter 提交；读回“你好ma”，区外 0 差异，文字区 54 个红色像素 |
 
 **未验证**：PrtSc 被其他软件占用时的提示文案只经代码审查。
+
+## B6 — 0.1.1 打磨批次（代理确认，2026-10-20）
+来源：`07_AGENT_PRODUCT_REVIEW.md` 的 R1–R6。
+- **R1** `begin_capture` 先隐藏编辑窗，下一帧调用 `DwmFlush` ×2 再冻结屏幕；Esc / 右键 / 失败路径恢复编辑窗；等待期间托盘的“显示编辑窗”被推迟到截图结束。
+- **R2** 新增 `messages.rs`：所有失败提示经此映射，界面不出现 Rust Debug 文本、系统错误码或解码器内部信息。
+- **R3** `widgets.slint` 全局 `Tip` + `app.slint` 顶层提示条（450 ms 延迟、对话框打开时不显示）。
+- **R4** `platform::shift_down()`（GetKeyState）在每次拖动移动时读取；`square` / `snap45` / `lock_axis` 为纯函数并有单测。
+- **R5** `platform-windows/autostart.rs`：HKCU `…\CurrentVersion\Run` 下名为 ShareReady 的值（RegSetKeyValueW / RegGetValueW / RegDeleteKeyValueW），无提权；测试用 `SHAREREADY_RUN_KEY` 改写到临时键。`--background` 启动不显示编辑窗。
+- **R6** `capture.rs` 新增 `Grab::{New, Move, Edge}`、覆盖层八个手柄与指针形状；控制器新增 `Drag::CropAdjust`，复用 `PixelRect::resize / translate`（限制在图像内）。
+- 版本号 0.1.1；exe 32,801,280 字节；SHA256 `fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f`。单测：根 workspace 86 项、desktop 32 项全部通过；V1 冻结金样本通过。
+- 性能修正：首版 R1 用固定 150 ms 等待，导致“编辑窗打开时快捷键→覆盖层”208–232 ms 超出 200 ms 目标；改为合成器刷新后为 89–106 ms。

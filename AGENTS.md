@@ -2,7 +2,7 @@
 
 ## Project truth and scope
 
-- **Product 0.1.0 implemented (2026-10-19).** ShareReady is a Rust-trusted Windows desktop tool for *capture → annotate → redact → share*, built in `apps/desktop` (Slint 1.18.1) over `crates/shareready-{core,render,editor,platform-windows}`. Stages 01–07 are documented in `ui-design/`; Gates 01–05 were user-confirmed, Gates 06–07 agent-confirmed under the user's 2026-10-19 delegation (ACCEPT_WITH_LIMITS). It is unsigned and unreleased; human, multi-monitor/DPI and Narrator tests remain NOT_VERIFIED.
+- **Product 0.1.1 implemented (2026-10-19; 0.1.1 polish 2026-10-20).** ShareReady is a Rust-trusted Windows desktop tool for *capture → annotate → redact → share*, built in `apps/desktop` (Slint 1.18.1) over `crates/shareready-{core,render,editor,platform-windows}`. Stages 01–07 are documented in `ui-design/`; Gates 01–05 were user-confirmed, Gates 06–07 agent-confirmed under the user's 2026-10-19 delegation (ACCEPT_WITH_LIMITS). It is unsigned and unreleased; human, multi-monitor/DPI and Narrator tests remain NOT_VERIFIED.
 - The V1.3 editor (`web-app/`, `desktop-windows/`, `e1-spike/`) and the V2-03 egui prototype (`poc/native-egui/`) are **frozen historical references**: keep them building, add no new features, do not delete them without express user confirmation. Snapshot: local tag `pre-redesign-2026-10-19`.
 - Positioning: learning / portfolio project. Do not present release, security audit, or human usability testing as complete when they are not.
 - The name **ShareReady is temporary**; an existing product uses a similar name. Do not assert brand clearance.

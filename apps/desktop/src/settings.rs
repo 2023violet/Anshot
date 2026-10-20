@@ -47,8 +47,8 @@ impl Settings {
     }
     pub fn save(&self) -> Result<(), String> {
         let f = Self::file().ok_or("找不到设置目录")?;
-        if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }
-        std::fs::write(f, self.render()).map_err(|e| e.to_string())
+        if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| crate::messages::write_file(e.kind()))?; }
+        std::fs::write(f, self.render()).map_err(|e| crate::messages::write_file(e.kind()))
     }
 }
 

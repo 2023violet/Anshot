@@ -1,8 +1,9 @@
-EXE sha256=2786bd7487ee18f62923a5bad38411f34cfa81f88c32cba1061cbb1f06087b10 path=ShareReady.exe
-STARTUP_MS runs=511,490,469
-HOTKEY_TO_OVERLAY_MS runs=82,38,40
-OPEN_24MP_MS from_launch=376
-COPY_24MP_MS ctrl_c_to_clipboard=335
+EXE sha256=fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f path=ShareReady.exe
+STARTUP_MS runs=537,542,483
+HOTKEY_TO_OVERLAY_MS mode=tray runs=55,93,49
+HOTKEY_TO_OVERLAY_MS mode=editor_open runs=106,101,89
+OPEN_24MP_MS from_launch=283
+COPY_24MP_MS ctrl_c_to_clipboard=373
 COPY_24MP size=6000x4000
-MEMORY_24MP peak_working_set_mb=406
+MEMORY_24MP peak_working_set_mb=407
 NETWORK endpoints_seen=0 

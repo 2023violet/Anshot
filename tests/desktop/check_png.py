@@ -4,6 +4,7 @@ python tests/desktop/check_png.py chunks <file.png>            -> only IHDR/IDAT
 python tests/desktop/check_png.py same <a.png> <b.png>         -> identical RGB pixels
 python tests/desktop/check_png.py colour <file.png> rrggbb min  -> at least `min` pixels of that colour
 python tests/desktop/check_png.py band <file.png> x0 y0 x1 y1 rrggbb min -> near-colour count inside a box
+python tests/desktop/check_png.py crop <src.png> x y <file.png>     -> file equals the source crop at (x, y)
 """
 import struct
 import sys
@@ -54,6 +55,12 @@ def main():
         n = count(img, box, c, tol=90)  # anti-aliased glyph edges
         print(f"BAND {box} {a[5]} count={n}")
         return 0 if n >= int(a[6]) else 1
+    if mode == "crop":
+        src, x, y, img = rgb(a[0]), int(a[1]), int(a[2]), rgb(a[3])
+        part = src.crop((x, y, x + img.size[0], y + img.size[1]))
+        diff = sum(1 for p, q in zip(part.tobytes(), img.tobytes()) if p != q)
+        print(f"CROP at={x},{y} size={img.size[0]}x{img.size[1]} diff={diff}")
+        return 0 if diff == 0 else 1
     raise SystemExit("unknown mode")
 
 

@@ -37,8 +37,10 @@ pub enum Grip { Box(Handle), ArrowFrom, ArrowTo }
 enum Drag {
     Draw { start: Point, current: Point },
     Crop { start: Point, current: Point },
+    /// Adjust the crop draft: a handle resizes, the inside moves (0.1.1 R6).
+    CropAdjust { start: Point, current: Point, base: Region, handle: Option<Handle> },
     Pan { start: Point, origin: (f64, f64) },
-    Mask { ticket: GestureTicket, start: Point, id: u64, preview: Option<Region> },
+    Mask { ticket: GestureTicket, start: Point, id: u64, preview: Option<Region>, moving: bool },
     Ann { id: u64, start: Point, base: Annotation, grip: Option<Grip>, preview: Annotation },
 }
 
@@ -73,12 +75,14 @@ pub struct Controller {
     pan: Option<(f64, f64)>,
     /// Space held: left-drag pans instead of editing.
     pub space_pan: bool,
+    /// Shift held during a drag: square boxes, 45° arrows, axis-locked moves.
+    pub shift: bool,
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false }
     }
 }
 
@@ -101,6 +105,25 @@ fn translate(a: &Annotation, dx: f32, dy: f32) -> Annotation {
     }
     a
 }
+/// Shift while drawing a box: the larger side wins, keeping the drag direction.
+pub fn square(start: Point, p: Point) -> Point {
+    let (dx, dy) = (p.x - start.x, p.y - start.y);
+    let side = dx.abs().max(dy.abs());
+    Point { x: start.x + side.copysign(dx), y: start.y + side.copysign(dy) }
+}
+/// Shift while drawing an arrow: snap to the nearest multiple of 45°, keeping the length.
+pub fn snap45(start: Point, p: Point) -> Point {
+    let (dx, dy) = (p.x - start.x, p.y - start.y);
+    let len = (dx * dx + dy * dy).sqrt();
+    let step = std::f64::consts::FRAC_PI_4;
+    let a = (dy.atan2(dx) / step).round() * step;
+    Point { x: start.x + len * a.cos(), y: start.y + len * a.sin() }
+}
+/// Shift while moving: keep only the dominant axis.
+pub fn lock_axis(start: Point, p: Point) -> Point {
+    if (p.x - start.x).abs() >= (p.y - start.y).abs() { Point { x: p.x, y: start.y } } else { Point { x: start.x, y: p.y } }
+}
+
 fn seg_dist(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     let (vx, vy, wx, wy) = (b.0 - a.0, b.1 - a.1, p.0 - a.0, p.1 - a.1);
     let len = vx * vx + vy * vy;
@@ -165,6 +188,7 @@ impl Controller {
     // ---- hit testing (canvas px) ----
     pub fn grips(&self) -> Vec<(Grip, (f64, f64))> {
         let (Some(e), Some(v)) = (self.editor.as_ref(), self.view()) else { return Vec::new() };
+        if self.tool == Tool::Crop { return self.crop_box().map(|r| box_grips(v.rect(r))).unwrap_or_default(); }
         let Some(id) = e.selected() else { return Vec::new() };
         if let Some(r) = self.display_masks().into_iter().find(|m| m.0 == id).map(|m| m.1) { return box_grips(v.rect(r)); }
         let sc = |x: f32, y: f32| (v.x + f64::from(x) * v.scale, v.y + f64::from(y) * v.scale);
@@ -207,7 +231,13 @@ impl Controller {
         if self.busy.is_some() || self.drag.is_some() || self.text_edit.is_some() { return; }
         if self.space_pan { self.begin_pan(p); return; }
         if self.tool == Tool::Crop {
-            if self.editor.as_mut().is_some_and(|e| e.begin_draw_preview().is_ok()) { self.drag = Some(Drag::Crop { start: p, current: p }); }
+            let adjust = self.crop_grab(p);
+            if self.editor.as_mut().is_some_and(|e| e.begin_draw_preview().is_ok()) {
+                self.drag = Some(match adjust {
+                    Some((base, handle)) => Drag::CropAdjust { start: p, current: p, base, handle },
+                    None => Drag::Crop { start: p, current: p },
+                });
+            }
             return;
         }
         let hit = self.hit(p);
@@ -223,7 +253,7 @@ impl Controller {
     }
     fn begin_mask_drag(&mut self, id: u64, kind: GestureKind, p: Point) {
         if let Some(Ok(ticket)) = self.editor.as_mut().map(|e| e.begin_gesture(id, kind)) {
-            self.drag = Some(Drag::Mask { ticket, start: p, id, preview: None });
+            self.drag = Some(Drag::Mask { ticket, start: p, id, preview: None, moving: matches!(kind, GestureKind::Move) });
         }
     }
     fn begin_ann_drag(&mut self, id: u64, p: Point, grip: Option<Grip>) {
@@ -250,18 +280,29 @@ impl Controller {
     pub fn pointer_move(&mut self, p: Point) {
         let Some(view) = self.view() else { return };
         let (w, h) = self.editor.as_ref().map_or((1, 1), |e| e.dimensions());
+        let (shift, tool) = (self.shift, self.tool);
         match self.drag.as_mut() {
-            Some(Drag::Draw { current, .. }) | Some(Drag::Crop { current, .. }) => *current = p,
+            Some(Drag::CropAdjust { current, .. }) => *current = p,
+            Some(Drag::Draw { start, current }) | Some(Drag::Crop { start, current }) => {
+                *current = match (shift, tool) {
+                    (false, _) => p,
+                    (true, Tool::Arrow) => snap45(*start, p),
+                    (true, _) => square(*start, p),
+                };
+            }
             Some(Drag::Pan { start, origin }) => {
                 let o = (origin.0 + p.x - start.x, origin.1 + p.y - start.y);
                 self.pan = Some(o);
                 self.settle_pan();
             }
-            Some(Drag::Mask { ticket, start, preview, .. }) => {
+            Some(Drag::Mask { ticket, start, preview, moving, .. }) => {
+                // Axis lock applies to moves only; a resize keeps both directions.
+                let p = if shift && *moving { lock_axis(*start, p) } else { p };
                 let (dx, dy) = view.source_delta(*start, p);
                 if let Some(e) = self.editor.as_mut() { *preview = e.preview_gesture(*ticket, dx, dy).ok(); }
             }
             Some(Drag::Ann { start, base, grip, preview, .. }) => {
+                let p = if shift && grip.is_none() { lock_axis(*start, p) } else { p };
                 let (dx, dy) = (((p.x - start.x) / view.scale) as f32, ((p.y - start.y) / view.scale) as f32);
                 *preview = match grip {
                     None => translate(base, dx, dy),
@@ -296,6 +337,7 @@ impl Controller {
                     if (r.x1 - r.x0) > 1 && (r.y1 - r.y0) > 1 { self.crop_draft = Some(r); }
                 }
             }
+            Some(Drag::CropAdjust { start, current, base, handle }) => { self.crop_draft = self.crop_adjusted(start, current, base, handle).or(Some(base)); }
             Some(Drag::Mask { ticket, .. }) => { if let Some(e) = self.editor.as_mut() { let _ = e.commit_gesture(ticket); } }
             Some(Drag::Ann { id, preview, base, .. }) => {
                 if preview != base { if let Some(e) = self.editor.as_mut() { let _ = e.replace_annotation(id, preview); } }
@@ -474,11 +516,27 @@ impl Controller {
         self.tool = Tool::Select;
         self.editor.as_mut().is_some_and(|e| e.set_crop(draft).unwrap_or(false))
     }
+    /// A press on the crop draft: its handle, or `None` inside it (move).
+    fn crop_grab(&self, p: Point) -> Option<(Region, Option<Handle>)> {
+        let (r, v) = (self.crop_draft?, self.view()?);
+        for (g, (gx, gy)) in box_grips(v.rect(r)) {
+            if let Grip::Box(h) = g { if (p.x - gx).abs() < HANDLE_HIT_HALF && (p.y - gy).abs() < HANDLE_HIT_HALF { return Some((r, Some(h))); } }
+        }
+        let (x, y, w, h) = v.rect(r);
+        (p.x >= x && p.x < x + w && p.y >= y && p.y < y + h).then_some((r, None))
+    }
+    fn crop_adjusted(&self, start: Point, current: Point, base: Region, handle: Option<Handle>) -> Option<Region> {
+        let (v, (w, h)) = (self.view()?, self.editor.as_ref()?.dimensions());
+        let (dx, dy) = v.source_delta(start, current);
+        let r = PixelRect::from_region(base, w, h)?;
+        Some(match handle { Some(hd) => r.resize(hd, dx, dy, w, h), None => r.translate(dx, dy, w, h) }.region())
+    }
     pub fn cancel_crop(&mut self) { self.crop_draft = None; self.tool = Tool::Select; }
     /// Crop rectangle to show on the canvas (live drag, draft, or applied crop).
     pub fn crop_box(&self) -> Option<Region> {
         let view = self.view()?;
         if let Some(Drag::Crop { start, current }) = &self.drag { return view.viewport().pixel_region(*start, *current).ok(); }
+        if let Some(Drag::CropAdjust { start, current, base, handle }) = &self.drag { return self.crop_adjusted(*start, *current, *base, *handle); }
         if self.tool == Tool::Crop { return self.crop_draft; }
         self.editor.as_ref()?.crop()
     }
@@ -582,13 +640,13 @@ impl Controller {
         let fail = |detail: String| Notice::Failed { title: "无法生成图片".into(), detail };
         let result = match result {
             Ok(r) => r,
-            Err(err) => { e.cancel_review(&key); return Err(fail(format!("{err:?}"))); }
+            Err(err) => { e.cancel_review(&key); return Err(fail(crate::messages::edit(&err))); }
         };
         if !e.review_is_current(&key) { return Err(Notice::Changed); }
         let review = e.accept_review(result).map_err(|_| Notice::Changed)?;
         if !e.finish(review, true) { return Err(Notice::Changed); }
         let op = match kind { Delivery::Copy => OperationKind::Copy, Delivery::Save => OperationKind::Save };
-        let ticket = e.begin(op).map_err(|err| fail(format!("{err:?}")))?;
+        let ticket = e.begin(op).map_err(|err| fail(crate::messages::edit(&err)))?;
         Ok((kind, ticket))
     }
     /// Hand the exact rendered bytes to the platform writer and record the outcome.

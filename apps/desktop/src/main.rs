@@ -8,6 +8,7 @@ mod canvas;
 mod capture;
 mod controller;
 mod display;
+mod messages;
 mod platform;
 mod settings;
 
@@ -55,6 +56,10 @@ struct App {
     base: Option<(RgbaImage, f32)>,
     settings: settings::Settings,
     hotkey: Option<shareready_platform_windows::HotkeyHandle>,
+    /// The editor was hidden for a capture and comes back if the capture is cancelled.
+    restore_editor: bool,
+    /// A capture waits for the hidden editor to leave the screen.
+    capture_pending: bool,
 }
 
 fn to_image(img: &RgbaImage) -> Image {
@@ -207,7 +212,7 @@ impl App {
     }
     fn apply_source(&mut self, candidate: SourceCandidate, preview: RgbaImage, name: Option<String>) {
         if let Err(e) = self.ctl.accept_source(candidate, name) {
-            self.toast("error", "无法打开", &format!("{e:?}"), None);
+            self.toast("error", "无法打开", &messages::intake(&e), None);
             return;
         }
         self.after_copy = AfterCopy::Stay;
@@ -231,7 +236,7 @@ impl App {
             Err(EditError::NoEffectiveMask) => { self.toast("warn", "还没有遮挡", "先用遮挡工具框住要隐藏的内容", None); false }
             Err(EditError::OperationPending) => { self.toast("warn", "正在处理", "请等上一次复制或保存完成", None); false }
             Err(EditError::GestureInProgress) => { self.toast("warn", "正在拖动", "请先松开鼠标或按 Esc", None); false }
-            Err(e) => { self.toast("error", "无法开始", &format!("{e:?}"), None); false }
+            Err(e) => { self.toast("error", "无法开始", &messages::edit(&e), None); false }
         };
         self.refresh();
         started
@@ -356,6 +361,8 @@ impl App {
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
     }
     fn show_editor(&mut self) {
+        // While the screen is about to be frozen, defer: the capture restores it on cancel.
+        if self.capture_pending { self.restore_editor = true; return; }
         if let Some(ui) = self.ui() { let _ = ui.show(); }
         self.refresh();
     }
@@ -390,29 +397,42 @@ impl App {
 
     // ---- capture (02 S1) ----
     fn begin_capture(&mut self) {
-        if self.session.is_some() { return; }
+        if self.session.is_some() || self.capture_pending { return; }
         if let Some(t) = self.toast_win.as_ref() { let _ = t.hide(); }
+        // Never freeze our own editor into the shot: hide it, let the event loop apply the
+        // hide, then wait for the compositor to present the desktop without it.
+        let visible = self.ui().is_some_and(|ui| ui.window().is_visible());
+        self.restore_editor = visible;
+        if !visible { self.freeze_screen(); return; }
+        if let Some(ui) = self.ui() { let _ = ui.hide(); }
+        self.capture_pending = true;
+        slint::Timer::single_shot(Duration::from_millis(16), || {
+            shareready_platform_windows::wait_for_compositor();
+            with(|a| { a.capture_pending = false; a.freeze_screen(); });
+        });
+    }
+    fn freeze_screen(&mut self) {
         let monitors = match shareready_platform_windows::monitors() {
             Ok(m) => m,
-            Err(e) => { self.show_editor(); self.toast("error", "无法截图", &format!("无法读取显示器（{e}）"), None); return; }
+            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法读取显示器信息，请重试", None); return; }
         };
-        let Some(area) = capture::union(&monitors) else { return };
+        let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
         let frozen = match shareready_platform_windows::capture(area) {
             Ok(c) => c,
-            Err(e) => { self.show_editor(); self.toast("error", "无法截图", &format!("系统拒绝访问屏幕（{e}）"), None); return; }
+            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "系统拒绝读取屏幕（锁屏或安全桌面时无法截图）", None); return; }
         };
         let session = capture::Session::new(frozen, monitors.clone(), shareready_platform_windows::visible_windows());
         let mut overlays = Vec::new();
         for (i, m) in monitors.iter().copied().enumerate() {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
-            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.show_editor(); self.toast("error", "无法截图", "显示器区域无效", None); return; };
+            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "显示器区域无效", None); return; };
             if self.overlay_pool.len() <= i {
-                let Ok(win) = CaptureOverlay::new() else { self.end_capture(); self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
+                let Ok(win) = CaptureOverlay::new() else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
                 win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
                 win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
                 win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
                 win.on_confirm(|| { with(|a| a.confirm_capture()); });
-                win.on_cancel(|| { with(|a| a.end_capture()); });
+                win.on_cancel(|| { with(|a| a.cancel_capture()); });
                 self.overlay_pool.push(win);
             }
             let win = self.overlay_pool[i].clone_strong();
@@ -426,7 +446,7 @@ impl App {
             place(&win); // re-apply after a possible per-monitor DPI change on show
             overlays.push((win, m));
         }
-        if overlays.is_empty() { return; }
+        if overlays.is_empty() { self.cancel_capture(); return; }
         self.session = Some(session);
         self.overlays = overlays;
         if let Some((x, y)) = shareready_platform_windows::cursor() {
@@ -445,7 +465,7 @@ impl App {
             win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
             win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
             win.on_confirm(|| { with(|a| a.confirm_capture()); });
-            win.on_cancel(|| { with(|a| a.end_capture()); });
+            win.on_cancel(|| { with(|a| a.cancel_capture()); });
             win.set_show_hint(false);
             win.window().set_position(slint::PhysicalPosition::new(-32000, -32000));
             win.window().set_size(slint::PhysicalSize::new(8, 8));
@@ -492,6 +512,7 @@ impl App {
                 None => win.set_show_magnifier(false),
             }
             win.set_show_hint(m.bounds.contains(cursor.map_or(0, |c| c.0), cursor.map_or(0, |c| c.1)) || m.primary);
+            win.set_cursor_kind(cursor_kind(s, cursor).into());
         }
     }
     fn end_capture(&mut self) {
@@ -504,11 +525,17 @@ impl App {
         }
         self.session = None;
     }
+    /// Esc / right click: put back whatever was on screen before the hotkey.
+    fn cancel_capture(&mut self) {
+        self.end_capture();
+        if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+    }
     fn confirm_capture(&mut self) {
         let Some(s) = self.session.as_ref() else { return };
         let pixels = s.confirm_area().and_then(|r| s.crop(r));
         self.end_capture();
-        let Some(pixels) = pixels else { return };
+        let Some(pixels) = pixels else { if std::mem::take(&mut self.restore_editor) { self.show_editor(); } return };
+        self.restore_editor = false;
         self.show_editor();
         // Leave the state borrow before starting the shared intake pipeline.
         slint::Timer::single_shot(Duration::ZERO, move || {
@@ -540,6 +567,7 @@ impl App {
         ui.set_hotkey_active(self.hotkey.is_some());
         ui.set_hide_after_copy(s.hide_after_copy);
         ui.set_save_dir(s.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default().into());
+        ui.set_autostart(matches!(shareready_platform_windows::autostart(), Ok(Some(_))));
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); }
     }
     fn open_settings(&mut self) {
@@ -562,6 +590,16 @@ impl App {
             self.register_hotkey();
         }
         self.persist();
+    }
+
+    /// Start at login (per-user Run entry). The tray process starts hidden.
+    fn set_autostart(&mut self, on: bool) {
+        let cmd = on.then(autostart_command).flatten();
+        if on && cmd.is_none() { self.toast("error", "无法设置开机启动", "找不到程序路径", None); self.push_settings(); return; }
+        if shareready_platform_windows::set_autostart(cmd.as_deref()).is_err() {
+            self.toast("error", "无法设置开机启动", "系统拒绝写入当前用户的启动项", None);
+        }
+        self.push_settings();
     }
 
     fn dialog_choice(&mut self, choice: &str) {
@@ -590,17 +628,17 @@ fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) {
     if !started { return; }
     std::thread::spawn(move || {
         let decoded: Decoded = bytes.and_then(|b| {
-            let candidate = SourceCandidate::decode(b).map_err(|e| match e {
-                EditError::CoreFailure(m) if m.contains("magic") => "格式不支持（仅 PNG / JPEG）".to_string(),
-                EditError::CoreFailure(m) if m.contains("oversized") => "文件超过 25 MB".to_string(),
-                EditError::CoreFailure(m) if m.contains("bounds") => "图片超过 2400 万像素".to_string(),
-                other => format!("文件已损坏（{other:?}）"),
-            })?;
-            let pixels = shareready_core::decode_source(candidate.bytes())?;
+            let candidate = SourceCandidate::decode(b).map_err(|e| messages::intake(&e))?;
+            let pixels = shareready_core::decode_source(candidate.bytes()).map_err(|m| messages::decode(&m))?;
             Ok((candidate, display::preview(pixels)))
         });
         let _ = slint::invoke_from_event_loop(move || { with(|a| a.source_ready(decoded, name)); });
     });
+}
+
+/// What the Run entry launches: this exe, tray only.
+fn autostart_command() -> Option<String> {
+    std::env::current_exe().ok().map(|p| format!("\"{}\" --background", p.display()))
 }
 
 fn open_path(path: PathBuf) {
@@ -627,7 +665,7 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
-    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir");
+    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-");
     if !(in_settings && settings_cmd) && with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
     match cmd {
         // Blocking dialogs and clipboard reads run outside the state borrow.
@@ -678,6 +716,8 @@ fn command(cmd: &str) {
                     "copy-hide" => { a.settings.hide_after_copy = true; a.persist(); }
                     "copy-stay" => { a.settings.hide_after_copy = false; a.persist(); }
                     "save-dir-clear" => { a.settings.save_dir = None; a.persist(); }
+                    "autostart-on" => a.set_autostart(true),
+                    "autostart-off" => a.set_autostart(false),
                     "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } None => {} },
                     _ => {}
                 }
@@ -699,7 +739,7 @@ fn main() -> Result<(), slint::PlatformError> {
         ctl: Controller::default(), ui: ui.as_weak(), pending: None, save_path: None,
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
-        settings: settings::Settings::load(), hotkey: None,
+        settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -714,12 +754,20 @@ fn main() -> Result<(), slint::PlatformError> {
             a.resident = true;
             a.tray = Some(tray);
             a.register_hotkey();
+            // Keep an existing start-at-login entry pointing at this exe if it was moved.
+            if let (Ok(Some(old)), Some(new)) = (shareready_platform_windows::autostart(), autostart_command()) {
+                if old != new { let _ = shareready_platform_windows::set_autostart(Some(&new)); }
+            }
         });
         slint::Timer::single_shot(Duration::from_millis(800), || { with(|a| if a.session.is_none() { a.prewarm_overlays(); }); });
     }
 
     ui.on_pointer_down(|x, y| { with(|a| { a.ctl.pointer_down(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
-    ui.on_pointer_move(|x, y| { with(|a| if a.ctl.dragging() { a.ctl.pointer_move(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
+    ui.on_pointer_move(|x, y| { with(|a| if a.ctl.dragging() {
+        a.ctl.shift = shareready_platform_windows::shift_down();
+        a.ctl.pointer_move(Point { x: x.into(), y: y.into() });
+        a.refresh();
+    }); });
     ui.on_pointer_up(|| { with(|a| { a.ctl.pointer_up(); a.refresh(); }); });
     ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); }); });
     ui.on_command(|c| command(c.as_str()));
@@ -786,10 +834,13 @@ fn main() -> Result<(), slint::PlatformError> {
         }).unwrap_or(CloseRequestResponse::HideWindow)
     });
 
-    // "Open with" / command-line path.
-    if let Some(path) = std::env::args_os().nth(1).map(PathBuf::from) { open_path(path); }
+    // "Open with" / command-line path; `--background` (start at login) stays in the tray.
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let background = args.iter().any(|a| a == "--background");
+    if let Some(path) = args.into_iter().find(|a| a != "--background").map(PathBuf::from) { open_path(path); }
     with(|a| { a.push_settings(); a.refresh(); });
-    ui.show()?;
+    let resident = with(|a| a.resident).unwrap_or(false);
+    if !(background && resident) { ui.show()?; }
     slint::run_event_loop_until_quit()
 }
 
@@ -805,6 +856,21 @@ fn tool_for_key(c: char) -> Option<Tool> {
         'v' => Tool::Select, 'a' => Tool::Arrow, 'r' => Tool::Rect, 't' => Tool::Text, 'n' => Tool::Number,
         'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop, _ => return None,
     })
+}
+
+/// Pointer shape for what a press would grab on the capture overlay.
+fn cursor_kind(s: &capture::Session, cursor: Option<(i32, i32)>) -> &'static str {
+    let Some((x, y)) = cursor else { return "new" };
+    match s.grab_at(x, y) {
+        capture::Grab::New => "new",
+        capture::Grab::Move(_) => "move",
+        capture::Grab::Edge { left, right, top, bottom, .. } => match (left || right, top || bottom) {
+            (true, true) if (left && top) || (right && bottom) => "nwse",
+            (true, true) => "nesw",
+            (true, false) => "ew",
+            _ => "ns",
+        },
+    }
 }
 
 fn canvas_centre(c: &Controller) -> Point { let (w, h) = c.area(); Point { x: w / 2.0, y: h / 2.0 } }

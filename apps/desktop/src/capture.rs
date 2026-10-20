@@ -6,6 +6,19 @@ use shareready_platform_windows::{Capture, Monitor, ScreenRect};
 use std::io::Cursor;
 
 const DRAG_THRESHOLD: i32 = 4;
+/// How close (physical px) a press must be to a selection edge to grab it.
+const EDGE: i32 = 8;
+
+/// What a press on the overlay grabs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Grab {
+    /// Outside the selection: a new selection (or a click-to-snap).
+    New,
+    /// Inside the selection: move it.
+    Move(ScreenRect),
+    /// On an edge or corner: resize it with the opposite edges fixed.
+    Edge { rect: ScreenRect, left: bool, right: bool, top: bool, bottom: bool },
+}
 
 pub struct Session {
     pub frozen: Capture,
@@ -13,7 +26,7 @@ pub struct Session {
     windows: Vec<ScreenRect>,
     pub selection: Option<ScreenRect>,
     pub hover: Option<ScreenRect>,
-    press: Option<(i32, i32)>,
+    press: Option<((i32, i32), Grab)>,
     current: (i32, i32),
 }
 
@@ -49,26 +62,58 @@ impl Session {
         self.clamp(w, (x, y))
     }
     pub fn dragging(&self) -> bool {
-        self.press.is_some_and(|p| (p.0 - self.current.0).abs() > DRAG_THRESHOLD || (p.1 - self.current.1).abs() > DRAG_THRESHOLD)
+        self.press.is_some_and(|(p, _)| (p.0 - self.current.0).abs() > DRAG_THRESHOLD || (p.1 - self.current.1).abs() > DRAG_THRESHOLD)
+    }
+    /// What a press at (x, y) would grab; also drives the overlay's pointer shape.
+    pub fn grab_at(&self, x: i32, y: i32) -> Grab {
+        let Some(r) = self.selection else { return Grab::New };
+        let near = |v: i32, edge: i32| (v - edge).abs() <= EDGE;
+        let within = |v: i32, lo: i32, hi: i32| v >= lo - EDGE && v <= hi + EDGE;
+        let (l, t, rr, b) = (r.x, r.y, r.x + r.w, r.y + r.h);
+        if within(x, l, rr) && within(y, t, b) {
+            let (left, right, top, bottom) = (near(x, l), near(x, rr) && !near(x, l), near(y, t), near(y, b) && !near(y, t));
+            if left || right || top || bottom { return Grab::Edge { rect: r, left, right, top, bottom }; }
+            if x > l && x < rr && y > t && y < b { return Grab::Move(r); }
+        }
+        Grab::New
     }
     pub fn pointer_move(&mut self, x: i32, y: i32) {
         self.current = (x, y);
-        if let Some(p) = self.press {
-            if self.dragging() { self.selection = self.clamp(span(p, (x, y)), p); }
+        if let Some((p, grab)) = self.press {
+            if self.dragging() {
+                let (dx, dy) = (x - p.0, y - p.1);
+                self.selection = match grab {
+                    Grab::New => self.clamp(span(p, (x, y)), p),
+                    Grab::Move(r) => self.shifted(r, dx, dy),
+                    Grab::Edge { rect: r, left, right, top, bottom } => {
+                        let (mut l, mut t, mut rr, mut b) = (r.x, r.y, r.x + r.w, r.y + r.h);
+                        if left { l += dx; } if right { rr += dx; } if top { t += dy; } if bottom { b += dy; }
+                        self.clamp(span((l, t), (rr, b)), (r.x + r.w / 2, r.y + r.h / 2))
+                    }
+                };
+            }
         } else if self.selection.is_none() {
             self.hover = self.window_at(x, y).or_else(|| self.monitor_at(x, y).map(|m| m.bounds));
         }
     }
+    /// Move a selection, kept whole inside its monitor.
+    fn shifted(&self, r: ScreenRect, dx: i32, dy: i32) -> Option<ScreenRect> {
+        let m = self.monitor_at(r.x + r.w / 2, r.y + r.h / 2)?.bounds;
+        let x = (r.x + dx).clamp(m.x, (m.x + m.w - r.w).max(m.x));
+        let y = (r.y + dy).clamp(m.y, (m.y + m.h - r.h).max(m.y));
+        Some(ScreenRect { x, y, w: r.w, h: r.h })
+    }
     pub fn pointer_down(&mut self, x: i32, y: i32) {
-        self.press = Some((x, y));
+        self.press = Some(((x, y), self.grab_at(x, y)));
         self.current = (x, y);
     }
-    /// A click without dragging snaps to the window (or monitor) under the cursor.
+    /// A click without dragging outside the selection snaps to the window (or monitor)
+    /// under the cursor; a click inside keeps the selection.
     pub fn pointer_up(&mut self, x: i32, y: i32) {
         self.current = (x, y);
         let dragged = self.dragging();
-        self.press = None;
-        if !dragged { self.selection = self.window_at(x, y).or_else(|| self.monitor_at(x, y).map(|m| m.bounds)); }
+        let grab = self.press.take().map(|(_, g)| g);
+        if !dragged && grab == Some(Grab::New) { self.selection = self.window_at(x, y).or_else(|| self.monitor_at(x, y).map(|m| m.bounds)); }
         self.hover = None;
     }
     /// Enter: the selection, else the monitor under the cursor.
@@ -143,6 +188,28 @@ mod tests {
         let png = encode_png(img).unwrap();
         let back = shareready_core::decode_source(&png).unwrap();
         assert_eq!(back.dimensions(), (7, 3));
+    }
+
+    #[test]
+    fn selection_edges_resize_inside_moves_and_outside_starts_over() {
+        let mut s = session();
+        s.pointer_down(20, 20); s.pointer_move(60, 40); s.pointer_up(60, 40);
+        assert_eq!(s.selection, Some(ScreenRect { x: 20, y: 20, w: 40, h: 20 }));
+        // Bottom-right corner: grow.
+        assert!(matches!(s.grab_at(60, 40), Grab::Edge { right: true, bottom: true, left: false, top: false, .. }));
+        s.pointer_down(60, 40); s.pointer_move(70, 50); s.pointer_up(70, 50);
+        assert_eq!(s.selection, Some(ScreenRect { x: 20, y: 20, w: 50, h: 30 }));
+        // Inside: move, kept whole on the monitor (right edge at 100).
+        s.pointer_down(45, 35); s.pointer_move(85, 35); s.pointer_up(85, 35);
+        assert_eq!(s.selection, Some(ScreenRect { x: 50, y: 20, w: 50, h: 30 }));
+        // Right edge dragged past the left edge flips instead of vanishing.
+        s.pointer_down(100, 30); s.pointer_move(30, 30); s.pointer_up(30, 30);
+        assert_eq!(s.selection, Some(ScreenRect { x: 30, y: 20, w: 20, h: 30 }));
+        // A click inside keeps it; a drag outside starts a new one.
+        s.pointer_down(40, 35); s.pointer_up(40, 35);
+        assert_eq!(s.selection, Some(ScreenRect { x: 30, y: 20, w: 20, h: 30 }));
+        s.pointer_down(5, 5); s.pointer_move(25, 15); s.pointer_up(25, 15);
+        assert_eq!(s.selection, Some(ScreenRect { x: 5, y: 5, w: 20, h: 10 }));
     }
 
     #[test]

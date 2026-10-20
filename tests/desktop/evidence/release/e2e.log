@@ -1,4 +1,4 @@
-EXE sha256=2786bd7487ee18f62923a5bad38411f34cfa81f88c32cba1061cbb1f06087b10 path=ShareReady.exe
+EXE sha256=fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f path=ShareReady.exe
 LAYOUT client=1180x760 image_origin=280,196 scale=1
 UIA toast=
 CLIPBOARD image=620x430
@@ -24,10 +24,24 @@ KEYS deleted=620x430
 KEYS undone=620x430
 KEYS redone=620x430
 SETTINGS dialog=True
+SETTINGS taken_key_warning=True
 SETTINGS pick_hotkey=True pick_stay=True
-SETTINGS file=hotkey=Ctrl+Alt+A | hide_after_copy=false | save_dir=
+SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir=
 SETTINGS new_hotkey_overlays=1
 SETTINGS editor_visible_after_copy=True
 DPI125 client=1475x950 logical_origin=280,196 scale=1
 DPI125 copy=620x430
 MULTILINE copy=620x430
+HIDE overlays=1 editor_visible_during_capture=False
+HIDE editor_visible_after_esc=True
+SHIFT copy=620x430
+ERRORS case=broken message=无法打开 不是有效的 PNG / JPEG 图片，或文件已损坏 raw_text=False
+ERRORS case=missing message=无法打开 找不到这个文件，可能已被移动或删除 raw_text=False
+AUTOSTART on=True
+AUTOSTART value_has_exe=True background=True
+AUTOSTART off=True
+AUTOSTART removed=True
+BACKGROUND running=True editor_windows=0
+ADJUST editor_status=240 × 130
+ADJUST copy=240x130
+FREEZE capture=1920x1080 editor_area_samples=18144 mismatches=0

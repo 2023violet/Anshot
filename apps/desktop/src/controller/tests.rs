@@ -302,3 +302,49 @@ fn keyboard_resize_moves_the_far_edge_of_masks_and_frames() {
     assert!(c.resize_selected(10, 10));
     assert!(matches!(editor(&c).annotations()[0].annotation.shape, Shape::Rect { region, .. } if region == Region::new(100, 100, 160, 150)));
 }
+
+#[test]
+fn shift_squares_boxes_snaps_arrows_and_locks_moves() {
+    let mut c = opened(400, 200);
+    c.shift = true;
+    drag(&mut c, (10.0, 10.0), (60.0, 30.0)); // redaction: larger side wins
+    assert_eq!(editor(&c).masks()[0].region, Region::new(10, 10, 60, 60));
+    c.tool = Tool::Arrow;
+    drag(&mut c, (100.0, 100.0), (150.0, 108.0)); // ~9° snaps to horizontal
+    match editor(&c).annotations()[0].annotation.shape {
+        Shape::Arrow { from, to, .. } => { assert_eq!(from, (100.0, 100.0)); assert!((to.1 - 100.0).abs() < 0.01 && to.0 > 150.0); }
+        _ => panic!("arrow expected"),
+    }
+    c.tool = Tool::Select;
+    drag(&mut c, (20.0, 20.0), (50.0, 26.0)); // move the redaction: horizontal only
+    assert_eq!(editor(&c).masks()[0].region, Region::new(40, 10, 90, 60));
+    c.shift = false;
+    drag(&mut c, (50.0, 20.0), (60.0, 30.0));
+    assert_eq!(editor(&c).masks()[0].region, Region::new(50, 20, 100, 70));
+}
+
+#[test]
+fn constraint_helpers_keep_direction() {
+    let p = |x, y| Point { x, y };
+    assert_eq!(super::square(p(10.0, 10.0), p(0.0, 40.0)), p(-20.0, 40.0));
+    assert_eq!(super::lock_axis(p(0.0, 0.0), p(3.0, -9.0)), p(0.0, -9.0));
+    let d = super::snap45(p(0.0, 0.0), p(10.0, 9.0));
+    assert!((d.x - d.y).abs() < 1e-9 && d.x > 0.0);
+}
+
+#[test]
+fn crop_draft_can_be_resized_by_handle_and_moved_from_inside() {
+    let mut c = opened(400, 200);
+    c.enter_crop();
+    drag(&mut c, (100.0, 50.0), (200.0, 150.0));
+    assert_eq!(c.crop_draft, Some(Region::new(100, 50, 200, 150)));
+    assert_eq!(c.grips().len(), 8, "crop shows eight handles");
+    drag(&mut c, (200.0, 150.0), (240.0, 170.0)); // south-east handle
+    assert_eq!(c.crop_draft, Some(Region::new(100, 50, 240, 170)));
+    drag(&mut c, (150.0, 100.0), (130.0, 90.0)); // inside: move
+    assert_eq!(c.crop_draft, Some(Region::new(80, 40, 220, 160)));
+    drag(&mut c, (10.0, 10.0), (30.0, 30.0)); // outside: a new crop
+    assert_eq!(c.crop_draft, Some(Region::new(10, 10, 30, 30)));
+    assert!(c.confirm_crop());
+    assert_eq!(editor(&c).output_dimensions(), (20, 20));
+}

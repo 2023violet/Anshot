@@ -17,6 +17,15 @@ pub fn read_clipboard_image(_png_limit:usize,_dib_limit:usize)->std::io::Result<
 }
 
 #[cfg(windows)]
+mod autostart;
+#[cfg(windows)]
+pub use autostart::{autostart,set_autostart};
+#[cfg(not(windows))]
+pub fn autostart()->std::io::Result<Option<String>>{Ok(None)}
+#[cfg(not(windows))]
+pub fn set_autostart(_command:Option<&str>)->std::io::Result<()>{Err(std::io::ErrorKind::Unsupported.into())}
+
+#[cfg(windows)]
 mod windows;
 #[cfg(windows)]
 pub use windows::save_new;
@@ -53,7 +62,7 @@ pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
 #[cfg(windows)]
 mod screen;
 #[cfg(windows)]
-pub use screen::{capture,claim_single_instance,cursor,monitors,spawn_hotkey,visible_windows,HotkeyHandle};
+pub use screen::{capture,claim_single_instance,cursor,monitors,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
 
 #[cfg(not(windows))]
 pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
@@ -65,6 +74,10 @@ pub fn visible_windows()->Vec<ScreenRect>{Vec::new()}
 pub fn claim_single_instance()->bool{true}
 #[cfg(not(windows))]
 pub fn cursor()->Option<(i32,i32)>{None}
+#[cfg(not(windows))]
+pub fn shift_down()->bool{false}
+#[cfg(not(windows))]
+pub fn wait_for_compositor(){}
 #[cfg(not(windows))]
 pub struct HotkeyHandle;
 #[cfg(not(windows))]

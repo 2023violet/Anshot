@@ -1,7 +1,7 @@
 // ShareReady main window (02 S2/S3/S5, 05 H01-H22). Logic lives in Rust; this file only renders state.
 // The canvas image is the Rust-rendered scene (WYSIWYG); Slint draws only selection chrome.
 import { Theme } from "theme.slint";
-import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Segmented, Shield, Swatches, ToolButton, VSep } from "widgets.slint";
+import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Segmented, Shield, Swatches, Tip, ToolButton, VSep } from "widgets.slint";
 import { AboutSlint } from "std-widgets.slint";
 export { CaptureOverlay, Box } from "overlay.slint";
 export { Tray, ToastWindow } from "shell.slint";
@@ -53,6 +53,7 @@ export component AppWindow inherits Window {
     in property <bool> hotkey-active: true;
     in property <bool> hide-after-copy: true;
     in property <string> save-dir;
+    in property <bool> autostart;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
 
@@ -146,7 +147,7 @@ export component AppWindow inherits Window {
                         VerticalLayout { alignment: center; Segmented { options: ["无底色", "背景底色"]; selected: root.text-background ? 1 : 0; picked(i) => { root.command(i == 1 ? "bg-on" : "bg-off"); } } }
                     }
                     if root.prop-mode == "hint-select": Label { horizontal-stretch: 0; text: "单击选择对象 · 拖动移动 · 拖手柄调整 · 方向键微调（Shift ×10）· 双击文字修改"; }
-                    if root.prop-mode == "crop": Label { horizontal-stretch: 0; text: "拖拽框出要保留的区域 · Enter 确认 · Esc 取消 · 再次框选可修改"; }
+                    if root.prop-mode == "crop": Label { horizontal-stretch: 0; text: "拖拽框出要保留的区域 · 拖手柄调整 · 拖内部移动 · Enter 确认 · Esc 取消"; }
                     if root.has-region: HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
                         VerticalLayout { alignment: center; VSep { } }
                         Label { text: "X"; } VerticalLayout { alignment: center; NumberField { value: root.sel-x; } }
@@ -320,13 +321,13 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 300px : 170px;
+                width: min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 340px : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: "关于 ShareReady（临时代号）"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
-                    Text { text: "版本 0.1.0 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
+                    Text { text: "版本 0.1.1 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
                     Rectangle { height: 150px; AboutSlint { } }
                     HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
@@ -342,12 +343,16 @@ export component AppWindow inherits Window {
                         VerticalLayout { alignment: center; Segmented { options: ["收起编辑窗", "保留编辑窗"]; selected: root.hide-after-copy ? 0 : 1; picked(i) => { root.command(i == 0 ? "copy-hide" : "copy-stay"); } } }
                     }
                     HorizontalLayout { spacing: 12px;
+                        Label { text: "开机启动"; width: 84px; }
+                        VerticalLayout { alignment: center; Segmented { options: ["不启动", "登录后在托盘待命"]; selected: root.autostart ? 1 : 0; picked(i) => { root.command(i == 1 ? "autostart-on" : "autostart-off"); } } }
+                    }
+                    HorizontalLayout { spacing: 12px;
                         Label { text: "默认保存位置"; width: 84px; }
                         Text { text: root.save-dir == "" ? "上次使用的位置" : root.save-dir; color: Theme.body; font-size: 12px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                         ActionButton { label: "选择…"; key: ""; kind: 0; clicked => { root.command("save-dir"); } }
                         if root.save-dir != "": ActionButton { label: "清除"; key: ""; kind: 2; clicked => { root.command("save-dir-clear"); } }
                     }
-                    Text { text: "设置只保存在本机（%APPDATA%\\ShareReady）。"; color: Theme.mute; font-size: 12px; }
+                    Text { text: "设置保存在本机（%APPDATA%\\ShareReady）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
                     HorizontalLayout { alignment: end; ActionButton { label: "完成"; key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog != "about" && root.dialog != "settings": VerticalLayout { padding: 24px; spacing: 6px;
@@ -361,6 +366,16 @@ export component AppWindow inherits Window {
                 }
             }
         }
+    }
+
+    // Tool tooltip: appears after a short hover, never over a dialog.
+    Timer { interval: 450ms; running: Tip.text != "" && !Tip.armed; triggered => { Tip.armed = true; } }
+    if Tip.text != "" && Tip.armed && root.dialog == "": Rectangle {
+        property <length> w: tt.preferred-width + 16px;
+        x: max(4px, min(Tip.x - self.w / 2, root.width - self.w - 4px)); y: Tip.y;
+        width: self.w; height: 24px; border-radius: 6px; background: Theme.ink;
+        accessible-role: none;
+        tt := Text { text: Tip.text; color: Theme.select-fg; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; accessible-role: none; }
     }
 
     public function focus-keys() { keys.focus(); }

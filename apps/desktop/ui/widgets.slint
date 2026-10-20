@@ -32,6 +32,14 @@ export component Keycap inherits Rectangle {
     t := Text { text: label; font-family: Theme.font-mono; font-size: 11px; color: on-primary ? white : Theme.mute; vertical-alignment: center; accessible-role: none; }
 }
 
+// One hover tooltip per window, drawn on top by AppWindow (0.1.1 R3).
+export global Tip {
+    in-out property <string> text;
+    in-out property <length> x;
+    in-out property <length> y;
+    in-out property <bool> armed;
+}
+
 export component ToolButton inherits Rectangle {
     in property <string> d;
     in property <string> label;
@@ -46,7 +54,20 @@ export component ToolButton inherits Rectangle {
     accessible-label: label;
     accessible-enabled: enabled;
     accessible-action-default => { if enabled { root.clicked(); } }
-    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tip.text = ""; root.clicked(); }
+        changed has-hover => {
+            if self.has-hover {
+                Tip.armed = false;
+                Tip.text = root.label;
+                Tip.x = root.absolute-position.x + root.width / 2;
+                Tip.y = root.absolute-position.y + root.height + 6px;
+            } else if Tip.text == root.label {
+                Tip.text = "";
+            }
+        }
+    }
     Icon { d: root.d; stroke: !enabled ? Theme.disabled : selected ? Theme.select-fg : Theme.body; }
     if secure-badge: Shield { x: 21px; y: 20px; width: 8px; height: 9px; fill: root.selected ? #5fd3a6 : Theme.secure; }
 }

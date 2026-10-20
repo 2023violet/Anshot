@@ -61,15 +61,20 @@ foreach ($i in 1..3) {
 }
 Log "STARTUP_MS runs=$($starts -join ',')"
 
-# 2. hotkey -> overlay visible (3 runs), Esc between
-$p = Start-Process $Exe -PassThru; [void](WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady', 300000) -ne [IntPtr]::Zero } 15000); Start-Sleep -Milliseconds 800
-$caps = @()
-foreach ($i in 1..3) {
-    $sw = [Diagnostics.Stopwatch]::StartNew(); Key 0x41 -Ctrl -Shift
-    $t = WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady 截图', 1) -ne [IntPtr]::Zero } 10000
-    $caps += $t; NetProbe $p; Start-Sleep -Milliseconds 300; Key 0x1B; Start-Sleep -Milliseconds 600
+# 2. hotkey -> overlay visible (3 runs each), Esc between: tray only (usual), then with the editor open
+#    (0.1.1: the editor is hidden and the compositor flushed before the freeze).
+foreach ($mode in @('tray', 'editor_open')) {
+    $p = if ($mode -eq 'tray') { Start-Process $Exe -ArgumentList '--background' -PassThru } else { Start-Process $Exe -PassThru }
+    Start-Sleep -Milliseconds 2500
+    $caps = @()
+    foreach ($i in 1..3) {
+        $sw = [Diagnostics.Stopwatch]::StartNew(); Key 0x41 -Ctrl -Shift
+        $t = WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady 截图', 1) -ne [IntPtr]::Zero } 10000
+        $caps += $t; NetProbe $p; Start-Sleep -Milliseconds 300; Key 0x1B; Start-Sleep -Milliseconds 600
+    }
+    Log "HOTKEY_TO_OVERLAY_MS mode=$mode runs=$($caps -join ',')"
+    if ($mode -eq 'tray') { $p.Kill(); $p.WaitForExit(); Start-Sleep -Milliseconds 400 }
 }
-Log "HOTKEY_TO_OVERLAY_MS runs=$($caps -join ',')"
 $p.Kill(); $p.WaitForExit(); Start-Sleep -Milliseconds 400
 
 # 3. open 24MP via argument -> dimensions shown; then redact + copy -> clipboard holds the image

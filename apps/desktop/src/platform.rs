@@ -22,25 +22,26 @@ pub fn pick_folder() -> Option<PathBuf> {
 
 /// Bounded read of a user-chosen file; Core re-validates size and format.
 pub fn read_image_file(path: &Path) -> Result<Vec<u8>, String> {
-    let meta = std::fs::metadata(path).map_err(|e| format!("无法读取文件：{e}"))?;
+    let meta = std::fs::metadata(path).map_err(|e| crate::messages::read_file(e.kind()))?;
     if meta.len() > MAX_INPUT_BYTES as u64 { return Err("文件超过 25 MB".into()); }
-    std::fs::read(path).map_err(|e| format!("无法读取文件：{e}"))
+    std::fs::read(path).map_err(|e| crate::messages::read_file(e.kind()))
 }
 
 /// Clipboard image as PNG/JPEG-compatible bytes for Core intake.
 pub fn read_clipboard() -> Result<Vec<u8>, String> {
-    let img = read_clipboard_image(MAX_INPUT_BYTES, MAX_DIB_BYTES).map_err(|e| format!("剪贴板中没有可用图片（{e}）"))?;
+    let img = read_clipboard_image(MAX_INPUT_BYTES, MAX_DIB_BYTES).map_err(|_| "剪贴板里没有图片，先复制一张图片再粘贴".to_string())?;
     match img.format {
         ClipboardImageFormat::Png => Ok(img.bytes),
-        ClipboardImageFormat::Dib => dib_to_png(&img.bytes),
+        ClipboardImageFormat::Dib => dib_to_png(&img.bytes).map_err(|_| "剪贴板里的图片无法读取".to_string()),
     }
 }
 
 pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
-    let pixels = decode_generated_png(png, dims)?;
+    let pixels = decode_generated_png(png, dims).map_err(|_| "生成的图片未通过校验，未写入剪贴板".to_string())?;
     let data = arboard::ImageData { width: pixels.width() as usize, height: pixels.height() as usize, bytes: Cow::Owned(pixels.into_raw()) };
-    let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("剪贴板被其他程序占用（{e}）"))?;
-    clipboard.set_image(data).map_err(|e| format!("剪贴板被其他程序占用（{e}）"))
+    let busy = |_| "剪贴板正被其他程序占用，请稍后重试".to_string();
+    let mut clipboard = arboard::Clipboard::new().map_err(busy)?;
+    clipboard.set_image(data).map_err(busy)
 }
 
 /// The dialog may already have asked "replace?"; ShareReady never overwrites, so an
@@ -53,11 +54,7 @@ pub fn free_path(path: &Path) -> PathBuf {
 }
 
 pub fn write_file(path: &Path, png: &[u8]) -> Result<(), String> {
-    save_new(path, png).map_err(|e| match e.kind() {
-        std::io::ErrorKind::AlreadyExists => "同名文件已存在，请换个名字（不会覆盖原文件）".to_string(),
-        std::io::ErrorKind::PermissionDenied => "没有写入权限".to_string(),
-        _ => e.to_string(),
-    })
+    save_new(path, png).map_err(|e| crate::messages::write_file(e.kind()))
 }
 
 #[cfg(test)]

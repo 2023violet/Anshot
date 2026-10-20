@@ -45,6 +45,22 @@ pub fn cursor() -> Option<(i32, i32)> {
     (unsafe { GetCursorPos(&mut p) } != 0).then_some((p.x, p.y))
 }
 
+/// Block until the compositor has presented the current window state twice, so a
+/// window hidden just before is no longer on screen when the desktop is copied.
+pub fn wait_for_compositor() {
+    for _ in 0..2 {
+        // SAFETY: no arguments; returns an HRESULT we can ignore (no compositor = nothing to wait for).
+        unsafe { windows_sys::Win32::Graphics::Dwm::DwmFlush() };
+    }
+}
+
+/// Whether a Shift key is held right now (for Shift-constrained drawing).
+pub fn shift_down() -> bool {
+    // SAFETY: plain query of the calling thread's keyboard state; no pointers.
+    let state = unsafe { windows_sys::Win32::UI::Input::KeyboardAndMouse::GetKeyState(i32::from(windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_SHIFT)) };
+    (state as u16) & 0x8000 != 0
+}
+
 struct ScreenDc(HDC);
 impl Drop for ScreenDc { fn drop(&mut self) {
     // SAFETY: obtained from GetDC(NULL) and released exactly once.

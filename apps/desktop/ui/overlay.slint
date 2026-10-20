@@ -24,6 +24,8 @@ export component CaptureOverlay inherits Window {
     in property <int> mag-x; in property <int> mag-y;
     in property <string> mag-text;
     in property <bool> show-hint: true;
+    // "new" | "move" | "nwse" | "nesw" | "ew" | "ns": what a press would grab (Rust decides).
+    in property <string> cursor-kind: "new";
 
     callback pointer-down(length, length);
     callback pointer-move(length, length);
@@ -56,9 +58,18 @@ export component CaptureOverlay inherits Window {
             border-radius: 6px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
             sl := Text { text: root.size-text; font-family: Theme.font-mono; font-size: 11px; color: Theme.ink; vertical-alignment: center; }
         }
+        // Eight grips: drag an edge or corner to adjust, drag inside to move.
+        if root.has-selection: Rectangle {
+            x: lit.x; y: lit.y; width: lit.w; height: lit.h;
+            for g in [{fx: 0, fy: 0}, {fx: 0.5, fy: 0}, {fx: 1, fy: 0}, {fx: 0, fy: 0.5}, {fx: 1, fy: 0.5}, {fx: 0, fy: 1}, {fx: 0.5, fy: 1}, {fx: 1, fy: 1}]: Rectangle {
+                x: parent.width * g.fx - 4px; y: parent.height * g.fy - 4px; width: 8px; height: 8px;
+                border-radius: 2px; background: white; border-width: 1.5px; border-color: Theme.select-bg;
+            }
+        }
 
         TouchArea {
-            mouse-cursor: crosshair;
+            mouse-cursor: root.cursor-kind == "move" ? move : root.cursor-kind == "nwse" ? nwse-resize : root.cursor-kind == "nesw" ? nesw-resize
+                : root.cursor-kind == "ew" ? ew-resize : root.cursor-kind == "ns" ? ns-resize : crosshair;
             pointer-event(e) => {
                 if e.button == PointerEventButton.right && e.kind == PointerEventKind.down { root.cancel(); }
                 if e.button == PointerEventButton.left && e.kind == PointerEventKind.down { keys.focus(); root.pointer-down(self.mouse-x, self.mouse-y); }
@@ -82,7 +93,7 @@ export component CaptureOverlay inherits Window {
             x: (parent.width - self.width) / 2; y: parent.height - 56px;
             width: hl.preferred-width + 24px; height: 32px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
             hl := HorizontalLayout { padding-left: 12px; spacing: 8px; alignment: center;
-                Text { text: root.has-selection ? "Enter / 双击 完成 · 重新拖拽可改选区" : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕"; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
+                Text { text: root.has-selection ? "Enter / 双击 完成 · 拖边角调整 · 拖内部移动" : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕"; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
                 VerticalLayout { alignment: center; Keycap { label: "Esc"; } }
                 Text { text: "取消"; font-size: 12px; color: Theme.mute; vertical-alignment: center; }
             }
