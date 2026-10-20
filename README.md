@@ -38,8 +38,8 @@ pwsh -File scripts/package.ps1                          # 本地打包到 dist/�
 ## 验证
 - `cargo test --workspace --locked`（根 workspace，85 项）和 `cargo test --locked --manifest-path apps/desktop/Cargo.toml`（27 项）。
 - `python tests/golden/verify_v1_baseline.py`：5 张冻结的 V1 金样本；渲染金样本在 `crates/shareready-render`。
-- `tests/desktop/e2e.ps1` / `perf.ps1`：用真实系统键鼠驱动应用，由另一进程读回剪贴板并逐像素比对。只使用合成图片，证据截图只截应用窗口与合成区域。
-- 以上均为代理执行的机器验证。**真人计时、多显示器 / 真实系统 DPI（只做了应用内 125% 模拟）、Narrator 朗读、中文输入法组字、Windows 11 均未验证**，详见验收报告 §2 与 §6。
+- `tests/desktop/e2e.ps1` / `perf.ps1` / `ime.ps1`（微软拼音组字）：用真实系统键鼠驱动应用，由另一进程读回剪贴板并逐像素比对。只使用合成图片，证据截图只截应用窗口与合成区域。
+- 以上均为代理执行的机器验证。**真人计时、多显示器 / 真实系统 DPI（只做了应用内 125% 模拟）、Narrator 朗读、Windows 11 均未验证**，详见验收报告 §2 与 §6。
 
 ## 许可
 项目代码 [MIT](LICENSE)。界面使用 Slint，按 *Royalty-free 2.0* 许可（“关于”对话框显示 AboutSlint）；字体 Noto Sans CJK SC 按 [OFL-1.1](assets/fonts/OFL-1.1.txt)。第三方清单：[THIRD_PARTY_LICENSES.md](apps/desktop/THIRD_PARTY_LICENSES.md)。
