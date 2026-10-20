@@ -296,8 +296,10 @@ impl App {
                 Some('z') => { self.ctl.undo(); }
                 Some('y') => { self.ctl.redo(); }
                 Some('c') => { self.start(Delivery::Copy); return true; }
-                Some('0') => self.ctl.zoom = Zoom::Fit,
-                Some('1') => self.ctl.zoom = Zoom::Actual,
+                Some('0') => self.ctl.zoom_to(Zoom::Fit),
+                Some('1') => self.ctl.zoom_to(Zoom::Scale(1.0)),
+                Some('=') | Some('+') => { let c = canvas_centre(&self.ctl); self.ctl.zoom_by(1.25, c); }
+                Some('-') => { let c = canvas_centre(&self.ctl); self.ctl.zoom_by(0.8, c); }
                 _ => return false, // Ctrl+O / Ctrl+V / Ctrl+S are handled outside the borrow.
             }
             self.refresh();
@@ -308,6 +310,8 @@ impl App {
             if is(Key::Return) { self.ctl.confirm_crop(); self.refresh(); return true; }
             if is(Key::Escape) { self.ctl.cancel_crop(); self.refresh(); return true; }
         }
+        if text == " " { self.ctl.space_pan = true; return true; }
+        if is(Key::Tab) || is(Key::Backtab) { let back = shift || is(Key::Backtab); self.ctl.cycle_selection(back); self.refresh(); return true; }
         let handled = if is(Key::Delete) || is(Key::Backspace) { self.ctl.delete_selected() }
             else if is(Key::LeftArrow) { self.ctl.nudge(-step, 0) }
             else if is(Key::RightArrow) { self.ctl.nudge(step, 0) }
@@ -565,8 +569,10 @@ fn command(cmd: &str) {
                     c if c.starts_with("width-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.width = i.min(2)); } }
                     c if c.starts_with("size-") => { if let Ok(i) = c[5..].parse::<usize>() { a.ctl.apply_style(|s| s.size = i.min(4)); } }
                     c if c.starts_with("solid-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.solid = i.min(1)); } }
-                    "zoom-fit" => a.ctl.zoom = Zoom::Fit,
-                    "zoom-actual" => a.ctl.zoom = Zoom::Actual,
+                    "zoom-fit" => a.ctl.zoom_to(Zoom::Fit),
+                    "zoom-actual" => a.ctl.zoom_to(Zoom::Scale(1.0)),
+                    "zoom-in" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(1.25, c); }
+                    "zoom-out" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(0.8, c); }
                     "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } None => {} },
                     _ => {}
                 }
@@ -606,6 +612,36 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_pointer_up(|| { with(|a| { a.ctl.pointer_up(); a.refresh(); }); });
     ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); }); });
     ui.on_command(|c| command(c.as_str()));
+    ui.on_wheel(|dx, dy, x, y, ctrl, shift| {
+        with(|a| {
+            if ctrl { a.ctl.zoom_by(if dy > 0.0 { 1.1 } else { 1.0 / 1.1 }, Point { x: x.into(), y: y.into() }); }
+            else if shift { a.ctl.scroll(f64::from(dy), 0.0); }
+            else { a.ctl.scroll(f64::from(dx), f64::from(dy)); }
+            a.refresh();
+        });
+    });
+    ui.on_middle_down(|x, y| { with(|a| { a.ctl.begin_pan(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
+    ui.on_key_released(|t| { if t.as_str() == " " { with(|a| a.ctl.space_pan = false); } });
+    // OS file drops (02 S3/S2): Slint 1.18 does not forward them, so read winit's event.
+    {
+        use slint::winit_030::{winit::event::WindowEvent, EventResult, WinitWindowAccessor};
+        ui.window().on_winit_window_event(|_, ev| {
+            match ev {
+                WindowEvent::HoveredFile(_) => { with(|a| if let Some(ui) = a.ui() { ui.set_drop_hover(true); }); }
+                WindowEvent::HoveredFileCancelled => { with(|a| if let Some(ui) = a.ui() { ui.set_drop_hover(false); }); }
+                WindowEvent::DroppedFile(path) => {
+                    let path = path.clone();
+                    with(|a| if let Some(ui) = a.ui() { ui.set_drop_hover(false); });
+                    slint::Timer::single_shot(Duration::ZERO, move || {
+                        let busy = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(true);
+                        if !busy { open_path(path); }
+                    });
+                }
+                _ => {}
+            }
+            EventResult::Propagate
+        });
+    }
     ui.on_double_click(|x, y| { with(|a| { a.ctl.edit_text_at(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
     ui.on_text_commit(|t| { with(|a| { a.ctl.commit_text(t.as_str()); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
@@ -658,3 +694,5 @@ fn tool_for_key(c: char) -> Option<Tool> {
         'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop, _ => return None,
     })
 }
+
+fn canvas_centre(c: &Controller) -> Point { let (w, h) = c.area(); Point { x: w / 2.0, y: h / 2.0 } }

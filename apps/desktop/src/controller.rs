@@ -1,7 +1,7 @@
 //! UI-independent controller: turns pointer/keyboard intents into Editor
 //! commands and drives the render -> delivery handshake. No Slint types here.
 #![forbid(unsafe_code)]
-use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF};
+use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF, MAX_ZOOM, MIN_ZOOM};
 use shareready_core::Region;
 use shareready_editor::{
     Annotation, EditError, Editor, GestureKind, GestureTicket, Handle, OperationKind, PixelRect, Point, RedactStyle,
@@ -37,6 +37,7 @@ pub enum Grip { Box(Handle), ArrowFrom, ArrowTo }
 enum Drag {
     Draw { start: Point, current: Point },
     Crop { start: Point, current: Point },
+    Pan { start: Point, origin: (f64, f64) },
     Mask { ticket: GestureTicket, start: Point, id: u64, preview: Option<Region> },
     Ann { id: u64, start: Point, base: Annotation, grip: Option<Grip>, preview: Annotation },
 }
@@ -68,12 +69,16 @@ pub struct Controller {
     pub text_edit: Option<TextEdit>,
     /// Crop rectangle being adjusted (Enter applies, Esc discards).
     pub crop_draft: Option<Region>,
+    /// Requested image origin while zoomed past the canvas.
+    pan: Option<(f64, f64)>,
+    /// Space held: left-drag pans instead of editing.
+    pub space_pan: bool,
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false }
     }
 }
 
@@ -109,7 +114,7 @@ fn box_grips((x, y, w, h): (f64, f64, f64, f64)) -> Vec<(Grip, (f64, f64))> {
 impl Controller {
     pub fn view(&self) -> Option<View> {
         let (w, h) = self.editor.as_ref()?.dimensions();
-        Some(View::layout(w, h, self.area.0, self.area.1, self.zoom))
+        Some(View::layout(w, h, self.area.0, self.area.1, self.zoom, self.pan))
     }
     pub fn area(&self) -> (f64, f64) { self.area }
     /// Hide numeric fields when the window is too narrow for them.
@@ -139,6 +144,7 @@ impl Controller {
         self.busy = None;
         self.source_name = name;
         self.zoom = Zoom::Fit;
+        self.pan = None;
         Ok(())
     }
     /// Drop the document after the user chose to discard it.
@@ -199,6 +205,7 @@ impl Controller {
     // ---- pointer ----
     pub fn pointer_down(&mut self, p: Point) {
         if self.busy.is_some() || self.drag.is_some() || self.text_edit.is_some() { return; }
+        if self.space_pan { self.begin_pan(p); return; }
         if self.tool == Tool::Crop {
             if self.editor.as_mut().is_some_and(|e| e.begin_draw_preview().is_ok()) { self.drag = Some(Drag::Crop { start: p, current: p }); }
             return;
@@ -245,6 +252,11 @@ impl Controller {
         let (w, h) = self.editor.as_ref().map_or((1, 1), |e| e.dimensions());
         match self.drag.as_mut() {
             Some(Drag::Draw { current, .. }) | Some(Drag::Crop { current, .. }) => *current = p,
+            Some(Drag::Pan { start, origin }) => {
+                let o = (origin.0 + p.x - start.x, origin.1 + p.y - start.y);
+                self.pan = Some(o);
+                self.settle_pan();
+            }
             Some(Drag::Mask { ticket, start, preview, .. }) => {
                 let (dx, dy) = view.source_delta(*start, p);
                 if let Some(e) = self.editor.as_mut() { *preview = e.preview_gesture(*ticket, dx, dy).ok(); }
@@ -278,6 +290,7 @@ impl Controller {
                     let _ = match d { Draft::Redact(r, style) => e.add_redaction(r, style), Draft::Ann(a) => e.add_annotation(a) };
                 }
             }
+            Some(Drag::Pan { .. }) => {}
             Some(Drag::Crop { start, current }) => {
                 if let Ok(r) = view.viewport().pixel_region(start, current) {
                     if (r.x1 - r.x0) > 1 && (r.y1 - r.y0) > 1 { self.crop_draft = Some(r); }
@@ -417,6 +430,38 @@ impl Controller {
         e.set_redaction_style(id, if mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(solid) }).unwrap_or(false)
     }
 
+    // ---- zoom & pan ----
+    /// Middle-button or Space+drag panning.
+    pub fn begin_pan(&mut self, p: Point) {
+        if self.drag.is_some() { return; }
+        let Some(v) = self.view() else { return };
+        self.drag = Some(Drag::Pan { start: p, origin: (v.x, v.y) });
+    }
+    /// Store the clamped origin so later zooms start from what is on screen.
+    fn settle_pan(&mut self) { if let Some(v) = self.view() { self.pan = Some((v.x, v.y)); } }
+    /// Zoom by `factor` keeping the source point under `at` fixed.
+    pub fn zoom_by(&mut self, factor: f64, at: Point) {
+        let Some(v) = self.view() else { return };
+        let k = (v.scale * factor).clamp(MIN_ZOOM, MAX_ZOOM);
+        let (sx, sy) = ((at.x - v.x) / v.scale, (at.y - v.y) / v.scale);
+        self.zoom = Zoom::Scale(k);
+        self.pan = Some((at.x - sx * k, at.y - sy * k));
+        self.settle_pan();
+    }
+    pub fn zoom_to(&mut self, zoom: Zoom) {
+        let centre = Point { x: self.area.0 / 2.0, y: self.area.1 / 2.0 };
+        match zoom {
+            Zoom::Fit => { self.zoom = Zoom::Fit; self.pan = None; }
+            Zoom::Scale(k) => { let cur = self.view().map_or(1.0, |v| v.scale); self.zoom_by(k / cur, centre); }
+        }
+    }
+    /// Wheel scrolling pans an overflowing image.
+    pub fn scroll(&mut self, dx: f64, dy: f64) {
+        let Some(v) = self.view() else { return };
+        self.pan = Some((v.x + dx, v.y + dy));
+        self.settle_pan();
+    }
+
     // ---- crop ----
     pub fn enter_crop(&mut self) {
         self.tool = Tool::Crop;
@@ -485,6 +530,21 @@ impl Controller {
     pub fn undo(&mut self) -> bool { self.drag.is_none() && self.editor.as_mut().is_some_and(|e| e.undo().is_ok()) }
     pub fn redo(&mut self) -> bool { self.drag.is_none() && self.editor.as_mut().is_some_and(|e| e.redo().is_ok()) }
     pub fn deselect(&mut self) { if let Some(e) = self.editor.as_mut() { let _ = e.select(None); } }
+    /// Tab / Shift+Tab: cycle the selection through all objects in z order.
+    pub fn cycle_selection(&mut self, back: bool) -> bool {
+        if self.drag.is_some() { return false; }
+        let Some(e) = self.editor.as_mut() else { return false };
+        let ids: Vec<u64> = e.masks().iter().map(|m| m.id).chain(e.annotations().iter().map(|a| a.id)).collect();
+        if ids.is_empty() { return false; }
+        let pos = e.selected().and_then(|s| ids.iter().position(|i| *i == s));
+        let next = match (pos, back) {
+            (None, false) => 0, (None, true) => ids.len() - 1,
+            (Some(i), false) => (i + 1) % ids.len(), (Some(i), true) => (i + ids.len() - 1) % ids.len(),
+        };
+        let ok = e.select(Some(ids[next])).is_ok();
+        self.sync_style();
+        ok
+    }
 
     // ---- delivery: render on a worker, then deliver the exact rendered PNG ----
     pub fn begin_delivery(&mut self, kind: Delivery) -> Result<RenderWork, EditError> {

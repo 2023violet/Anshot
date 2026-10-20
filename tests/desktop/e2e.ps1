@@ -231,5 +231,25 @@ Start-Sleep -Milliseconds 1500
 $clip = [System.Windows.Forms.Clipboard]::GetImage()
 if ($clip) { $clip.Save((Join-Path $Out 'clipboard-b3.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "B3 clipboard=$($clip.Width)x$($clip.Height)" } else { Log "B3 clipboard=none" }
 if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 8. B4: OS drag-and-drop into an empty editor, then Ctrl+wheel zoom ----
+$w = Launch @()
+$src = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'drag_source.ps1'), '-File', "`"$((Resolve-Path $Image).Path)`"", '-X', 1300, '-Y', 200) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+[void][E]::SetCursorPos(1360, 230); Start-Sleep -Milliseconds 300
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+foreach ($i in 1..25) { [void][E]::SetCursorPos(1360 - (1360 - ($w.O.X + 590)) * $i / 25, 230 + (($w.O.Y + 380) - 230) * $i / 25); Start-Sleep -Milliseconds 40 }
+Start-Sleep -Milliseconds 400; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 2500
+Log ("DROP status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+if (-not $src.HasExited) { Stop-Process -Id $src.Id -Force }
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+[void][E]::SetCursorPos($w.O.X + 590, $w.O.Y + 400); Start-Sleep -Milliseconds 200
+[E]::keybd_event(0x11, 0, 0, [IntPtr]::Zero)
+foreach ($i in 1..3) { [E]::mouse_event(0x0800, 0, 0, 120, [IntPtr]::Zero); Start-Sleep -Milliseconds 150 }
+[E]::keybd_event(0x11, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+Log ("ZOOM after_ctrl_wheel=" + (((UiaNames $w) | Where-Object { $_ -match '当前缩放' }) -join ' | '))
+Shot $w '12-zoomed.png'
+if (-not $w.P.HasExited) { $w.P.Kill() }
 
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

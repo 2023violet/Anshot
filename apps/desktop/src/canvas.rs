@@ -8,25 +8,32 @@ use shareready_editor::{Handle, Point, Viewport};
 pub const HANDLE_HIT_HALF: f64 = 8.0;
 const FIT_MARGIN: f64 = 24.0;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Zoom { Fit, Actual }
+/// `Fit` follows the window; `Scale(k)` is an explicit zoom (k = canvas px per source px).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Zoom { Fit, Scale(f64) }
+pub const MIN_ZOOM: f64 = 0.05;
+pub const MAX_ZOOM: f64 = 8.0;
 
 /// Image frame in canvas-local logical pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct View { pub img_w: u32, pub img_h: u32, pub x: f64, pub y: f64, pub scale: f64 }
 
+/// Center an axis when it fits; otherwise honour the requested origin, clamped so the
+/// image edge never leaves a gap wider than the margin.
+fn axis(len: f64, area: f64, want: Option<f64>) -> f64 {
+    if len + 2.0 * FIT_MARGIN <= area { return ((area - len) / 2.0).round(); }
+    want.unwrap_or(FIT_MARGIN).clamp(area - len - FIT_MARGIN, FIT_MARGIN).round()
+}
+
 impl View {
-    /// Fit inside the area with a margin, never enlarging past 100%.
-    pub fn layout(img_w: u32, img_h: u32, area_w: f64, area_h: f64, zoom: Zoom) -> Self {
-        let fit = ((area_w - 2.0 * FIT_MARGIN) / f64::from(img_w))
-            .min((area_h - 2.0 * FIT_MARGIN) / f64::from(img_h))
-            .clamp(0.01, 1.0);
-        let scale = match zoom { Zoom::Fit => fit, Zoom::Actual => 1.0 };
+    pub fn fit_scale(img_w: u32, img_h: u32, area_w: f64, area_h: f64) -> f64 {
+        ((area_w - 2.0 * FIT_MARGIN) / f64::from(img_w)).min((area_h - 2.0 * FIT_MARGIN) / f64::from(img_h)).clamp(0.01, 1.0)
+    }
+    /// `pan` is the requested image origin when the image overflows the area.
+    pub fn layout(img_w: u32, img_h: u32, area_w: f64, area_h: f64, zoom: Zoom, pan: Option<(f64, f64)>) -> Self {
+        let scale = match zoom { Zoom::Fit => Self::fit_scale(img_w, img_h, area_w, area_h), Zoom::Scale(k) => k.clamp(MIN_ZOOM, MAX_ZOOM) };
         let (w, h) = (f64::from(img_w) * scale, f64::from(img_h) * scale);
-        // Center when it fits; otherwise pin to the margin (B1 has no panning yet).
-        let x = if w + 2.0 * FIT_MARGIN <= area_w { ((area_w - w) / 2.0).round() } else { FIT_MARGIN };
-        let y = if h + 2.0 * FIT_MARGIN <= area_h { ((area_h - h) / 2.0).round() } else { FIT_MARGIN };
-        Self { img_w, img_h, x, y, scale }
+        Self { img_w, img_h, x: axis(w, area_w, pan.map(|p| p.0)), y: axis(h, area_h, pan.map(|p| p.1)), scale }
     }
     pub fn width(self) -> f64 { f64::from(self.img_w) * self.scale }
     pub fn height(self) -> f64 { f64::from(self.img_h) * self.scale }
@@ -57,17 +64,27 @@ mod tests {
 
     #[test]
     fn fit_never_upscales_and_centers() {
-        let v = View::layout(400, 200, 1000.0, 600.0, Zoom::Fit);
+        let v = View::layout(400, 200, 1000.0, 600.0, Zoom::Fit, None);
         assert_eq!(v.scale, 1.0);
         assert_eq!((v.x, v.y), (300.0, 200.0));
-        let big = View::layout(4000, 2000, 1000.0, 600.0, Zoom::Fit);
+        let big = View::layout(4000, 2000, 1000.0, 600.0, Zoom::Fit, None);
         assert!((big.scale - (952.0 / 4000.0)).abs() < 1e-12);
         assert!(big.width() <= 952.0 + 1e-9 && big.height() <= 552.0 + 1e-9);
     }
 
     #[test]
+    fn overflowing_zoom_pans_within_clamped_bounds() {
+        let v = View::layout(1000, 800, 600.0, 400.0, Zoom::Scale(1.0), Some((-300.0, -2000.0)));
+        assert_eq!((v.x, v.y), (-300.0, 400.0 - 800.0 - 24.0));
+        let v = View::layout(1000, 800, 600.0, 400.0, Zoom::Scale(1.0), Some((500.0, 0.0)));
+        assert_eq!(v.x, 24.0, "never more than the margin of gap");
+        let small = View::layout(100, 80, 600.0, 400.0, Zoom::Scale(2.0), Some((-999.0, -999.0)));
+        assert_eq!((small.x, small.y), (200.0, 120.0), "fitting axes stay centred");
+    }
+
+    #[test]
     fn rect_and_delta_round_trip_at_fractional_scale() {
-        let v = View::layout(3000, 2000, 1024.0, 700.0, Zoom::Fit);
+        let v = View::layout(3000, 2000, 1024.0, 700.0, Zoom::Fit, None);
         let (x, y, w, h) = v.rect(Region::new(300, 200, 600, 400));
         assert!((w / v.scale - 300.0).abs() < 1e-9 && (h / v.scale - 200.0).abs() < 1e-9);
         let d = v.source_delta(Point { x, y }, Point { x: x + 10.0 * v.scale, y: y - 3.0 * v.scale });

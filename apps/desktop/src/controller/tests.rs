@@ -258,3 +258,35 @@ fn a_large_highlight_does_not_hide_the_redaction_beneath_it() {
     assert_eq!(c.hit(at(&c, 110.0, 110.0)), Hit::Mask(m));
     assert!(matches!(c.hit(at(&c, 300.0, 250.0)), Hit::Ann(_)));
 }
+
+#[test]
+fn zoom_at_pointer_keeps_the_source_point_fixed_and_space_drag_pans() {
+    let mut c = opened(2000, 1500);
+    let p = at(&c, 1000.0, 750.0);
+    c.zoom_by(4.0, p);
+    let v = c.view().unwrap();
+    let back = ((p.x - v.x) / v.scale, (p.y - v.y) / v.scale);
+    assert!((back.0 - 1000.0).abs() < 1.0 && (back.1 - 750.0).abs() < 1.0, "{back:?}");
+    c.space_pan = true;
+    let before = c.view().unwrap();
+    c.pointer_down(Point { x: 500.0, y: 300.0 });
+    c.pointer_move(Point { x: 460.0, y: 280.0 });
+    c.pointer_up();
+    let after = c.view().unwrap();
+    assert_eq!((after.x - before.x, after.y - before.y), (-40.0, -20.0));
+    assert!(editor(&c).masks().is_empty(), "panning never draws");
+    c.zoom_to(Zoom::Fit);
+    assert!(c.view().unwrap().scale < 1.0);
+}
+
+#[test]
+fn tab_cycles_through_all_objects() {
+    let mut c = opened(200, 200);
+    let a = c.editor.as_mut().unwrap().add_mask(Region::new(0, 0, 10, 10)).unwrap();
+    let b = c.editor.as_mut().unwrap().add_annotation(Annotation { shape: Shape::Highlight { region: Region::new(20, 20, 40, 40) }, color: INKS[1] }).unwrap();
+    c.deselect();
+    assert!(c.cycle_selection(false)); assert_eq!(editor(&c).selected(), Some(a));
+    assert!(c.cycle_selection(false)); assert_eq!(editor(&c).selected(), Some(b));
+    assert!(c.cycle_selection(false)); assert_eq!(editor(&c).selected(), Some(a));
+    assert!(c.cycle_selection(true)); assert_eq!(editor(&c).selected(), Some(b));
+}
