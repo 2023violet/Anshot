@@ -1,7 +1,7 @@
 //! Screen boundary: monitor layout, one-shot GDI capture, visible window bounds
 //! for snapping, and a process-wide global hotkey. Coordinates are physical
 //! virtual-desktop pixels (callers must be per-monitor DPI aware).
-use crate::{Capture, Monitor, ScreenRect};
+use crate::{Capture, Hotkey, Monitor, ScreenRect};
 use std::io;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, POINT, RECT};
 use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS};
@@ -13,7 +13,7 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetCursorPos, GetMessageW, GetWindowLongW, GetWindowTextLengthW, IsIconic, IsWindowVisible, GWL_EXSTYLE,
-    MONITORINFOF_PRIMARY, MSG, WM_HOTKEY, WS_EX_TOOLWINDOW,
+    MONITORINFOF_PRIMARY, MSG, WM_HOTKEY, WM_USER, WS_EX_TOOLWINDOW,
 };
 
 fn rect(r: RECT) -> ScreenRect { ScreenRect { x: r.left, y: r.top, w: r.right - r.left, h: r.bottom - r.top } }
@@ -123,21 +123,56 @@ pub fn visible_windows() -> Vec<ScreenRect> {
     out.0
 }
 
-/// Register Ctrl+Shift+A on a dedicated message thread; `on_press` runs on that thread.
-pub fn spawn_hotkey(on_press: impl Fn() + Send + 'static) -> io::Result<()> {
+/// A running global hotkey; dropping it does not stop it, call [`HotkeyHandle::stop`].
+pub struct HotkeyHandle { thread_id: u32, join: Option<std::thread::JoinHandle<()>> }
+impl HotkeyHandle {
+    /// End the message thread; the OS releases its thread-bound hotkey.
+    pub fn stop(mut self) {
+        // SAFETY: posts WM_QUIT to a thread id this handle owns; no pointers are passed.
+        let posted = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::PostThreadMessageW(self.thread_id, windows_sys::Win32::UI::WindowsAndMessaging::WM_QUIT, 0, 0) };
+        // Never block the UI thread on a thread that did not get the message.
+        if posted != 0 { if let Some(j) = self.join.take() { let _ = j.join(); } }
+    }
+}
+
+/// Register `hotkey` on a dedicated message thread; `on_press` runs on that thread.
+pub fn spawn_hotkey(hotkey: Hotkey, on_press: impl Fn() + Send + 'static) -> io::Result<HotkeyHandle> {
     let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::Builder::new().name("shareready-hotkey".into()).spawn(move || {
-        // SAFETY: thread-bound hotkey (NULL hwnd) delivered to this thread's queue.
-        let ok = unsafe { RegisterHotKey(std::ptr::null_mut(), 1, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, u32::from(b'A')) };
-        let _ = tx.send(if ok != 0 { Ok(()) } else { Err(io::Error::last_os_error()) });
-        if ok == 0 { return; }
+    let join = std::thread::Builder::new().name("shareready-hotkey".into()).spawn(move || {
+        // SAFETY: plain query of the calling thread id.
+        let tid = unsafe { windows_sys::Win32::System::Threading::GetCurrentThreadId() };
+        let (mods, vk) = hotkey.keys();
         let mut msg: MSG = unsafe { std::mem::zeroed() };
+        // SAFETY: creates this thread's message queue before its id is published, so stop()'s
+        // PostThreadMessageW cannot fail with ERROR_INVALID_THREAD_ID.
+        unsafe { windows_sys::Win32::UI::WindowsAndMessaging::PeekMessageW(&mut msg, std::ptr::null_mut(), WM_USER, WM_USER, windows_sys::Win32::UI::WindowsAndMessaging::PM_NOREMOVE) };
+        // SAFETY: thread-bound hotkey (NULL hwnd) delivered to this thread's queue.
+        let ok = unsafe { RegisterHotKey(std::ptr::null_mut(), 1, mods | MOD_NOREPEAT, vk) };
+        let _ = tx.send(if ok != 0 { Ok(tid) } else { Err(io::Error::last_os_error()) });
+        if ok == 0 { return; }
         // SAFETY: standard blocking message loop on this thread; MSG is owned here.
         while unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) } > 0 {
             if msg.message == WM_HOTKEY { on_press(); }
         }
+        // SAFETY: release this thread's registration before it exits.
+        unsafe { windows_sys::Win32::UI::Input::KeyboardAndMouse::UnregisterHotKey(std::ptr::null_mut(), 1) };
     })?;
-    rx.recv().map_err(|_| io::Error::other("hotkey thread ended"))?
+    match rx.recv().map_err(|_| io::Error::other("hotkey thread ended"))? {
+        Ok(thread_id) => Ok(HotkeyHandle { thread_id, join: Some(join) }),
+        Err(e) => { let _ = join.join(); Err(e) }
+    }
+}
+
+impl Hotkey {
+    fn keys(self) -> (u32, u32) {
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{MOD_ALT, VK_SNAPSHOT};
+        match self {
+            Hotkey::CtrlShiftA => (MOD_CONTROL | MOD_SHIFT, u32::from(b'A')),
+            Hotkey::CtrlAltA => (MOD_CONTROL | MOD_ALT, u32::from(b'A')),
+            Hotkey::CtrlShiftX => (MOD_CONTROL | MOD_SHIFT, u32::from(b'X')),
+            Hotkey::PrintScreen => (0, u32::from(VK_SNAPSHOT)),
+        }
+    }
 }
 
 /// True for the first ShareReady process in this session (named mutex). The

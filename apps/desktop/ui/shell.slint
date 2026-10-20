@@ -4,18 +4,21 @@ import { Pill } from "widgets.slint";
 
 export component Tray inherits SystemTrayIcon {
     icon: @image-url("../assets/icon-32.png");
-    tooltip: "ShareReady · Ctrl+Shift+A 截图";
+    in property <string> hotkey-label: "Ctrl+Shift+A";
+    tooltip: "ShareReady · " + root.hotkey-label + " 截图";
     callback capture();
     callback open-image();
     callback show-editor();
     callback about();
+    callback settings();
     callback quit();
     clicked => { root.capture(); }
     Menu {
-        MenuItem { title: "截图 (Ctrl+Shift+A)"; activated => { root.capture(); } }
+        MenuItem { title: "截图 (" + root.hotkey-label + ")"; activated => { root.capture(); } }
         MenuItem { title: "打开图片…"; activated => { root.open-image(); } }
         MenuItem { title: "显示编辑窗口"; activated => { root.show-editor(); } }
         MenuSeparator { }
+        MenuItem { title: "设置…"; activated => { root.settings(); } }
         MenuItem { title: "关于"; activated => { root.about(); } }
         MenuItem { title: "退出"; activated => { root.quit(); } }
     }

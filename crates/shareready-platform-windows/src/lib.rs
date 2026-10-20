@@ -26,6 +26,14 @@ pub fn save_new(_path:&std::path::Path,_bytes:&[u8])->std::io::Result<()> {
     Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"Windows delivery adapter requires Windows"))
 }
 
+/// Global capture shortcut choices offered in settings.
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub enum Hotkey { CtrlShiftA, CtrlAltA, CtrlShiftX, PrintScreen }
+impl Hotkey {
+    pub const ALL:[Hotkey;4]=[Hotkey::CtrlShiftA,Hotkey::CtrlAltA,Hotkey::CtrlShiftX,Hotkey::PrintScreen];
+    pub fn label(self)->&'static str{match self{Hotkey::CtrlShiftA=>"Ctrl+Shift+A",Hotkey::CtrlAltA=>"Ctrl+Alt+A",Hotkey::CtrlShiftX=>"Ctrl+Shift+X",Hotkey::PrintScreen=>"PrtSc"}}
+}
+
 /// Physical virtual-desktop rectangle.
 #[derive(Clone,Copy,Debug,PartialEq,Eq)]
 pub struct ScreenRect {pub x:i32,pub y:i32,pub w:i32,pub h:i32}
@@ -45,7 +53,7 @@ pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
 #[cfg(windows)]
 mod screen;
 #[cfg(windows)]
-pub use screen::{capture,claim_single_instance,cursor,monitors,spawn_hotkey,visible_windows};
+pub use screen::{capture,claim_single_instance,cursor,monitors,spawn_hotkey,visible_windows,HotkeyHandle};
 
 #[cfg(not(windows))]
 pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
@@ -58,7 +66,11 @@ pub fn claim_single_instance()->bool{true}
 #[cfg(not(windows))]
 pub fn cursor()->Option<(i32,i32)>{None}
 #[cfg(not(windows))]
-pub fn spawn_hotkey(_on_press:impl Fn()+Send+'static)->std::io::Result<()>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"hotkey requires Windows"))}
+pub struct HotkeyHandle;
+#[cfg(not(windows))]
+impl HotkeyHandle{pub fn stop(self){}}
+#[cfg(not(windows))]
+pub fn spawn_hotkey(_hotkey:Hotkey,_on_press:impl Fn()+Send+'static)->std::io::Result<HotkeyHandle>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"hotkey requires Windows"))}
 
 #[cfg(test)]
 mod rect_tests {

@@ -47,7 +47,12 @@ export component AppWindow inherits Window {
     in property <string> text-initial;
     in property <string> toast-kind; // "", "done", "error", "warn"
     in property <string> toast-title; in property <string> toast-detail; in property <string> toast-action;
-    in property <string> dialog; // "", "close", "replace", "about"
+    in property <string> dialog; // "", "close", "replace", "about", "settings"
+    in property <string> hotkey-label: "Ctrl+Shift+A";
+    in property <int> hotkey-index;
+    in property <bool> hotkey-active: true;
+    in property <bool> hide-after-copy: true;
+    in property <string> save-dir;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
 
@@ -218,14 +223,14 @@ export component AppWindow inherits Window {
                     width: max(160px, ti.preferred-width + 16px); height: ti.preferred-height + 6px;
                     border-width: 1px; border-color: Theme.select-bg; background: #ffffffcc;
                     FocusScope {
-                        key-pressed(e) => {
+                        capture-key-pressed(e) => {
                             if e.text == Key.Escape { root.text-cancel(); return accept; }
+                            if e.text == Key.Return && !e.modifiers.shift { root.text-commit(ti.text); return accept; }
                             reject
                         }
                         ti := TextInput {
                             x: 4px; y: 3px; text: root.text-initial; font-size: root.text-size; color: root.text-color;
-                            single-line: true; accessible-label: "标注文字";
-                            accepted => { root.text-commit(self.text); }
+                            single-line: false; wrap: no-wrap; accessible-label: "标注文字（Enter 完成，Shift+Enter 换行）";
                             init => { self.focus(); self.select-all(); }
                         }
                     }
@@ -242,7 +247,7 @@ export component AppWindow inherits Window {
                     VerticalLayout { alignment: center; spacing: 22px;
                         Text { text: "开始一张截图"; font-size: 26px; letter-spacing: -0.4px; color: Theme.ink; horizontal-alignment: center; }
                         HorizontalLayout { alignment: center; spacing: 12px;
-                            for c in [{t: "截图", k: "Ctrl Shift A", cmd: "capture"}, {t: "打开图片", k: "Ctrl O", cmd: "open"}, {t: "粘贴图片", k: "Ctrl V", cmd: "paste"}]: Rectangle {
+                            for c in [{t: "截图", k: root.hotkey-label, cmd: "capture"}, {t: "打开图片", k: "Ctrl O", cmd: "open"}, {t: "粘贴图片", k: "Ctrl V", cmd: "paste"}]: Rectangle {
                                 width: 168px; height: 116px; border-radius: 12px; background: ca.has-hover ? Theme.bg-hover : Theme.bg-card;
                                 border-width: 1px; border-color: Theme.line-strong;
                                 accessible-role: button; accessible-label: c.t; accessible-action-default => { root.command(c.cmd); }
@@ -315,9 +320,9 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: min(420px, parent.width - 32px); height: root.dialog == "about" ? 330px : 170px;
+                width: min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 300px : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : "替换确认";
+                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: "关于 ShareReady（临时代号）"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
@@ -325,7 +330,27 @@ export component AppWindow inherits Window {
                     Rectangle { height: 150px; AboutSlint { } }
                     HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
-                if root.dialog != "about": VerticalLayout { padding: 24px; spacing: 6px;
+                if root.dialog == "settings": VerticalLayout { padding: 24px; spacing: 12px;
+                    Text { text: "设置"; font-size: 15px; font-weight: 600; color: Theme.ink; }
+                    HorizontalLayout { spacing: 12px;
+                        Label { text: "截图快捷键"; width: 84px; }
+                        VerticalLayout { alignment: center; Segmented { options: ["Ctrl+Shift+A", "Ctrl+Alt+A", "Ctrl+Shift+X", "PrtSc"]; selected: root.hotkey-index; picked(i) => { root.command("hotkey-" + i); } } }
+                    }
+                    if !root.hotkey-active: Text { text: "当前快捷键未能注册（可能被其他程序占用），请换一个"; color: Theme.error; font-size: 12px; }
+                    HorizontalLayout { spacing: 12px;
+                        Label { text: "复制之后"; width: 84px; }
+                        VerticalLayout { alignment: center; Segmented { options: ["收起编辑窗", "保留编辑窗"]; selected: root.hide-after-copy ? 0 : 1; picked(i) => { root.command(i == 0 ? "copy-hide" : "copy-stay"); } } }
+                    }
+                    HorizontalLayout { spacing: 12px;
+                        Label { text: "默认保存位置"; width: 84px; }
+                        Text { text: root.save-dir == "" ? "上次使用的位置" : root.save-dir; color: Theme.body; font-size: 12px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                        ActionButton { label: "选择…"; key: ""; kind: 0; clicked => { root.command("save-dir"); } }
+                        if root.save-dir != "": ActionButton { label: "清除"; key: ""; kind: 2; clicked => { root.command("save-dir-clear"); } }
+                    }
+                    Text { text: "设置只保存在本机（%APPDATA%\\ShareReady）。"; color: Theme.mute; font-size: 12px; }
+                    HorizontalLayout { alignment: end; ActionButton { label: "完成"; key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
+                }
+                if root.dialog != "about" && root.dialog != "settings": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: root.dialog == "close" ? "有未复制或保存的编辑" : "替换当前图片？"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: root.dialog == "close" ? "关闭后这些编辑会丢失。" : "当前图片有未复制或保存的编辑，替换后会丢失。"; color: Theme.body; wrap: word-wrap; }
                     HorizontalLayout { padding-top: 16px; spacing: 8px; alignment: end;

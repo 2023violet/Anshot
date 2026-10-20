@@ -10,8 +10,14 @@ pub fn pick_image() -> Option<PathBuf> {
     rfd::FileDialog::new().set_title("打开图片").add_filter("图片", &["png", "jpg", "jpeg"]).pick_file()
 }
 
-pub fn pick_save_path(suggested: &str) -> Option<PathBuf> {
-    rfd::FileDialog::new().set_title("另存为新 PNG").add_filter("PNG 图片", &["png"]).set_file_name(suggested).save_file()
+pub fn pick_save_path(suggested: &str, dir: Option<&Path>) -> Option<PathBuf> {
+    let mut d = rfd::FileDialog::new().set_title("另存为新 PNG").add_filter("PNG 图片", &["png"]).set_file_name(suggested);
+    if let Some(dir) = dir.filter(|d| d.is_dir()) { d = d.set_directory(dir); }
+    d.save_file()
+}
+
+pub fn pick_folder() -> Option<PathBuf> {
+    rfd::FileDialog::new().set_title("选择默认保存文件夹").pick_folder()
 }
 
 /// Bounded read of a user-chosen file; Core re-validates size and format.

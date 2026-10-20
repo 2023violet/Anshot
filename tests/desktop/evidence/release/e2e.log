@@ -1,4 +1,4 @@
-EXE sha256=e6f9c5f5f234714487e45f316081abbc27beee1813dfc5de29a196c70572768e path=ShareReady.exe
+EXE sha256=2786bd7487ee18f62923a5bad38411f34cfa81f88c32cba1061cbb1f06087b10 path=ShareReady.exe
 LAYOUT client=1180x760 image_origin=280,196 scale=1
 UIA toast=
 CLIPBOARD image=620x430
@@ -15,3 +15,19 @@ B3 clipboard=620x430
 DROP status=620 × 430
 ZOOM after_ctrl_wheel=当前缩放 133%，点击实际大小 Ctrl+1
 KEYBOARD clipboard=620x430
+SAVE round=1 dialog=True
+SAVE round=2 dialog=True
+SAVE first=True second=True
+SAVE original_unchanged=True
+KEYS blue=620x430
+KEYS deleted=620x430
+KEYS undone=620x430
+KEYS redone=620x430
+SETTINGS dialog=True
+SETTINGS pick_hotkey=True pick_stay=True
+SETTINGS file=hotkey=Ctrl+Alt+A | hide_after_copy=false | save_dir=
+SETTINGS new_hotkey_overlays=1
+SETTINGS editor_visible_after_copy=True
+DPI125 client=1475x950 logical_origin=280,196 scale=1
+DPI125 copy=620x430
+MULTILINE copy=620x430

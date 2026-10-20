@@ -104,3 +104,25 @@
 | 无障碍补充 | 缩放按钮名称包含当前百分比（原先文字节点不暴露，读屏无法得知缩放） |
 
 **未验证**：触控板手势缩放、Explorer 真实拖放（用 OLE 辅助窗口代替）、多文件拖放（只取第一个）。
+
+## B5 设计要点（代理确认，2026-10-20）
+- **设置页**（Ctrl+, 或托盘“设置…”）：截图快捷键四选一（Ctrl+Shift+A / Ctrl+Alt+A / Ctrl+Shift+X / PrtSc）、复制后收起或保留编辑窗、默认保存文件夹。只存本机 `%APPDATA%\ShareReady\settings.txt`（`key=value` 文本，无网络）；测试用 `SHAREREADY_SETTINGS_DIR` 隔离，不读写用户真实设置。
+- **快捷键可更换**：`HotkeyHandle` 在独立消息线程注册，`stop()` 投递 WM_QUIT 并 join；新快捷键注册失败时恢复旧键并提示。线程在公布 id 前先 `PeekMessageW` 建立消息队列，`stop()` 只有投递成功才 join（独立审查发现的 UI 卡死隐患已修复）。
+- 托盘“设置…”不会覆盖正在显示的关闭 / 替换确认框（审查发现，已修复）。
+- **多行文字**：Shift+Enter 换行、Enter 提交、Esc 取消（`capture-key-pressed`）。
+- **字体只内嵌一份**：界面改为运行时向 Slint 注册渲染器的同一份 Noto Sans CJK SC，exe 从约 49 MB 降到 32.7 MB。
+
+## B5 证据（2026-10-20，代理执行，非真人测试）
+被测 `dist/ShareReady-0.1.0-win-x64/ShareReady.exe` SHA256 `2786bd7487ee18f62923a5bad38411f34cfa81f88c32cba1061cbb1f06087b10`。
+| 检查 | 结果 |
+|---|---|
+| 单元测试 | 根 workspace 85 项、desktop 27 项全部通过（新增设置读写往返、`free_path`） |
+| 真实另存对话框（e2e 10） | Ctrl+S → 系统“另存为新 PNG”对话框 → 输入路径保存；同名再存一次并在“是否替换”中选“是”：原文件哈希不变，另得 `saved (2).png`；两者像素一致；块结构只有 IHDR/IDAT/IEND |
+| 按键路由（e2e 11） | R 画框 → 4 改蓝（1216 个 `#2f6ff0` 像素）→ Esc、Tab、Delete 后读回与源 0 差异 → Ctrl+Z 与蓝框版 0 差异 → Ctrl+Y 与源 0 差异 |
+| 设置（e2e 12） | UIA 选“Ctrl+Alt+A”“保留编辑窗”→ 文件写入 `hotkey=Ctrl+Alt+A`、`hide_after_copy=false` → 真实按 Ctrl+Alt+A 出现覆盖层 → 复制后编辑窗仍可见 |
+| 模拟 125%（e2e 13） | `SLINT_SCALE_FACTOR=1.25`，按物理像素拖选，读回逐像素 PASS（这是应用内缩放模拟，**不是**真实系统 DPI 设置） |
+| 多行文字（e2e 14） | “12” Shift+Enter “34” Enter → 两行红色字形分别 14 / 21 个像素 |
+| 性能复测 | 启动 511/490/469 ms；快捷键→覆盖层 82/38/40 ms；24MP 打开 376 ms、复制 335 ms；峰值 406 MB；网络端点 0 |
+| 独立代理审查 | 发现 2 项（快捷键线程队列竞态、托盘设置绕过对话框门控），均已修复并复测 |
+
+**未验证**：中文输入法组字时 Enter 是否被提前提交（winit 通常先交给 IME，需真人用拼音确认）；PrtSc 被其他软件占用时的提示文案只经代码审查。

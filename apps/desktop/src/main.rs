@@ -9,6 +9,7 @@ mod capture;
 mod controller;
 mod display;
 mod platform;
+mod settings;
 
 use canvas::Zoom;
 use controller::{Controller, Delivery, Notice, Tool, INKS, TEXT_SIZES};
@@ -52,6 +53,8 @@ struct App {
     toast_win: Option<ToastWindow>,
     /// Decoded source downscaled for the screen, and its scale (preview px per source px).
     base: Option<(RgbaImage, f32)>,
+    settings: settings::Settings,
+    hotkey: Option<shareready_platform_windows::HotkeyHandle>,
 }
 
 fn to_image(img: &RgbaImage) -> Image {
@@ -267,7 +270,8 @@ impl App {
                 match std::mem::replace(&mut self.after_copy, AfterCopy::Stay) {
                     AfterCopy::Quit => { let _ = slint::quit_event_loop(); }
                     // 02 U07: a successful copy ends the task; the editor steps aside.
-                    _ if self.resident => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
+                    _ if self.resident && self.settings.hide_after_copy => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
+                    AfterCopy::Close if self.resident => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
                     AfterCopy::Close => { let _ = slint::quit_event_loop(); }
                     AfterCopy::Stay => self.toast("done", "已复制到剪贴板", &detail, None),
                 }
@@ -288,7 +292,7 @@ impl App {
             if ui.get_dialog() != "" {
                 if is(Key::Escape) { self.dialog_choice("cancel"); return true; }
                 if is(Key::Return) && ui.get_dialog() == "close" && self.ctl.can_deliver() { self.dialog_choice("copy-close"); return true; }
-                if is(Key::Return) && ui.get_dialog() == "about" { self.dialog_choice("cancel"); return true; }
+                if is(Key::Return) && (ui.get_dialog() == "about" || ui.get_dialog() == "settings") { self.dialog_choice("cancel"); return true; }
                 return false;
             }
         }
@@ -513,6 +517,53 @@ impl App {
         });
     }
 
+    // ---- settings ----
+    fn register_hotkey(&mut self) -> bool {
+        if let Some(h) = self.hotkey.take() { h.stop(); }
+        let key = self.settings.hotkey;
+        match shareready_platform_windows::spawn_hotkey(key, || {
+            let _ = slint::invoke_from_event_loop(|| { with(|a| a.begin_capture()); });
+        }) {
+            Ok(h) => { self.hotkey = Some(h); self.push_settings(); true }
+            Err(_) => {
+                self.toast("warn", &format!("快捷键 {} 被其他程序占用", key.label()), "可在设置中换一个，或从托盘图标截图", None);
+                self.push_settings();
+                false
+            }
+        }
+    }
+    fn push_settings(&self) {
+        let Some(ui) = self.ui() else { return };
+        let s = &self.settings;
+        ui.set_hotkey_label(s.hotkey.label().into());
+        ui.set_hotkey_index(shareready_platform_windows::Hotkey::ALL.iter().position(|h| *h == s.hotkey).unwrap_or(0) as i32);
+        ui.set_hotkey_active(self.hotkey.is_some());
+        ui.set_hide_after_copy(s.hide_after_copy);
+        ui.set_save_dir(s.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default().into());
+        if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); }
+    }
+    fn open_settings(&mut self) {
+        // Never replace a pending close/replace prompt (the tray bypasses command gating).
+        if self.ui().is_some_and(|ui| !ui.get_dialog().is_empty()) { self.show_editor(); return; }
+        self.show_editor();
+        self.push_settings();
+        if let Some(ui) = self.ui() { ui.set_dialog("settings".into()); }
+    }
+    fn persist(&mut self) {
+        if let Err(e) = self.settings.save() { self.toast("error", "设置未能保存", &e, None); }
+        self.push_settings();
+    }
+    fn set_hotkey(&mut self, i: usize) {
+        let Some(&key) = shareready_platform_windows::Hotkey::ALL.get(i) else { return };
+        let old = self.settings.hotkey;
+        self.settings.hotkey = key;
+        if self.resident && !self.register_hotkey() {
+            self.settings.hotkey = old;
+            self.register_hotkey();
+        }
+        self.persist();
+    }
+
     fn dialog_choice(&mut self, choice: &str) {
         if let Some(ui) = self.ui() { ui.set_dialog(SharedString::new()); }
         self.ctl.cancel_drag();
@@ -575,18 +626,24 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 }
 
 fn command(cmd: &str) {
-    if with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
+    let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
+    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir");
+    if !(in_settings && settings_cmd) && with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
     match cmd {
         // Blocking dialogs and clipboard reads run outside the state borrow.
         "open" => { if let Some(p) = picker(platform::pick_image) { open_path(p); } }
         "paste" => spawn_open(platform::read_clipboard(), Some("剪贴板图片.png".into())),
         "capture" => { with(|a| a.begin_capture()); }
+        "save-dir" => {
+            if let Some(dir) = picker(platform::pick_folder) { with(|a| { a.settings.save_dir = Some(dir); a.persist(); }); }
+        }
         "save" => {
             if !with(|a| a.ctl.can_deliver()).unwrap_or(false) {
                 with(|a| a.start(Delivery::Save));
                 return;
             }
-            if let Some(path) = picker(|| platform::pick_save_path(&suggested_name())) {
+            let dir = with(|a| a.settings.save_dir.clone()).flatten();
+            if let Some(path) = picker(|| platform::pick_save_path(&suggested_name(), dir.as_deref())) {
                 with(|a| { a.save_path = Some(path); a.start(Delivery::Save); });
             }
         }
@@ -616,6 +673,11 @@ fn command(cmd: &str) {
                     "zoom-actual" => a.ctl.zoom_to(Zoom::Scale(1.0)),
                     "zoom-in" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(1.25, c); }
                     "zoom-out" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(0.8, c); }
+                    "settings" => a.open_settings(),
+                    c if c.starts_with("hotkey-") => { if let Ok(i) = c[7..].parse::<usize>() { a.set_hotkey(i); } }
+                    "copy-hide" => { a.settings.hide_after_copy = true; a.persist(); }
+                    "copy-stay" => { a.settings.hide_after_copy = false; a.persist(); }
+                    "save-dir-clear" => { a.settings.save_dir = None; a.persist(); }
                     "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } None => {} },
                     _ => {}
                 }
@@ -626,11 +688,18 @@ fn command(cmd: &str) {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    // One embedded copy of Noto Sans CJK SC serves both the UI and the exporter.
+    {
+        use slint::fontique_011::fontique;
+        let blob = fontique::Blob::new(std::sync::Arc::new(shareready_render::font_bytes()));
+        let _ = slint::fontique_011::shared_collection().register_fonts(blob, None);
+    }
     let ui = AppWindow::new()?;
     APP.with(|cell| *cell.borrow_mut() = Some(App {
         ctl: Controller::default(), ui: ui.as_weak(), pending: None, save_path: None,
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
+        settings: settings::Settings::load(), hotkey: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -640,13 +709,11 @@ fn main() -> Result<(), slint::PlatformError> {
         tray.on_show_editor(|| { with(|a| a.show_editor()); });
         tray.on_about(|| { with(|a| { a.show_editor(); if let Some(ui) = a.ui() { ui.set_dialog("about".into()); } }); });
         tray.on_quit(|| { with(|a| a.request_quit()); });
-        let hotkey = shareready_platform_windows::spawn_hotkey(|| {
-            let _ = slint::invoke_from_event_loop(|| { with(|a| a.begin_capture()); });
-        });
+        tray.on_settings(|| { with(|a| a.open_settings()); });
         with(|a| {
             a.resident = true;
             a.tray = Some(tray);
-            if hotkey.is_err() { a.toast("warn", "快捷键 Ctrl+Shift+A 被占用", "可从托盘图标开始截图", None); }
+            a.register_hotkey();
         });
         slint::Timer::single_shot(Duration::from_millis(800), || { with(|a| if a.session.is_none() { a.prewarm_overlays(); }); });
     }
@@ -698,6 +765,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 Some('o') => { command("open"); return true; }
                 Some('v') => { command("paste"); return true; }
                 Some('s') => { command("save"); return true; }
+                Some(',') => { command("settings"); return true; }
                 _ => {}
             }
         }
@@ -720,7 +788,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // "Open with" / command-line path.
     if let Some(path) = std::env::args_os().nth(1).map(PathBuf::from) { open_path(path); }
-    with(|a| a.refresh());
+    with(|a| { a.push_settings(); a.refresh(); });
     ui.show()?;
     slint::run_event_loop_until_quit()
 }

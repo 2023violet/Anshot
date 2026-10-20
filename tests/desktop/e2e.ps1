@@ -27,6 +27,12 @@ public static class E {
   [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  public static IntPtr TitleAny(string title) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, l) => { var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
+      if (IsWindowVisible(h) && sb.ToString() == title) found = h; return true; }, IntPtr.Zero);
+    return found;
+  }
   public static System.Collections.Generic.List<IntPtr> Visible(uint pid, string title) {
     var r = new System.Collections.Generic.List<IntPtr>();
     EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
@@ -45,6 +51,9 @@ public static class E {
 '@
 [void][E]::SetProcessDPIAware()
 New-Item -ItemType Directory -Force $Out | Out-Null
+# Never touch the user's real settings: every launched instance reads this folder.
+$env:SHAREREADY_SETTINGS_DIR = Join-Path $Out 'settings'
+if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Get-ChildItem $env:SHAREREADY_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
@@ -264,6 +273,124 @@ Key 0x43 -Ctrl
 Start-Sleep -Milliseconds 1500
 $clip = [System.Windows.Forms.Clipboard]::GetImage()
 if ($clip) { $clip.Save((Join-Path $Out 'clipboard-keyboard.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "KEYBOARD clipboard=$($clip.Width)x$($clip.Height)" } else { Log 'KEYBOARD clipboard=none' }
+if (-not $w.P.HasExited) { $w.P.Kill() }
+
+
+function WaitTitle([string] $t, [int] $ms) { $d = (Get-Date).AddMilliseconds($ms); while ((Get-Date) -lt $d) { $h = [E]::TitleAny($t); if ($h -ne [IntPtr]::Zero) { return $h }; Start-Sleep -Milliseconds 150 }; return [IntPtr]::Zero }
+function Invoke-Uia($w, [string] $name) {
+    $root = [System.Windows.Automation.AutomationElement]::FromHandle($w.H)
+    $cond = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $name
+    $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+    if (-not $el) { return $false }
+    $pat = $null
+    if ($el.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pat)) { $pat.Invoke(); Start-Sleep -Milliseconds 400; return $true }
+    return $false
+}
+function CopyTo([string] $name) {
+    [System.Windows.Forms.Clipboard]::Clear(); Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+    $c = [System.Windows.Forms.Clipboard]::GetImage()
+    if ($c) { $c.Save((Join-Path $Out $name), [System.Drawing.Imaging.ImageFormat]::Png); return "$($c.Width)x$($c.Height)" } else { return 'none' }
+}
+
+# ---- 10. real Save As dialog, then a second save to the same name (never overwrites) ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+$saved = Join-Path $Out 'saved.png'
+foreach ($f in @($saved, (Join-Path $Out 'saved (2).png'))) { if (Test-Path $f) { [System.IO.File]::Delete($f) } }
+foreach ($round in 1..2) {
+    Key 0x53 -Ctrl
+    $dlg = WaitTitle '另存为新 PNG' 8000
+    Log "SAVE round=$round dialog=$($dlg -ne [IntPtr]::Zero)"
+    if ($dlg -eq [IntPtr]::Zero) { break }
+    [void][E]::SetForegroundWindow($dlg); Start-Sleep -Milliseconds 500
+    [System.Windows.Forms.SendKeys]::SendWait('^a'); Start-Sleep -Milliseconds 100
+    [System.Windows.Forms.SendKeys]::SendWait($saved); Start-Sleep -Milliseconds 200
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}'); Start-Sleep -Milliseconds 1200
+    if ($round -eq 2) {
+        # Windows asks "replace?"; answering yes must still not overwrite.
+        [System.Windows.Forms.SendKeys]::SendWait('%y'); Start-Sleep -Milliseconds 1500
+    }
+    Start-Sleep -Milliseconds 1500
+}
+$h1 = if (Test-Path $saved) { (Get-FileHash $saved).Hash } else { 'missing' }
+Log "SAVE first=$(Test-Path $saved) second=$(Test-Path (Join-Path $Out 'saved (2).png'))"
+Start-Sleep -Milliseconds 300
+$h1b = if (Test-Path $saved) { (Get-FileHash $saved).Hash } else { 'missing' }
+Log "SAVE original_unchanged=$($h1 -eq $h1b)"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 11. keyboard routing: R, colour 4, Esc, Tab, Delete, Ctrl+Z, Ctrl+Y ----
+# Keep the editor open after copy so the following keys reach it.
+New-Item -ItemType Directory -Force $env:SHAREREADY_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x52                                  # R: frame
+Drag $w ($io.X + 300) ($io.Y + 380) ($io.X + 420) ($io.Y + 420)
+Key 0x34                                  # 4: blue (applies to the selection)
+Log "KEYS blue=$(CopyTo 'keys-1-blue.png')"
+Key 0x1B; Key 0x09; Key 0x2E              # Esc, Tab (select), Delete
+Log "KEYS deleted=$(CopyTo 'keys-2-deleted.png')"
+Key 0x5A -Ctrl                            # Ctrl+Z
+Log "KEYS undone=$(CopyTo 'keys-3-undo.png')"
+Key 0x59 -Ctrl                            # Ctrl+Y
+Log "KEYS redone=$(CopyTo 'keys-4-redo.png')"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+[System.IO.File]::Delete((Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'))
+Start-Sleep -Milliseconds 500
+
+# ---- 12. settings: Ctrl+, -> choose Ctrl+Alt+A, persisted and active; copy keeps editor ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Key 0xBC -Ctrl                            # Ctrl+,
+Start-Sleep -Milliseconds 500
+Log "SETTINGS dialog=$(((UiaNames $w) -contains '设置'))"
+Log "SETTINGS pick_hotkey=$(Invoke-Uia $w 'Ctrl+Alt+A') pick_stay=$(Invoke-Uia $w '保留编辑窗')"
+Shot $w '13-settings.png'
+Key 0x1B
+$sf = Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'
+Log ("SETTINGS file=" + ((Get-Content $sf -ErrorAction SilentlyContinue) -join ' | '))
+[E]::keybd_event(0x11, 0, 0, [IntPtr]::Zero); [E]::keybd_event(0x12, 0, 0, [IntPtr]::Zero); [E]::keybd_event(0x41, 0, 0, [IntPtr]::Zero)
+Start-Sleep -Milliseconds 50; [E]::keybd_event(0x41, 0, 2, [IntPtr]::Zero); [E]::keybd_event(0x12, 0, 2, [IntPtr]::Zero); [E]::keybd_event(0x11, 0, 2, [IntPtr]::Zero)
+Start-Sleep -Milliseconds 1200
+Log "SETTINGS new_hotkey_overlays=$(([E]::Visible([uint32]$w.P.Id, 'ShareReady 截图')).Count)"
+Key 0x1B; Start-Sleep -Milliseconds 500
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "SETTINGS editor_visible_after_copy=$([E]::IsWindowVisible($w.H))"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+if (Test-Path $sf) { [System.IO.File]::Delete($sf) }
+Start-Sleep -Milliseconds 500
+
+# ---- 13. simulated 125% scale (SLINT_SCALE_FACTOR): physical-pixel drag maps to exact source pixels ----
+$env:SLINT_SCALE_FACTOR = '1.25'
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Remove-Item Env:SLINT_SCALE_FACTOR
+$k = 1.25; $lw = $w.W / $k; $lh = $w.Hh / $k
+$cw = $lw; $ch = $lh - 52 - 40 - 30
+$sc = [math]::Min(1.0, [math]::Min(($cw - 48) / $iw, ($ch - 48) / $ih))
+$ox = [math]::Round(($cw - $iw * $sc) / 2); $oy = 92 + [math]::Round(($ch - $ih * $sc) / 2)
+Log "DPI125 client=$($w.W)x$($w.Hh) logical_origin=$ox,$oy scale=$sc"
+Drag $w (($ox + 520) * $k) (($oy + 144) * $k) (($ox + 596) * $k) (($oy + 164) * $k)
+Log "DPI125 copy=$(CopyTo 'clipboard-dpi125.png')"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 14. multi-line text: Shift+Enter inserts a line, Enter commits ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x54
+[void][E]::SetCursorPos($w.O.X + $io.X + 40, $w.O.Y + $io.Y + 330); Start-Sleep -Milliseconds 200
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+foreach ($kk in 0x31, 0x32) { Key ([byte]$kk) }
+Key 0x0D -Shift
+foreach ($kk in 0x33, 0x34) { Key ([byte]$kk) }
+Key 0x0D
+Shot $w '14-multiline.png'
+Log "MULTILINE copy=$(CopyTo 'clipboard-multiline.png')"
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

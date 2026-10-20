@@ -29,6 +29,7 @@ public static class P {
 '@
 [void][P]::SetProcessDPIAware()
 New-Item -ItemType Directory -Force $Out | Out-Null
+$env:SHAREREADY_SETTINGS_DIR = Join-Path $Out "settings"
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))

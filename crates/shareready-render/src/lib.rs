@@ -14,6 +14,9 @@ use tiny_skia::{FillRule, LineCap, LineJoin, Paint, PathBuilder, Pixmap, Rect, S
 
 static FONT_BYTES: &[u8] = include_bytes!("../../../assets/fonts/NotoSansCJKsc-Regular.otf");
 
+/// The bundled Noto Sans CJK SC bytes, shared with the UI so the exe embeds one copy.
+pub fn font_bytes() -> &'static [u8] { FONT_BYTES }
+
 fn font() -> &'static FontRef<'static> {
     static FONT: OnceLock<FontRef<'static>> = OnceLock::new();
     FONT.get_or_init(|| FontRef::try_from_slice(FONT_BYTES).expect("bundled Noto Sans CJK SC parses"))
