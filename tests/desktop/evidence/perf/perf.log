@@ -1,0 +1,7 @@
+STARTUP_MS runs=885,859,784
+HOTKEY_TO_OVERLAY_MS runs=75,37,36
+OPEN_24MP_MS from_launch=189
+COPY_24MP_MS ctrl_c_to_clipboard=249
+COPY_24MP size=6000x4000
+MEMORY_24MP peak_working_set_mb=420
+NETWORK endpoints_seen=0 

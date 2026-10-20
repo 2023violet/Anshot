@@ -47,6 +47,7 @@ public static class E {
 New-Item -ItemType Directory -Force $Out | Out-Null
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
+Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
 
 function Launch([string[]] $argv) {
     $p = Start-Process $Exe -ArgumentList $argv -PassThru
@@ -250,6 +251,19 @@ foreach ($i in 1..3) { [E]::mouse_event(0x0800, 0, 0, 120, [IntPtr]::Zero); Star
 [E]::keybd_event(0x11, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
 Log ("ZOOM after_ctrl_wheel=" + (((UiaNames $w) | Where-Object { $_ -match '当前缩放' }) -join ' | '))
 Shot $w '12-zoomed.png'
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 9. keyboard: Ctrl+Right x5 resizes the selected redaction, then Ctrl+C ----
+[System.Windows.Forms.Clipboard]::Clear()
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+foreach ($i in 1..5) { Key 0x27 -Ctrl }
+Key 0x43 -Ctrl
+Start-Sleep -Milliseconds 1500
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) { $clip.Save((Join-Path $Out 'clipboard-keyboard.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "KEYBOARD clipboard=$($clip.Width)x$($clip.Height)" } else { Log 'KEYBOARD clipboard=none' }
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

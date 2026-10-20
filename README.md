@@ -1,87 +1,49 @@
-# ShareReady — Rust-first image-sharing preparation tool (working title)
+# ShareReady（临时代号）— Windows 截图 · 标注 · 遮挡 · 分享
 
-> **产品重新定义中（2026-10-19 起）。** 新方向：以 Rust 为可信主导的 Windows 桌面工具，覆盖“截图 → 标注 → 遮挡 → 分享”。产品、UX 与设计交付物见 [`ui-design/`](ui-design/)，从 [01_PRD.md](ui-design/01_PRD.md) 开始。下方 V1.3 与 V2-03 样机内容为冻结的历史参考（快照 tag `pre-redesign-2026-10-19`）。
+> **状态：0.1.0 本地构建，已完成 01–07 阶段，代理验收结论 ACCEPT_WITH_LIMITS。未签名、未发布，未做真人可用性测试或安全审计。**
+> ShareReady 只是临时代号，已有同名产品，未做商标清查。
 
-> **STATUS: V2-03 RUST NATIVE POC UNDER LOCAL DEVELOPMENT / NOT RELEASED.** V1.3 remains the current user-facing Windows/Web edition. The native POC has guarded image/edit/export paths, a Chinese workbench and measured synthetic 24MP GPU/output evidence; [latest completed source-intake evidence and remaining acceptance](docs/V2/P03-K/README.md) and [previous completed batch](docs/V2/P03-J/README.md) distinguish exact artifacts from historical CI, security certification and human usability sign-off.
+按 **Ctrl+Shift+A** 截图，加上箭头、文字和序号，遮住不该公开的内容，再一键复制或保存。**所有像素处理和导出都由 Rust 完成**：遮挡区域被替换成不含原图信息的像素，导出的是全新的 PNG，画布显示什么，导出就是什么。
 
-ShareReady is a **temporary project code name**, not a cleared public-facing product name. An unrelated image-sharing product already uses the name; trademark/branding checks remain open.
+## 功能
+- **截图**：全局快捷键或托盘图标；每个显示器一个冻结覆盖层；拖拽选区、单击吸附窗口、Enter 截当前屏、放大镜。
+- **导入**：打开文件、拖放、粘贴（PNG / JPEG，按 EXIF 校正方向，单文件 ≤ 25 MB，≤ 2400 万像素）。
+- **标注**：箭头、框、文字（中文，可用输入法，双击修改）、自动递增序号、高亮；6 色、3 档粗细、5 档字号、文字底色。
+- **遮挡**：实心（黑 / 白），或**安全马赛克**（颜色只由位置决定，与原图无关）。不提供可还原的模糊或像素化。
+- **编辑**：选择、移动、八向调整、撤销 / 重做、裁剪、缩放（Ctrl+滚轮）与平移（滚轮 / 空格拖动 / 中键）、Tab 循环选择、方向键微调、Ctrl+方向键调整尺寸。
+- **交付**：Ctrl+C 复制（成功后编辑窗收起，弹出提示）；Ctrl+S 另存为新 PNG，永不覆盖已有文件。
+- **本地运行**：无网络请求、无账号、无遥测（运行期实测 0 个网络端点）。
 
-## What we are investigating / 正在研究什么
+快捷键：V 选择 · A 箭头 · R 框 · T 文字 · N 序号 · H 高亮 · B 遮挡 · M 安全马赛克 · C 裁剪 · 1–6 颜色 · Del 删除 · Ctrl+Z / Y 撤销 / 重做 · Ctrl+0 / 1 适应 / 100%。
 
-我们正在验证：普通人在分享截图前，能否比使用已有截图工具更快、更准确地遮挡自己不想公开的信息，并检查**实际导出的图像**。目前没有证据证明我们已优于 Redacted、ShareX 或系统截图工具。
+## 构建与运行（Windows 10/11 x64，Rust 1.85+）
+```powershell
+cargo build --release --locked --manifest-path apps/desktop/Cargo.toml
+apps/desktop/target/release/shareready.exe            # 也可带一个图片路径参数
+pwsh -File scripts/package.ps1                          # 本地打包到 dist/（未签名，不上传）
+```
 
-- **Rust-first**: 已实现 Rust 图片解码、实心遮挡与 PNG 输出；浏览器使用 Rust/WASM，Windows 桌面使用 WinForms + WebView2 承载同一编辑器。
-- **Free and open source**: project code is licensed under [MIT](LICENSE); bundled [Noto font resources retain their OFL license](poc/native-egui/assets/fonts/OFL-1.1.txt). No paid tier planned for MVP.
-- **Local by default**: 不上传用户图片、不依赖账号；安全承诺必须经过后续测试才可发布。
-- **No false safety claim**: 我们不会承诺自动发现所有私人信息或“绝对匿名”。
+## 架构（Rust 可信边界）
+| 层 | 位置 | 职责 |
+|---|---|---|
+| Core | `crates/shareready-core` | 解码、EXIF、实心替换、PNG 编码与回读校验（V1 冻结行为） |
+| Render | `crates/shareready-render` | 场景合成：遮挡 → 标注 → 裁剪，导出与画布预览共用 |
+| Editor | `crates/shareready-editor` | 对象、样式、撤销历史、版本令牌（过期结果拒绝交付） |
+| Platform | `crates/shareready-platform-windows` | 屏幕采集、显示器与窗口边界、全局快捷键、剪贴板读取、不覆盖保存 |
+| App | `apps/desktop` | Slint 1.18.1 界面、托盘、截图覆盖层、控制器 |
 
-## Current engineering baseline / 当前工程基线
+界面只发送意图、显示 Rust 渲染的结果。设计与验收文档见 [`ui-design/`](ui-design/)：[PRD](ui-design/01_PRD.md) · [UX](ui-design/02_UX_ARCHITECTURE.md) · [视觉方向与框架选型](ui-design/03_VISUAL_DIRECTIONS.md) · [DESIGN v1.0](ui-design/04_DESIGN.md) · [高保真](ui-design/05_HIGH_FIDELITY/README.md) · [实现记录](ui-design/06_IMPLEMENTATION.md) · [验收报告](ui-design/07_UI_QA_REPORT.md) · [最终审查](ui-design/07_FINAL_REVIEW.md)。
 
-- **唯一正式开发和交付分支**：`main`。后续开发以 `main` 为基线；不要创建长期功能分支或将已实现功能留在 Draft PR 中。
-- **实际产品目录**：`crates/shareready-core/`（独立 Rust 图片核心）、`crates/shareready-editor/`（Rust 编辑状态机基础）、`e1-spike/`（V1 CLI/WASM 兼容层）、`web-app/`（当前 JS 编辑器）、`desktop-windows/`（Windows WebView2 宿主）。Windows 用户入口见 [desktop-windows/README.md](desktop-windows/README.md)。
-- **已完成 V2-02 功能提交的实测 CI**：[Run #39004861114](https://github.com/2023violet/ShareReady/actions/runs/39004861114)，对应 Rust 编辑领域实现 `cba5af81992ed49dabf8202fc4c52fb81a535d77`，Rust / Chrome / Windows 双作业 SUCCESS；本 README 文档后续提交需按其自身 SHA 重新验收。
-- **验收边界**：机器合成图片/Windows CI 不等于人工操作、跨设备 DPI、全面安全或正式发布验收；产品尚未发布。
+## 验证
+- `cargo test --workspace --locked`（根 workspace，85 项）和 `cargo test --locked --manifest-path apps/desktop/Cargo.toml`（26 项）。
+- `python tests/golden/verify_v1_baseline.py`：5 张冻结的 V1 金样本；渲染金样本在 `crates/shareready-render`。
+- `tests/desktop/e2e.ps1` / `perf.ps1`：用真实系统键鼠驱动应用，由另一进程读回剪贴板并逐像素比对。只使用合成图片，证据截图只截应用窗口与合成区域。
+- 以上均为代理执行的机器验证。**真人计时、多显示器 / 混合 DPI、Narrator 朗读、Windows 11 均未验证**，详见验收报告 §2 与 §6。
 
-## V2 Rust Native refactor (current planned track)
+## 许可
+项目代码 [MIT](LICENSE)。界面使用 Slint，按 *Royalty-free 2.0* 许可（“关于”对话框显示 AboutSlint）；字体 Noto Sans CJK SC 按 [OFL-1.1](assets/fonts/OFL-1.1.txt)。第三方清单：[THIRD_PARTY_LICENSES.md](apps/desktop/THIRD_PARTY_LICENSES.md)。
 
-V2-00 完成旧版基线与五张逐像素金样本冻结；V2-01 完成 Rust Workspace 和独立 Core；V2-02 已实现 Rust Editor 领域层。**V2-03 已有连接 Core/Editor 的 egui 原生样机**，24MP、大 PNG 和后台复核已有历史本地受限审查；后台导入现已完成精确产物的本地机器验证及独立受限审查。继续处理交付阻塞、设备和辅助功能缺口，详见 [P03-K](docs/V2/P03-K/README.md) 和 [V2 技术合同](docs/V2/README.md)。对用户交付的 V1.3 仍使用 C# / WebView2；原生样机尚未替换它，GUI 方向与完整验收仍未冻结。
+## 历史
+V1.3（`web-app/`、`desktop-windows/`、`e1-spike/`，JS + C# WebView2 + Rust/WASM）和 V2-03 egui 样机（`poc/native-egui/`）作为冻结参考保留（快照 tag `pre-redesign-2026-10-19`），文档在 [`docs/`](docs/)。Stage 01 的用户研究（招募、真人测试）从未执行，仍为 NOT_VERIFIED。
 
-## Historical Stage 01 research status / 历史研究阶段记录
-
-`Stage 00: CONDITIONAL GO` → `Stage 01: GATE A/B PASS / S01–S04 DONE / S05a BLOCKED_BY_RECRUITMENT / A1 NOT_VERIFIED`.
-
-这些是历史研究门禁和仍未完成的真人用户验证，不代表当前仓库没有产品实现。已存在 Rust 应用代码，但没有以此声称真人用户测试、部署或正式发布。
-
-| Document | Purpose |
-| --- | --- |
-| [AGENTS.md](AGENTS.md) | Agent constraints, stage gates and collaboration expectations |
-| [Skill adoption](docs/governance/DECIDING_AND_EXECUTING.md) | Exact upstream skill, version and honest execution limitations |
-| [Stage 01 decision candidate](docs/decisions/STAGE01_GATE_A_CANDIDATE.md) | Direction alternatives, hypotheses, success criteria, stop rules |
-| [Gate A human approval record](docs/decisions/STAGE01_GATE_A_APPROVAL_RECORD.md) | Human-approved token and machine Gate A confirmation |
-| [Stage 01 PRD draft](docs/product/STAGE01_PRD_DRAFT_v0.1.md) | Product definition and unverified requirements |
-| [Research plan](docs/research/STAGE01_RESEARCH_PLAN_v0.1.md) | Competitor study and participant test plan |
-| [S02 fixture visual QA](docs/research/STAGE01_S02_VISUAL_AND_MATRIX_QA.md) | Real generated image review, benchmark fixture constraints |
-| [S03 actual-browser pilot](docs/research/STAGE01_S03_LIVE_BROWSER_PILOT_REPORT.md) | Real third-party exported files, pixel comparisons and known automation limitations |
-| [S03 scripted observations CSV](docs/research/STAGE01_S03_SCRIPTED_TRIALS.csv) | Oracle-assisted Chrome trials, not human UX statistics |
-| [S03 repeated-mask event diagnostics](docs/research/STAGE01_S03_POINTER_ORDER_DIAGNOSTIC.md) | Historical automated drag failures, now resolved for tested tasks |
-| [S03 authoritative matched export baseline](docs/research/STAGE01_S03_REPRODUCED_BASELINE_2026-10-15.md) | Two real tools, four downloaded PNGs and independent export inspection |
-| [S04 ethics and recruitment protocol](docs/research/STAGE01_S04_RESEARCH_PROTOCOL.md) | Draft consent, balanced research design and stop conditions |
-| [S04 screening and consent](docs/research/STAGE01_S04_CONSENT_AND_SCREENERS.md) | Not yet circulated; zero consenting participants |
-| [S04 allocation slots](docs/research/STAGE01_S04_ALLOCATION_SLOTS.csv) | Ten UNASSIGNED balanced slots; not real people |
-| [S04 internal adversarial review](docs/research/STAGE01_S04_REVIEW_AND_RECRUITMENT_FEASIBILITY_2026-10-15.md) | 15 open/privacy risks, real recruiting platform feasibility and no participant claims |
-| [S04 machine readiness](docs/research/STAGE01_S04_READINESS.json) | Live outreach explicitly forbidden, all counters zero |
-| [S05 operator handoff](docs/research/STAGE01_S05_RECRUITMENT_OPERATIONS_HANDOFF.md) | True human recruiting prerequisites; no outreach or payments authorized |
-| [Public evidence ledger](docs/research/STAGE01_PUBLIC_EVIDENCE_LEDGER.md) | Competitor claims and explicit evidence gaps |
-| [A1 problem evidence & counterevidence](docs/research/STAGE01_A1_DESK_EVIDENCE_2026-10-14.md) | External user discussions, promotion bias, and falsification plan |
-| [Stage 01 internal readiness self-review](docs/reviews/STAGE01_READINESS_REVIEW_2026-10-14.md) | Same-agent desk review, not an external independent audit |
-| [Participant study pack](docs/research/STAGE01_PARTICIPANT_STUDY_PACK.md) | Consent, neutral interview, counterbalanced UX tasks |
-| [Rust-first ADR candidate](docs/architecture/ADR-0001-RUST-FIRST-DELIVERY-CANDIDATES.md) | Architecture alternatives without premature dependency lock |
-| [Skill CLI gate runbook](docs/governance/STAGE01_GATE_RUNBOOK.md) | How to complete real Gate A/B in executable checkout |
-| [Competitor test contract](docs/research/COMPETITOR_TEST_CONTRACT.md) | Reproducible comparative UX/safety research protocol |
-
-## Historical V1 product scope and UX/UI candidates (review only)
-
-The design candidates below document the historical planning baseline. They are **not the current implementation status, security certification, or evidence of A1 user demand**. The historical Stage 01 research obligations remain unverified where indicated.
-
-| Design artifact | What to review |
-| --- | --- |
-| [V1 feature contract candidate](docs/product/SHAREREADY_V1_FUNCTION_CONTRACT_CANDIDATE.md) | 16 proposed P0/P1/excluded features and 12 concrete future engineering ACs |
-| [UX/UI baseline candidate](docs/design/SHAREREADY_V1_UX_UI_BASELINE_CANDIDATE.md) | Single workspace, five screen states, visual tokens and interaction contract |
-| [Offline interactive HTML prototype](docs/design/prototypes/ShareReady_V1_UX_Prototype.html) | Embedded synthetic demo chat; actual visual/interaction mock, NOT a safe-redaction image processor |
-| [Design-track gate boundary](docs/governance/STAGE01_DESIGN_DIRECTION_CHANGE_PROPOSAL.md) | How to review UX without falsifying the outstanding S05/S06 dependency |
-
-The HTML uses no CDN, account, real image import, real copy/download or Rust image transformation. The source is openable as a standalone file in a browser for review. Do **not** provide real private images to the prototype. Visual QA/Playwright mock tests are a design artifact only, not security testing.
-
-## Design-to-delivery route / 交付顺序
-
-The historical plan was Stage 00 research → Stage 01 PRD → Stage 02 UX → Stage 03 visual exploration → Stage 04 design system → Stage 05 high fidelity → Stage 06 Rust engineering → Stage 07 verified open-source release. Implementation has now reached V1.3-03; this does **not** imply all prior research and release conditions passed.
-
-Changes should carry exact-code test evidence. High-risk security changes and any public release require an explicit review decision. Project governance references the authors' [deciding-and-executing](https://github.com/2023violet/deciding-and-executing) skill.
-
-## Contributing / 参与
-
-Develop and verify against `main` only; do not create long-lived feature branches for routine development. Keep security-sensitive changes reviewable and use synthetic test fixtures. **Never publish real private screenshot data in an issue.**
-
-## License
-
-[MIT](LICENSE). Third-party code and assets require independent licensing review.
+**请勿在 issue 中附带真实的私人截图。**

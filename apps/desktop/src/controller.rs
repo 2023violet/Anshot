@@ -527,6 +527,24 @@ impl Controller {
         let Some(a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
         e.replace_annotation(id, translate(&a, dx as f32, dy as f32)).unwrap_or(false)
     }
+    /// Keyboard resize (Ctrl+arrows): move the right/bottom edge, or an arrow's head.
+    pub fn resize_selected(&mut self, dx: i64, dy: i64) -> bool {
+        if self.drag.is_some() { return false; }
+        let Some(e) = self.editor.as_mut() else { return false };
+        let Some(id) = e.selected() else { return false };
+        if e.masks().iter().any(|m| m.id == id) { return e.resize_mask(id, Handle::Se, dx, dy).unwrap_or(false); }
+        let (w, h) = e.dimensions();
+        let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
+        match &mut a.shape {
+            Shape::Rect { region, .. } | Shape::Highlight { region } => {
+                let Some(pr) = PixelRect::from_region(*region, w, h) else { return false };
+                *region = pr.resize(Handle::Se, dx, dy, w, h).region();
+            }
+            Shape::Arrow { to, .. } => *to = (to.0 + dx as f32, to.1 + dy as f32),
+            _ => return false,
+        }
+        e.replace_annotation(id, a).unwrap_or(false)
+    }
     pub fn undo(&mut self) -> bool { self.drag.is_none() && self.editor.as_mut().is_some_and(|e| e.undo().is_ok()) }
     pub fn redo(&mut self) -> bool { self.drag.is_none() && self.editor.as_mut().is_some_and(|e| e.redo().is_ok()) }
     pub fn deselect(&mut self) { if let Some(e) = self.editor.as_mut() { let _ = e.select(None); } }

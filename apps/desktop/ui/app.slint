@@ -10,6 +10,7 @@ export struct MaskBox { x: length, y: length, w: length, h: length, selected: bo
 
 export component AppWindow inherits Window {
     title: root.doc-title == "" ? "ShareReady" : root.doc-title + " — ShareReady";
+    icon: @image-url("../assets/icon-64.png");
     preferred-width: 1180px; preferred-height: 760px;
     min-width: 640px; min-height: 420px;
     background: Theme.bg-canvas;

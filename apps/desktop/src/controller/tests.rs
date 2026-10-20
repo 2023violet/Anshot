@@ -290,3 +290,15 @@ fn tab_cycles_through_all_objects() {
     assert!(c.cycle_selection(false)); assert_eq!(editor(&c).selected(), Some(a));
     assert!(c.cycle_selection(true)); assert_eq!(editor(&c).selected(), Some(b));
 }
+
+#[test]
+fn keyboard_resize_moves_the_far_edge_of_masks_and_frames() {
+    let mut c = opened(200, 200);
+    let m = c.editor.as_mut().unwrap().add_mask(Region::new(10, 10, 50, 40)).unwrap();
+    assert!(c.resize_selected(5, -3));
+    assert_eq!(editor(&c).masks().iter().find(|x| x.id == m).unwrap().region, Region::new(10, 10, 55, 37));
+    c.tool = Tool::Rect;
+    drag(&mut c, (100.0, 100.0), (150.0, 140.0));
+    assert!(c.resize_selected(10, 10));
+    assert!(matches!(editor(&c).annotations()[0].annotation.shape, Shape::Rect { region, .. } if region == Region::new(100, 100, 160, 150)));
+}

@@ -12,3 +12,4 @@ target/
 
 # Isolated egui POC compilation output
 poc/native-egui/target/
+dist/

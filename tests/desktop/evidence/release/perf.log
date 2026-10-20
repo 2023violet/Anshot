@@ -1,0 +1,8 @@
+EXE sha256=e6f9c5f5f234714487e45f316081abbc27beee1813dfc5de29a196c70572768e path=ShareReady.exe
+STARTUP_MS runs=748,807,797
+HOTKEY_TO_OVERLAY_MS runs=67,52,35
+OPEN_24MP_MS from_launch=281
+COPY_24MP_MS ctrl_c_to_clipboard=252
+COPY_24MP size=6000x4000
+MEMORY_24MP peak_working_set_mb=420
+NETWORK endpoints_seen=0 

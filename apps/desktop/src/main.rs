@@ -46,6 +46,9 @@ struct App {
     tray: Option<Tray>,
     session: Option<capture::Session>,
     overlays: Vec<(CaptureOverlay, Monitor)>,
+    /// Overlay windows are kept (hidden) and reused: creating a window and its GL
+    /// context per capture cost ~1 s. Index i always serves monitor i.
+    overlay_pool: Vec<CaptureOverlay>,
     toast_win: Option<ToastWindow>,
     /// Decoded source downscaled for the screen, and its scale (preview px per source px).
     base: Option<(RgbaImage, f32)>,
@@ -204,6 +207,7 @@ impl App {
             self.toast("error", "无法打开", &format!("{e:?}"), None);
             return;
         }
+        self.after_copy = AfterCopy::Stay;
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
         self.clear_toast();
@@ -237,6 +241,7 @@ impl App {
             }
             Ok((Delivery::Save, ticket)) => {
                 let Some(path) = self.save_path.take() else { self.ctl.abandon_delivery(ticket); self.refresh(); return };
+                let path = platform::free_path(&path);
                 let outcome = self.ctl.deliver(ticket, |png, _| platform::write_file(&path, png));
                 let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
                 self.after_delivery(Delivery::Save, outcome, name);
@@ -290,6 +295,10 @@ impl App {
         if other { return false; } // Alt / Win combinations are not ours.
         if ctrl {
             // Some platforms deliver Ctrl+letter as a control character.
+            let step = if shift { 10 } else { 1 };
+            let resize = if is(Key::LeftArrow) { Some((-step, 0)) } else if is(Key::RightArrow) { Some((step, 0)) }
+                else if is(Key::UpArrow) { Some((0, -step)) } else if is(Key::DownArrow) { Some((0, step)) } else { None };
+            if let Some((dx, dy)) = resize { self.ctl.resize_selected(dx, dy); self.refresh(); return true; }
             let c = text.chars().next().map(|c| if (c as u32) < 27 && c as u32 > 0 { (b'a' + c as u8 - 1) as char } else { c.to_ascii_lowercase() });
             match c {
                 Some('z') if shift => { self.ctl.redo(); }
@@ -391,13 +400,19 @@ impl App {
         let session = capture::Session::new(frozen, monitors.clone(), shareready_platform_windows::visible_windows());
         let mut overlays = Vec::new();
         for (i, m) in monitors.iter().copied().enumerate() {
-            let (Ok(win), Some(pixels)) = (CaptureOverlay::new(), session.crop(m.bounds)) else { continue };
+            // Overlay i must serve monitor i; on any failure abort the capture cleanly.
+            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.show_editor(); self.toast("error", "无法截图", "显示器区域无效", None); return; };
+            if self.overlay_pool.len() <= i {
+                let Ok(win) = CaptureOverlay::new() else { self.end_capture(); self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
+                win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
+                win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
+                win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
+                win.on_confirm(|| { with(|a| a.confirm_capture()); });
+                win.on_cancel(|| { with(|a| a.end_capture()); });
+                self.overlay_pool.push(win);
+            }
+            let win = self.overlay_pool[i].clone_strong();
             win.set_shot(to_image(&pixels));
-            win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
-            win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
-            win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
-            win.on_confirm(|| { with(|a| a.confirm_capture()); });
-            win.on_cancel(|| { with(|a| a.end_capture()); });
             let place = |w: &CaptureOverlay| {
                 w.window().set_position(slint::PhysicalPosition::new(m.bounds.x, m.bounds.y));
                 w.window().set_size(slint::PhysicalSize::new(m.bounds.w as u32, m.bounds.h as u32));
@@ -414,6 +429,28 @@ impl App {
             if let Some(s) = self.session.as_mut() { s.pointer_move(x, y); }
         }
         self.refresh_overlays();
+    }
+    /// Create and show/hide each monitor's overlay once, off-screen, so the first
+    /// hotkey press does not pay window + GL context creation.
+    fn prewarm_overlays(&mut self) {
+        let Ok(monitors) = shareready_platform_windows::monitors() else { return };
+        for (i, _) in monitors.iter().enumerate() {
+            if self.overlay_pool.len() > i { continue; }
+            let Ok(win) = CaptureOverlay::new() else { return };
+            win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
+            win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
+            win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
+            win.on_confirm(|| { with(|a| a.confirm_capture()); });
+            win.on_cancel(|| { with(|a| a.end_capture()); });
+            win.set_show_hint(false);
+            win.window().set_position(slint::PhysicalPosition::new(-32000, -32000));
+            win.window().set_size(slint::PhysicalSize::new(8, 8));
+            let _ = win.show();
+            let w = win.clone_strong();
+            // Never hide an overlay that a capture started using in the meantime.
+            slint::Timer::single_shot(Duration::from_millis(300), move || { with(|a| if a.session.is_none() { let _ = w.hide(); }); });
+            self.overlay_pool.push(win);
+        }
     }
     fn overlay_pointer(&mut self, i: usize, lx: f32, ly: f32, phase: Phase) {
         let Some((win, m)) = self.overlays.get(i) else { return };
@@ -454,7 +491,13 @@ impl App {
         }
     }
     fn end_capture(&mut self) {
-        for (win, _) in self.overlays.drain(..) { let _ = win.hide(); }
+        for (win, _) in self.overlays.drain(..) {
+            let _ = win.hide();
+            // Do not keep frozen screen pixels around between captures.
+            win.set_shot(Image::default());
+            win.set_has_selection(false);
+            win.set_has_hover(false);
+        }
         self.session = None;
     }
     fn confirm_capture(&mut self) {
@@ -488,7 +531,7 @@ impl App {
 
 fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) {
     let started = with(|a| {
-        if a.ctl.opening { return false; }
+        if a.ctl.opening { a.toast("warn", "正在打开上一张图片", "请稍后再试", None); return false; }
         a.ctl.opening = true;
         a.refresh();
         true
@@ -587,7 +630,7 @@ fn main() -> Result<(), slint::PlatformError> {
     APP.with(|cell| *cell.borrow_mut() = Some(App {
         ctl: Controller::default(), ui: ui.as_weak(), pending: None, save_path: None,
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
-        resident: false, tray: None, session: None, overlays: Vec::new(), toast_win: None, base: None,
+        resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -605,6 +648,7 @@ fn main() -> Result<(), slint::PlatformError> {
             a.tray = Some(tray);
             if hotkey.is_err() { a.toast("warn", "快捷键 Ctrl+Shift+A 被占用", "可从托盘图标开始截图", None); }
         });
+        slint::Timer::single_shot(Duration::from_millis(800), || { with(|a| if a.session.is_none() { a.prewarm_overlays(); }); });
     }
 
     ui.on_pointer_down(|x, y| { with(|a| { a.ctl.pointer_down(Point { x: x.into(), y: y.into() }); a.refresh(); }); });

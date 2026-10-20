@@ -37,10 +37,36 @@ pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
     clipboard.set_image(data).map_err(|e| format!("剪贴板被其他程序占用（{e}）"))
 }
 
+/// The dialog may already have asked "replace?"; ShareReady never overwrites, so an
+/// existing name becomes "name (2).png", "name (3).png", ...
+pub fn free_path(path: &Path) -> PathBuf {
+    if !path.exists() { return path.to_path_buf(); }
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "ShareReady".into());
+    let ext = path.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_else(|| "png".into());
+    (2..10_000).map(|n| path.with_file_name(format!("{stem} ({n}).{ext}"))).find(|p| !p.exists()).unwrap_or_else(|| path.to_path_buf())
+}
+
 pub fn write_file(path: &Path, png: &[u8]) -> Result<(), String> {
     save_new(path, png).map_err(|e| match e.kind() {
         std::io::ErrorKind::AlreadyExists => "同名文件已存在，请换个名字（不会覆盖原文件）".to_string(),
         std::io::ErrorKind::PermissionDenied => "没有写入权限".to_string(),
         _ => e.to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn free_path_never_returns_an_existing_file() {
+        let dir = std::env::temp_dir().join(format!("sr-free-path-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let a = dir.join("shot.png");
+        assert_eq!(free_path(&a), a);
+        std::fs::write(&a, b"x").unwrap();
+        std::fs::write(dir.join("shot (2).png"), b"x").unwrap();
+        assert_eq!(free_path(&a), dir.join("shot (3).png"));
+        for f in ["shot.png", "shot (2).png"] { std::fs::remove_file(dir.join(f)).unwrap(); }
+        std::fs::remove_dir(&dir).unwrap();
+    }
 }

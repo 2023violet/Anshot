@@ -1,6 +1,6 @@
 # ShareReady V2 — Rust Native development baseline
 
-> **Frozen historical reference (2026-10-19).** The product is being redefined under the 01–07 design workflow in [`ui-design/`](../../ui-design/). The V2-03 egui POC and the P03 evidence below are kept as technical reference; Core/Editor/platform crates continue as the Rust trust core.
+> **Frozen historical reference (2026-10-19).** The product was redefined and rebuilt under the 01–07 design workflow in [`ui-design/`](../../ui-design/) (app: `apps/desktop`). The V2-03 egui POC and the P03 evidence below are kept as technical reference; Core/Editor/platform crates continue as the Rust trust core.
 
 Current phase: SR-V2-03 local native development. Historical Windows CI demonstrated an egui wgpu/DX12 software-adapter window; it does not certify later uncommitted changes. Physical Windows G01–G10 acceptance remains open. The V1.3 JS/WebView2 app remains the user-facing implementation; no GUI candidate is finally frozen.
 
