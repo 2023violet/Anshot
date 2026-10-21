@@ -1,7 +1,7 @@
 // S1 capture overlay: one frameless top-most window per monitor showing the frozen pixels.
 // All geometry is computed in Rust; rectangles here are overlay-local logical px.
 import { Theme } from "theme.slint";
-import { Keycap } from "widgets.slint";
+import { ActionButton, Keycap } from "widgets.slint";
 
 export struct Box { x: length, y: length, w: length, h: length }
 
@@ -26,18 +26,24 @@ export component CaptureOverlay inherits Window {
     in property <bool> show-hint: true;
     // "new" | "move" | "nwse" | "nesw" | "ew" | "ns": what a press would grab (Rust decides).
     in property <string> cursor-kind: "new";
+    // Selection toolbar: shown once a selection exists and no button is held.
+    in property <bool> show-toolbar;
 
     callback pointer-down(length, length);
     callback pointer-move(length, length);
     callback pointer-up(length, length);
     callback confirm();
     callback cancel();
+    callback action(string); // "copy" | "save" | "edit" | "cancel"
 
     forward-focus: keys;
     keys := FocusScope {
         key-pressed(e) => {
             if e.text == Key.Escape { root.cancel(); return accept; }
             if e.text == Key.Return { root.confirm(); return accept; }
+            // Ctrl+C / Ctrl+S may arrive as the letter or as its control character.
+            if root.has-selection && e.modifiers.control && (e.text == "c" || e.text == "C" || e.text == "\u{3}") { root.action("copy"); return accept; }
+            if root.has-selection && e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "\u{13}") { root.action("save"); return accept; }
             reject
         }
         Image { width: parent.width; height: parent.height; source: root.shot; image-fit: fill; image-rendering: pixelated; accessible-role: none; }
@@ -79,9 +85,27 @@ export component CaptureOverlay inherits Window {
             double-clicked => { root.confirm(); }
         }
 
+        if root.show-toolbar: tb := Rectangle {
+            property <length> bw: row.preferred-width + 12px;
+            property <bool> below: lit.y + lit.h + 8px + 44px <= parent.height;
+            property <bool> above: lit.y - 8px - 44px >= 0;
+            x: max(8px, min(lit.x + lit.w - self.bw, parent.width - self.bw - 8px));
+            y: self.below ? lit.y + lit.h + 8px : self.above ? lit.y - 52px : lit.y + lit.h - 52px;
+            width: self.bw; height: 44px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+            accessible-role: groupbox; accessible-label: "截图操作";
+            TouchArea { } // keep clicks on the bar from starting a new selection
+            row := HorizontalLayout { x: 6px; spacing: 6px; alignment: center;
+                VerticalLayout { alignment: center; ActionButton { label: "取消"; key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "编辑"; key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "保存"; key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "复制"; key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }
+            }
+        }
+
         if root.show-magnifier: Rectangle {
             x: min(root.cursor-x + 20px, parent.width - 136px); y: min(root.cursor-y + 20px, parent.height - 160px);
             width: 120px; height: 144px; border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong; clip: true;
+            accessible-role: text; accessible-label: "放大镜 " + root.mag-text;
             Image { x: 1px; y: 1px; width: 118px; height: 118px; source: root.shot; image-rendering: pixelated;
                 source-clip-x: root.mag-x; source-clip-y: root.mag-y; source-clip-width: 15; source-clip-height: 15; accessible-role: none; }
             Rectangle { x: 59px; y: 1px; width: 1px; height: 118px; background: Theme.brand; }
@@ -93,7 +117,7 @@ export component CaptureOverlay inherits Window {
             x: (parent.width - self.width) / 2; y: parent.height - 56px;
             width: hl.preferred-width + 24px; height: 32px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
             hl := HorizontalLayout { padding-left: 12px; spacing: 8px; alignment: center;
-                Text { text: root.has-selection ? "Enter / 双击 完成 · 拖边角调整 · 拖内部移动" : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕"; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
+                Text { text: root.has-selection ? "Ctrl+C 复制 · Enter 编辑 · 拖边角调整 · 拖内部移动" : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕"; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
                 VerticalLayout { alignment: center; Keycap { label: "Esc"; } }
                 Text { text: "取消"; font-size: 12px; color: Theme.mute; vertical-alignment: center; }
             }

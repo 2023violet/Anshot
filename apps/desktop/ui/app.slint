@@ -39,6 +39,14 @@ export component AppWindow inherits Window {
     in property <bool> has-region;
     in property <string> sel-x; in property <string> sel-y; in property <string> sel-w; in property <string> sel-h;
     in property <int> color-index; in property <int> width-index: 1; in property <int> size-index: 1;
+    in property <color> custom-color: #9b30d9;
+    in property <string> shape-kind; // "box" (frame / ellipse) | "line" (arrow / line) | ""
+    // custom colour picker (Rust converts; Slint only shows)
+    in property <float> picker-hue; in property <float> picker-sat; in property <float> picker-val: 1;
+    in property <color> picker-color; in property <color> picker-hue-color: red; in property <string> picker-hex;
+    in property <[color]> recent-colors;
+    callback picker-hsv(float, float, float);
+    callback picker-hex-edited(string);
     in property <bool> text-background; in property <int> solid-index;
     // in-place text editing
     in property <bool> text-editing;
@@ -96,11 +104,12 @@ export component AppWindow inherits Window {
                     }
                     VerticalLayout { alignment: center; horizontal-stretch: 0; HorizontalLayout { spacing: 4px;
                         ToolButton { label: "选择 V"; d: "M 4 4 L 11 21 L 13.5 13.5 L 21 11 Z"; selected: root.has-document && root.tool == "select"; enabled: root.has-document; clicked => { root.command("tool-select"); } }
-                        ToolButton { label: "箭头 A"; d: "M 5 19 L 19 5 M 9 5 L 19 5 L 19 15"; selected: root.has-document && root.tool == "arrow"; enabled: root.has-document; clicked => { root.command("tool-arrow"); } }
-                        ToolButton { label: "框 R"; d: "M 4 5 L 20 5 L 20 19 L 4 19 Z"; selected: root.has-document && root.tool == "rect"; enabled: root.has-document; clicked => { root.command("tool-rect"); } }
+                        ToolButton { label: "箭头 / 直线 A · L"; d: "M 5 19 L 19 5 M 9 5 L 19 5 L 19 15"; selected: root.has-document && (root.tool == "arrow" || root.tool == "line"); enabled: root.has-document; clicked => { root.command("tool-arrow"); } }
+                        ToolButton { label: "框 / 椭圆 R · E"; d: "M 4 5 L 20 5 L 20 19 L 4 19 Z"; selected: root.has-document && (root.tool == "rect" || root.tool == "ellipse"); enabled: root.has-document; clicked => { root.command("tool-rect"); } }
                         ToolButton { label: "文字 T"; d: "M 5 6 L 5 4 L 19 4 L 19 6 M 12 4 L 12 20 M 9 20 L 15 20"; selected: root.has-document && root.tool == "text"; enabled: root.has-document; clicked => { root.command("tool-text"); } }
                         ToolButton { label: "序号 N"; d: "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 M 11 9 L 12.5 8 L 12.5 16"; selected: root.has-document && root.tool == "number"; enabled: root.has-document; clicked => { root.command("tool-number"); } }
                         ToolButton { label: "高亮 H"; d: "M 9 11 L 4 16 L 4 20 L 8 20 L 13 15 M 9 11 L 14 6 L 18 10 L 13 15 Z"; selected: root.has-document && root.tool == "highlight"; enabled: root.has-document; clicked => { root.command("tool-highlight"); } }
+                        ToolButton { label: "画笔 P"; d: "M 3 17 C 6 9 9 21 12 13 C 14 8 17 7 21 9"; selected: root.has-document && root.tool == "pen"; enabled: root.has-document; clicked => { root.command("tool-pen"); } }
                         VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
                         ToolButton { label: "遮挡 B"; d: "M 12 3 L 20 6 L 20 12 L 17 18 L 12 21 L 7 18 L 4 12 L 4 6 Z"; selected: root.has-document && root.tool == "redact"; enabled: root.has-document; clicked => { root.command("tool-redact"); } }
                         ToolButton { label: "安全马赛克 M"; d: "M 4 4 L 11 4 L 11 11 L 4 11 Z M 13 13 L 20 13 L 20 20 L 13 20 Z"; selected: root.has-document && root.tool == "mosaic"; enabled: root.has-document; secure-badge: true; clicked => { root.command("tool-mosaic"); } }
@@ -133,7 +142,16 @@ export component AppWindow inherits Window {
                     }
                     if root.prop-mode == "stroke" || root.prop-mode == "fill" || root.prop-mode == "text": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
                         Label { text: "颜色"; }
-                        VerticalLayout { alignment: center; Swatches { colors: root.inks; names: root.ink-names; selected: root.color-index; picked(i) => { root.command("color-" + i); } } }
+                        VerticalLayout { alignment: center; Swatches { colors: [root.inks[0], root.inks[1], root.inks[2], root.inks[3], root.inks[4], root.inks[5], root.custom-color];
+                            names: ["红", "黄", "绿", "蓝", "白", "黑", "自定义"]; selected: root.color-index; picked(i) => { root.command("color-" + i); } } }
+                        VerticalLayout { alignment: center; ActionButton { label: "自定义…"; key: ""; kind: 0; clicked => { root.command("color-picker"); } } }
+                    }
+                    if root.shape-kind != "": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
+                        VerticalLayout { alignment: center; VSep { } }
+                        VerticalLayout { alignment: center; Segmented {
+                            options: root.shape-kind == "box" ? ["框", "椭圆"] : ["箭头", "直线"];
+                            selected: (root.tool == "ellipse" || root.tool == "line") ? 1 : 0;
+                            picked(i) => { root.command(root.shape-kind == "box" ? (i == 0 ? "tool-rect" : "tool-ellipse") : (i == 0 ? "tool-arrow" : "tool-line")); } } }
                     }
                     if root.prop-mode == "stroke": HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
                         VerticalLayout { alignment: center; VSep { } }
@@ -321,13 +339,13 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 340px : 170px;
+                width: min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 340px : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : "替换确认";
+                accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : root.dialog == "color" ? "自定义颜色" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: "关于 ShareReady（临时代号）"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
-                    Text { text: "版本 0.1.1 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
+                    Text { text: "版本 0.2.0 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
                     Rectangle { height: 150px; AboutSlint { } }
                     HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
@@ -355,7 +373,55 @@ export component AppWindow inherits Window {
                     Text { text: "设置保存在本机（%APPDATA%\\ShareReady）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
                     HorizontalLayout { alignment: end; ActionButton { label: "完成"; key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
-                if root.dialog != "about" && root.dialog != "settings": VerticalLayout { padding: 24px; spacing: 6px;
+                if root.dialog == "color": VerticalLayout { padding: 24px; spacing: 12px; alignment: start;
+                    Text { text: "自定义颜色"; font-size: 15px; font-weight: 600; color: Theme.ink; }
+                    HorizontalLayout { spacing: 14px;
+                        // Saturation (x) / value (y) square over the current hue.
+                        sv := Rectangle { width: 200px; height: 150px; border-radius: 6px; clip: true; background: root.picker-hue-color;
+                            Rectangle { background: @linear-gradient(90deg, #ffffff 0%, #ffffff00 100%); }
+                            Rectangle { background: @linear-gradient(180deg, #00000000 0%, #000000 100%); }
+                            Rectangle { x: root.picker-sat * parent.width - 6px; y: (1 - root.picker-val) * parent.height - 6px; width: 12px; height: 12px;
+                                border-radius: 6px; border-width: 2px; border-color: white; }
+                            TouchArea {
+                                function pick(x: length, y: length) { root.picker-hsv(root.picker-hue, max(0, min(1, x / sv.width)), max(0, min(1, 1 - y / sv.height))); }
+                                pointer-event(e) => { if e.kind == PointerEventKind.down { self.pick(self.mouse-x, self.mouse-y); } }
+                                moved => { if self.pressed { self.pick(self.mouse-x, self.mouse-y); } }
+                            }
+                            accessible-role: slider; accessible-label: "饱和度与亮度";
+                        }
+                        // Hue bar.
+                        hb := Rectangle { width: 18px; height: 150px; border-radius: 4px;
+                            background: @linear-gradient(180deg, #ff0000 0%, #ffff00 16.7%, #00ff00 33.3%, #00ffff 50%, #0000ff 66.7%, #ff00ff 83.3%, #ff0000 100%);
+                            Rectangle { y: root.picker-hue * parent.height - 2px; height: 4px; border-width: 1px; border-color: white; background: #00000040; }
+                            TouchArea {
+                                function pick(y: length) { root.picker-hsv(max(0, min(0.999, y / hb.height)), root.picker-sat, root.picker-val); }
+                                pointer-event(e) => { if e.kind == PointerEventKind.down { self.pick(self.mouse-y); } }
+                                moved => { if self.pressed { self.pick(self.mouse-y); } }
+                            }
+                            accessible-role: slider; accessible-label: "色相";
+                        }
+                        VerticalLayout { spacing: 10px; alignment: start;
+                            Rectangle { width: 120px; height: 56px; border-radius: 8px; background: root.picker-color; border-width: 1px; border-color: Theme.line-strong; }
+                            Label { text: "HEX"; }
+                            Rectangle { width: 120px; height: 28px; border-radius: 8px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+                                hex := TextInput { x: 8px; width: parent.width - 16px; text: root.picker-hex; font-family: Theme.font-mono; font-size: 13px; color: Theme.ink;
+                                    vertical-alignment: center; single-line: true; accessible-label: "颜色十六进制值";
+                                    edited => { root.picker-hex-edited(self.text); } }
+                            }
+                        }
+                    }
+                    if root.recent-colors.length > 0: HorizontalLayout { spacing: 8px; alignment: start;
+                        Label { text: "最近使用"; }
+                        for c[i] in root.recent-colors: Rectangle { width: 22px; height: 22px; border-radius: 6px; background: c; border-width: 1px; border-color: Theme.line-strong;
+                            accessible-role: button; accessible-label: "最近颜色 " + (i + 1); accessible-action-default => { root.command("picker-recent-" + i); }
+                            TouchArea { clicked => { root.command("picker-recent-" + i); } } }
+                    }
+                    HorizontalLayout { spacing: 8px; alignment: end;
+                        ActionButton { label: "取消"; key: "Esc"; kind: 0; clicked => { root.command("picker-cancel"); } }
+                        ActionButton { label: "使用这个颜色"; key: "Enter"; kind: 1; clicked => { root.command("picker-apply"); } }
+                    }
+                }
+                if root.dialog != "about" && root.dialog != "settings" && root.dialog != "color": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: root.dialog == "close" ? "有未复制或保存的编辑" : "替换当前图片？"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: root.dialog == "close" ? "关闭后这些编辑会丢失。" : "当前图片有未复制或保存的编辑，替换后会丢失。"; color: Theme.body; wrap: word-wrap; }
                     HorizontalLayout { padding-top: 16px; spacing: 8px; alignment: end;

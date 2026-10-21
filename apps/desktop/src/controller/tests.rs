@@ -348,3 +348,52 @@ fn crop_draft_can_be_resized_by_handle_and_moved_from_inside() {
     assert!(c.confirm_crop());
     assert_eq!(editor(&c).output_dimensions(), (20, 20));
 }
+
+#[test]
+fn ellipse_line_and_pen_tools_create_their_shapes() {
+    let mut c = opened(400, 200);
+    c.tool = Tool::Ellipse;
+    drag(&mut c, (10.0, 10.0), (60.0, 40.0));
+    assert!(matches!(editor(&c).annotations()[0].annotation.shape, Shape::Ellipse { region, .. } if region == Region::new(10, 10, 60, 40)));
+    c.tool = Tool::Line;
+    c.shift = true;
+    drag(&mut c, (100.0, 100.0), (150.0, 104.0)); // Shift snaps the line flat
+    match editor(&c).annotations()[1].annotation.shape {
+        Shape::Line { from, to, .. } => assert!(from == (100.0, 100.0) && (to.1 - 100.0).abs() < 0.01),
+        _ => panic!("line expected"),
+    }
+    c.shift = false;
+    c.tool = Tool::Pen;
+    c.pointer_down(at(&c, 200.0, 50.0));
+    for i in 1..=20 { c.pointer_move(at(&c, 200.0 + i as f64 * 3.0, 50.0 + (i % 4) as f64)); }
+    c.pointer_up();
+    match &editor(&c).annotations()[2].annotation.shape {
+        Shape::Pen { points, .. } => { assert!(points.len() >= 10, "{}", points.len()); assert_eq!(points[0], (200.0, 50.0)); }
+        _ => panic!("pen expected"),
+    }
+    // The pen stroke can be hit and moved as a whole.
+    c.tool = Tool::Select;
+    drag(&mut c, (230.0, 51.0), (230.0, 81.0));
+    match &editor(&c).annotations()[2].annotation.shape { Shape::Pen { points, .. } => assert_eq!(points[0], (200.0, 80.0)), _ => unreachable!() }
+}
+
+#[test]
+fn shape_pairs_convert_and_custom_colour_applies() {
+    let mut c = opened(400, 200);
+    c.tool = Tool::Rect;
+    drag(&mut c, (10.0, 10.0), (60.0, 40.0)); // the new frame stays selected
+    assert!(c.set_shape_tool(Tool::Ellipse));
+    assert!(matches!(editor(&c).annotations()[0].annotation.shape, Shape::Ellipse { .. }));
+    assert!(c.set_custom_color([1, 2, 3, 255]));
+    assert_eq!(editor(&c).annotations()[0].annotation.color, [1, 2, 3, 255]);
+    assert_eq!((c.style.color, c.ink()), (CUSTOM_INK, [1, 2, 3, 255]));
+    assert!(c.undo());
+    assert_eq!(editor(&c).annotations()[0].annotation.color, INKS[0]);
+    // Selecting a custom-coloured object adopts its colour.
+    c.style.color = 0;
+    c.undo(); c.redo(); c.redo();
+    c.deselect();
+    c.tool = Tool::Select;
+    drag(&mut c, (11.0, 25.0), (11.0, 25.0));
+    assert_eq!((c.style.color, c.custom), (CUSTOM_INK, [1, 2, 3, 255]));
+}

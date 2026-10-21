@@ -61,6 +61,8 @@ impl Session {
         let w = self.windows.iter().copied().find(|w| w.contains(x, y))?;
         self.clamp(w, (x, y))
     }
+    /// A button is held on the overlay (selecting, moving or resizing).
+    pub fn pressed(&self) -> bool { self.press.is_some() }
     pub fn dragging(&self) -> bool {
         self.press.is_some_and(|(p, _)| (p.0 - self.current.0).abs() > DRAG_THRESHOLD || (p.1 - self.current.1).abs() > DRAG_THRESHOLD)
     }

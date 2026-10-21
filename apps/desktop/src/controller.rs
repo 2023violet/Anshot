@@ -14,13 +14,15 @@ pub const INKS: [[u8; 4]; 6] = [
     [0xe5, 0x34, 0x2b, 255], [0xff, 0xc6, 0x0a, 255], [0x22, 0xa6, 0x52, 255],
     [0x2f, 0x6f, 0xf0, 255], [0xff, 0xff, 0xff, 255], [0x1a, 0x19, 0x15, 255],
 ];
+/// Style index of the custom colour (after the six presets).
+pub const CUSTOM_INK: usize = 6;
 pub const WIDTHS: [f32; 3] = [2.0, 4.0, 7.0];
 pub const TEXT_SIZES: [f32; 5] = [14.0, 18.0, 24.0, 32.0, 48.0];
 /// 04_DESIGN `redact.solid` choices.
 pub const SOLIDS: [[u8; 4]; 2] = [[0x1a, 0x19, 0x15, 255], [0xff, 0xff, 0xff, 255]];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Tool { Select, Arrow, Rect, Text, Number, Highlight, Redact, Mosaic, Crop }
+pub enum Tool { Select, Arrow, Rect, Text, Number, Highlight, Redact, Mosaic, Crop, Ellipse, Line, Pen }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Delivery { Copy, Save }
@@ -36,6 +38,8 @@ pub enum Grip { Box(Handle), ArrowFrom, ArrowTo }
 #[derive(Debug)]
 enum Drag {
     Draw { start: Point, current: Point },
+    /// Freehand pen samples in canvas px.
+    Pen { points: Vec<Point> },
     Crop { start: Point, current: Point },
     /// Adjust the crop draft: a handle resizes, the inside moves (0.1.1 R6).
     CropAdjust { start: Point, current: Point, base: Region, handle: Option<Handle> },
@@ -77,29 +81,32 @@ pub struct Controller {
     pub space_pan: bool,
     /// Shift held during a drag: square boxes, 45° arrows, axis-locked moves.
     pub shift: bool,
+    /// The custom colour used when `style.color == CUSTOM_INK`.
+    pub custom: [u8; 4],
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255] }
     }
 }
 
 fn region_of(a: &Annotation) -> Option<Region> {
-    match a.shape { Shape::Rect { region, .. } | Shape::Highlight { region } => Some(region), _ => None }
+    match a.shape { Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => Some(region), _ => None }
 }
 fn with_region(a: &Annotation, r: Region) -> Annotation {
     let mut a = a.clone();
-    if let Shape::Rect { region, .. } | Shape::Highlight { region } = &mut a.shape { *region = r; }
+    if let Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } = &mut a.shape { *region = r; }
     a
 }
 fn translate(a: &Annotation, dx: f32, dy: f32) -> Annotation {
     let mut a = a.clone();
     let (ix, iy) = (dx.round() as i64, dy.round() as i64);
     match &mut a.shape {
-        Shape::Rect { region, .. } | Shape::Highlight { region } => *region = Region::new(region.x0 + ix, region.y0 + iy, region.x1 + ix, region.y1 + iy),
-        Shape::Arrow { from, to, .. } => { *from = (from.0 + dx, from.1 + dy); *to = (to.0 + dx, to.1 + dy); }
+        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => *region = Region::new(region.x0 + ix, region.y0 + iy, region.x1 + ix, region.y1 + iy),
+        Shape::Arrow { from, to, .. } | Shape::Line { from, to, .. } => { *from = (from.0 + dx, from.1 + dy); *to = (to.0 + dx, to.1 + dy); }
+        Shape::Pen { points, .. } => { for p in points.iter_mut() { *p = (p.0 + dx, p.1 + dy); } }
         Shape::Number { center, .. } => *center = (center.0 + dx, center.1 + dy),
         Shape::Text { origin, .. } => *origin = (origin.0 + dx, origin.1 + dy),
     }
@@ -193,8 +200,8 @@ impl Controller {
         if let Some(r) = self.display_masks().into_iter().find(|m| m.0 == id).map(|m| m.1) { return box_grips(v.rect(r)); }
         let sc = |x: f32, y: f32| (v.x + f64::from(x) * v.scale, v.y + f64::from(y) * v.scale);
         match self.display_annotation(id).map(|a| a.shape) {
-            Some(Shape::Arrow { from, to, .. }) => vec![(Grip::ArrowFrom, sc(from.0, from.1)), (Grip::ArrowTo, sc(to.0, to.1))],
-            Some(Shape::Rect { region, .. } | Shape::Highlight { region }) => box_grips(v.rect(region)),
+            Some(Shape::Arrow { from, to, .. } | Shape::Line { from, to, .. }) => vec![(Grip::ArrowFrom, sc(from.0, from.1)), (Grip::ArrowTo, sc(to.0, to.1))],
+            Some(Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. }) => box_grips(v.rect(region)),
             _ => Vec::new(),
         }
     }
@@ -217,7 +224,11 @@ impl Controller {
         for a in e.annotations() {
             let (x0, y0, x1, y1) = bounds(&a.annotation);
             let inside = match &a.annotation.shape {
-                Shape::Arrow { from, to, width } => seg_dist(s, (from.0.into(), from.1.into()), (to.0.into(), to.1.into())) <= f64::from(*width) / 2.0 + tol,
+                Shape::Arrow { from, to, width } | Shape::Line { from, to, width } => seg_dist(s, (from.0.into(), from.1.into()), (to.0.into(), to.1.into())) <= f64::from(*width) / 2.0 + tol,
+                Shape::Pen { points, width } => {
+                    let near = |a: (f32, f32), b: (f32, f32)| seg_dist(s, (a.0.into(), a.1.into()), (b.0.into(), b.1.into())) <= f64::from(*width) / 2.0 + tol;
+                    match points.as_slice() { [only] => near(*only, *only), pts => pts.windows(2).any(|w| near(w[0], w[1])) }
+                }
                 _ => s.0 >= f64::from(x0) && s.0 < f64::from(x1) && s.1 >= f64::from(y0) && s.1 < f64::from(y1),
             };
             if inside { offer(f64::from((x1 - x0) * (y1 - y0)), Hit::Ann(a.id)); }
@@ -263,7 +274,7 @@ impl Controller {
         if e.begin_draw_preview().is_ok() { self.drag = Some(Drag::Ann { id, start: p, preview: base.clone(), base, grip }); }
     }
     fn press_empty(&mut self, p: Point, src: (f64, f64)) {
-        let (tool, style) = (self.tool, self.style);
+        let (tool, style, ink) = (self.tool, self.style, self.ink());
         let Some(editor) = self.editor.as_mut() else { return };
         let _ = editor.select(None);
         match tool {
@@ -272,8 +283,9 @@ impl Controller {
             Tool::Number => {
                 let n = editor.annotations().iter().filter_map(|a| match a.annotation.shape { Shape::Number { n, .. } => Some(n), _ => None }).max().unwrap_or(0) + 1;
                 let radius = 9.0 + 2.0 * WIDTHS[style.width];
-                let _ = editor.add_annotation(Annotation { shape: Shape::Number { center: (src.0 as f32, src.1 as f32), n, radius }, color: INKS[style.color] });
+                let _ = editor.add_annotation(Annotation { shape: Shape::Number { center: (src.0 as f32, src.1 as f32), n, radius }, color: ink });
             }
+            Tool::Pen => { if editor.begin_draw_preview().is_ok() { self.drag = Some(Drag::Pen { points: vec![p] }); } }
             _ => { if editor.begin_draw_preview().is_ok() { self.drag = Some(Drag::Draw { start: p, current: p }); } }
         }
     }
@@ -283,10 +295,14 @@ impl Controller {
         let (shift, tool) = (self.shift, self.tool);
         match self.drag.as_mut() {
             Some(Drag::CropAdjust { current, .. }) => *current = p,
+            // Keep samples at least 2 canvas px apart; the renderer smooths between them.
+            Some(Drag::Pen { points }) => {
+                if points.last().is_none_or(|l| (l.x - p.x).hypot(l.y - p.y) >= 2.0) { points.push(p); }
+            }
             Some(Drag::Draw { start, current }) | Some(Drag::Crop { start, current }) => {
                 *current = match (shift, tool) {
                     (false, _) => p,
-                    (true, Tool::Arrow) => snap45(*start, p),
+                    (true, Tool::Arrow | Tool::Line) => snap45(*start, p),
                     (true, _) => square(*start, p),
                 };
             }
@@ -312,7 +328,7 @@ impl Controller {
                     },
                     Some(g) => {
                         let mut a = base.clone();
-                        if let Shape::Arrow { from, to, .. } = &mut a.shape {
+                        if let Shape::Arrow { from, to, .. } | Shape::Line { from, to, .. } = &mut a.shape {
                             if *g == Grip::ArrowFrom { *from = (from.0 + dx, from.1 + dy); } else { *to = (to.0 + dx, to.1 + dy); }
                         }
                         a
@@ -330,6 +346,9 @@ impl Controller {
                 if let (Some(d), Some(e)) = (draft, self.editor.as_mut()) {
                     let _ = match d { Draft::Redact(r, style) => e.add_redaction(r, style), Draft::Ann(a) => e.add_annotation(a) };
                 }
+            }
+            Some(Drag::Pen { points }) => {
+                if let Some(a) = self.pen_annotation(&points) { if let Some(e) = self.editor.as_mut() { let _ = e.add_annotation(a); } }
             }
             Some(Drag::Pan { .. }) => {}
             Some(Drag::Crop { start, current }) => {
@@ -354,17 +373,38 @@ impl Controller {
     fn draft_from(&self, start: Point, current: Point, view: View) -> Option<Draft> {
         let r = view.viewport().pixel_region(start, current).ok()?;
         let area = (r.x1 - r.x0) * (r.y1 - r.y0);
-        let color = INKS[self.style.color];
+        let color = self.ink();
         let (s, c) = (self.src(start)?, self.src(current)?);
         match self.tool {
             Tool::Redact if area > 0 => Some(Draft::Redact(r, RedactStyle::Solid(SOLIDS[self.style.solid]))),
             Tool::Mosaic if area > 0 => Some(Draft::Redact(r, RedactStyle::SafeMosaic)),
             Tool::Rect if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Rect { region: r, width: WIDTHS[self.style.width] }, color })),
             Tool::Highlight if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Highlight { region: r }, color })),
+            Tool::Ellipse if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Ellipse { region: r, width: WIDTHS[self.style.width] }, color })),
+            Tool::Line if ((c.0 - s.0).powi(2) + (c.1 - s.1).powi(2)).sqrt() * view.scale >= 4.0 => Some(Draft::Ann(Annotation {
+                shape: Shape::Line { from: (s.0 as f32, s.1 as f32), to: (c.0 as f32, c.1 as f32), width: WIDTHS[self.style.width] }, color })),
             Tool::Arrow if ((c.0 - s.0).powi(2) + (c.1 - s.1).powi(2)).sqrt() * view.scale >= 6.0 => Some(Draft::Ann(Annotation {
                 shape: Shape::Arrow { from: (s.0 as f32, s.1 as f32), to: (c.0 as f32, c.1 as f32), width: WIDTHS[self.style.width] }, color })),
             _ => None,
         }
+    }
+
+    /// Finished pen stroke in source px (clamped to the image), or None if it is empty.
+    fn pen_annotation(&self, points: &[Point]) -> Option<Annotation> {
+        let (w, h) = self.editor.as_ref()?.dimensions();
+        let pts: Vec<(f32, f32)> = points.iter().filter_map(|p| self.src(*p))
+            .map(|(x, y)| (x.clamp(0.0, f64::from(w)) as f32, y.clamp(0.0, f64::from(h)) as f32)).collect();
+        (!pts.is_empty()).then(|| Annotation { shape: Shape::Pen { points: pts, width: WIDTHS[self.style.width] }, color: self.ink() })
+    }
+    /// The colour new annotations get: a preset or the custom colour.
+    pub fn ink(&self) -> [u8; 4] { INKS.get(self.style.color).copied().unwrap_or(self.custom) }
+    /// Pick a custom colour and apply it like a preset (one undo entry when something is selected).
+    pub fn set_custom_color(&mut self, c: [u8; 4]) -> bool {
+        self.custom = [c[0], c[1], c[2], 255];
+        self.apply_style(|s| s.color = CUSTOM_INK)
+    }
+    fn adopt_color(&mut self, c: [u8; 4]) {
+        match INKS.iter().position(|k| *k == c) { Some(i) => self.style.color = i, None => { self.custom = c; self.style.color = CUSTOM_INK; } }
     }
 
     // ---- what the canvas shows ----
@@ -389,6 +429,9 @@ impl Controller {
         }
         if let Some(edit_id) = self.text_edit.as_ref().and_then(|t| t.id) {
             if let Some(pos) = e.annotations().iter().position(|a| a.id == edit_id) { scene.annotations.remove(pos); }
+        }
+        if let Some(Drag::Pen { points }) = &self.drag {
+            if let Some(a) = self.pen_annotation(points) { scene.annotations.push(a); }
         }
         if let (Some(Drag::Draw { start, current }), Some(view)) = (&self.drag, self.view()) {
             match self.draft_from(*start, *current, view) {
@@ -421,6 +464,7 @@ impl Controller {
         e.annotations().iter().find(|a| a.id == id).map(|a| match a.annotation.shape {
             Shape::Arrow { .. } => Tool::Arrow, Shape::Rect { .. } => Tool::Rect, Shape::Highlight { .. } => Tool::Highlight,
             Shape::Number { .. } => Tool::Number, Shape::Text { .. } => Tool::Text,
+            Shape::Ellipse { .. } => Tool::Ellipse, Shape::Line { .. } => Tool::Line, Shape::Pen { .. } => Tool::Pen,
         })
     }
     /// Pull the selected object's style into the current style.
@@ -432,9 +476,10 @@ impl Controller {
             return;
         }
         let Some(a) = e.annotations().iter().find(|a| a.id == id) else { return };
-        if let Some(i) = INKS.iter().position(|c| *c == a.annotation.color) { self.style.color = i; }
-        match &a.annotation.shape {
-            Shape::Arrow { width, .. } | Shape::Rect { width, .. } => { if let Some(i) = WIDTHS.iter().position(|w| w == width) { self.style.width = i; } }
+        let (color, shape) = (a.annotation.color, a.annotation.shape.clone());
+        self.adopt_color(color);
+        match &shape {
+            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } => { if let Some(i) = WIDTHS.iter().position(|w| w == width) { self.style.width = i; } }
             Shape::Text { size, background, .. } => {
                 if let Some(i) = TEXT_SIZES.iter().position(|s| s == size) { self.style.size = i; }
                 self.style.background = *background;
@@ -446,7 +491,7 @@ impl Controller {
     pub fn apply_style(&mut self, f: impl FnOnce(&mut Style)) -> bool {
         f(&mut self.style);
         if self.drag.is_some() { return false; }
-        let st = self.style;
+        let (st, ink) = (self.style, self.ink());
         let Some(e) = self.editor.as_mut() else { return false };
         let Some(id) = e.selected() else { return false };
         if let Some(m) = e.masks().iter().find(|m| m.id == id) {
@@ -454,12 +499,29 @@ impl Controller {
             return e.set_redaction_style(id, style).unwrap_or(false);
         }
         let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
-        a.color = INKS[st.color];
+        a.color = ink;
         match &mut a.shape {
-            Shape::Arrow { width, .. } | Shape::Rect { width, .. } => *width = WIDTHS[st.width],
+            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } => *width = WIDTHS[st.width],
             Shape::Text { size, background, .. } => { *size = TEXT_SIZES[st.size]; *background = st.background; }
             _ => {}
         }
+        e.replace_annotation(id, a).unwrap_or(false)
+    }
+    /// Switch between the paired shapes (frame <-> ellipse, arrow <-> line) for new drawings,
+    /// converting a selected object of the pair in place (one undo entry).
+    pub fn set_shape_tool(&mut self, tool: Tool) -> bool {
+        self.tool = tool;
+        if self.drag.is_some() { return false; }
+        let Some(e) = self.editor.as_mut() else { return false };
+        let Some(id) = e.selected() else { return false };
+        let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
+        a.shape = match (&a.shape, tool) {
+            (Shape::Rect { region, width }, Tool::Ellipse) => Shape::Ellipse { region: *region, width: *width },
+            (Shape::Ellipse { region, width }, Tool::Rect) => Shape::Rect { region: *region, width: *width },
+            (Shape::Arrow { from, to, width }, Tool::Line) => Shape::Line { from: *from, to: *to, width: *width },
+            (Shape::Line { from, to, width }, Tool::Arrow) => Shape::Arrow { from: *from, to: *to, width: *width },
+            _ => return false,
+        };
         e.replace_annotation(id, a).unwrap_or(false)
     }
     /// Choose solid / safe mosaic for new redactions and the selected one.
@@ -549,18 +611,19 @@ impl Controller {
         let Some(a) = self.editor.as_ref().and_then(|e| e.annotations().iter().find(|a| a.id == id)).map(|a| a.annotation.clone()) else { return false };
         let Shape::Text { origin, text, size, background } = a.shape else { return false };
         if let Some(i) = TEXT_SIZES.iter().position(|s| *s == size) { self.style.size = i; }
-        if let Some(i) = INKS.iter().position(|c| *c == a.color) { self.style.color = i; }
+        self.adopt_color(a.color);
         self.style.background = background;
         self.text_edit = Some(TextEdit { origin, id: Some(id), initial: text });
         true
     }
     pub fn commit_text(&mut self, text: &str) -> bool {
         let Some(edit) = self.text_edit.take() else { return false };
+        let ink = self.ink();
         let Some(e) = self.editor.as_mut() else { return false };
         let text = text.trim_end().to_string();
         let ann = Annotation {
             shape: Shape::Text { origin: edit.origin, text: text.clone(), size: TEXT_SIZES[self.style.size], background: self.style.background },
-            color: INKS[self.style.color],
+            color: ink,
         };
         match (edit.id, text.is_empty()) {
             (Some(id), true) => e.remove_object(id).is_ok(),
@@ -594,11 +657,11 @@ impl Controller {
         let (w, h) = e.dimensions();
         let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
         match &mut a.shape {
-            Shape::Rect { region, .. } | Shape::Highlight { region } => {
+            Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => {
                 let Some(pr) = PixelRect::from_region(*region, w, h) else { return false };
                 *region = pr.resize(Handle::Se, dx, dy, w, h).region();
             }
-            Shape::Arrow { to, .. } => *to = (to.0 + dx as f32, to.1 + dy as f32),
+            Shape::Arrow { to, .. } | Shape::Line { to, .. } => *to = (to.0 + dx as f32, to.1 + dy as f32),
             _ => return false,
         }
         e.replace_annotation(id, a).unwrap_or(false)

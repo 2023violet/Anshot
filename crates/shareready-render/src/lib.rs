@@ -44,6 +44,12 @@ pub enum Shape {
     Number { center: (f32, f32), n: u32, radius: f32 },
     /// Text whose top-left is `origin`; `size` is the font px size.
     Text { origin: (f32, f32), text: String, size: f32, background: bool },
+    /// Oval outline drawn inside `region`.
+    Ellipse { region: Region, width: f32 },
+    /// Straight line with round caps.
+    Line { from: (f32, f32), to: (f32, f32), width: f32 },
+    /// Freehand stroke through `points` (source px), round joins and caps.
+    Pen { points: Vec<(f32, f32)>, width: f32 },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -68,7 +74,18 @@ pub fn mosaic_color(x: i64, y: i64) -> [u8; 4] {
 pub fn bounds(a: &Annotation) -> (f32, f32, f32, f32) {
     let r = |g: &Region| (g.x0.min(g.x1) as f32, g.y0.min(g.y1) as f32, g.x0.max(g.x1) as f32, g.y0.max(g.y1) as f32);
     match &a.shape {
-        Shape::Rect { region, .. } | Shape::Highlight { region } => r(region),
+        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => r(region),
+        Shape::Line { from, to, width } => {
+            let pad = width / 2.0 + 2.0;
+            (from.0.min(to.0) - pad, from.1.min(to.1) - pad, from.0.max(to.0) + pad, from.1.max(to.1) + pad)
+        }
+        Shape::Pen { points, width } => {
+            let pad = width / 2.0 + 2.0;
+            let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+            for p in points { x0 = x0.min(p.0); y0 = y0.min(p.1); x1 = x1.max(p.0); y1 = y1.max(p.1); }
+            if points.is_empty() { return (0.0, 0.0, 0.0, 0.0); }
+            (x0 - pad, y0 - pad, x1 + pad, y1 + pad)
+        }
         Shape::Arrow { from, to, width } => {
             let pad = width * 3.0;
             (from.0.min(to.0) - pad, from.1.min(to.1) - pad, from.0.max(to.0) + pad, from.1.max(to.1) + pad)
@@ -218,7 +235,49 @@ fn draw(pm: &mut Pixmap, a: &Annotation, tf: Transform, scale: f32) {
             } else { color };
             glyphs(pm, text, *origin, *size, fg, scale);
         }
+        Shape::Ellipse { region, width } => {
+            let Some(r) = rect_of(region) else { return };
+            let half = width / 2.0;
+            let Some(inner) = Rect::from_ltrb(r.left() + half, r.top() + half, r.right() - half, r.bottom() - half) else { return };
+            let Some(path) = PathBuilder::from_oval(inner) else { return };
+            pm.stroke_path(&path, &paint(color), &Stroke { width: *width, ..Stroke::default() }, tf, None);
+        }
+        Shape::Line { from, to, width } => {
+            let mut pb = PathBuilder::new();
+            pb.move_to(from.0, from.1);
+            pb.line_to(to.0, to.1);
+            if let Some(line) = pb.finish() {
+                pm.stroke_path(&line, &paint(color), &Stroke { width: *width, line_cap: LineCap::Round, ..Stroke::default() }, tf, None);
+            }
+        }
+        Shape::Pen { points, width } => {
+            if let Some(path) = pen_path(points) {
+                let stroke = Stroke { width: *width, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
+                pm.stroke_path(&path, &paint(color), &stroke, tf, None);
+            }
+        }
     }
+}
+
+/// Smooth a freehand polyline: straight segments between the midpoints of consecutive
+/// samples, with each sample as the quadratic control point (no overshoot).
+fn pen_path(points: &[(f32, f32)]) -> Option<tiny_skia::Path> {
+    let (&first, rest) = points.split_first()?;
+    let mut pb = PathBuilder::new();
+    pb.move_to(first.0, first.1);
+    match rest {
+        [] => pb.line_to(first.0 + 0.01, first.1), // a dot
+        [only] => pb.line_to(only.0, only.1),
+        _ => {
+            for w in points.windows(2).skip(1) {
+                let (c, n) = (w[0], w[1]);
+                pb.quad_to(c.0, c.1, (c.0 + n.0) / 2.0, (c.1 + n.1) / 2.0);
+            }
+            let last = points[points.len() - 1];
+            pb.line_to(last.0, last.1);
+        }
+    }
+    pb.finish()
 }
 
 fn rounded(r: Rect, rad: f32) -> Option<tiny_skia::Path> {

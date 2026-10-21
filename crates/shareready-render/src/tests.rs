@@ -134,3 +134,52 @@ fn bundled_font_is_the_pinned_file() {
 }
 const FONT_LEN: usize = 16_437_364;
 const FONT_DIGEST: u64 = 8_555_162_396_145_626_508;
+
+pub(crate) fn golden_scene_v2() -> Scene {
+    let wave: Vec<(f32, f32)> = (0..24).map(|i| (30.0 + i as f32 * 8.0, 190.0 + (i as f32 * 0.6).sin() * 18.0)).collect();
+    Scene {
+        redactions: vec![Redaction { region: Region::new(250, 20, 310, 50), style: RedactStyle::SafeMosaic }],
+        annotations: vec![
+            Annotation { shape: Shape::Ellipse { region: Region::new(20, 20, 140, 90), width: 4.0 }, color: [0xe5, 0x34, 0x2b, 255] },
+            Annotation { shape: Shape::Ellipse { region: Region::new(160, 30, 220, 90), width: 2.0 }, color: [0x2f, 0x6f, 0xf0, 255] },
+            Annotation { shape: Shape::Line { from: (20.0, 120.0), to: (300.0, 140.0), width: 6.0 }, color: [0x22, 0xa6, 0x52, 255] },
+            Annotation { shape: Shape::Pen { points: wave, width: 4.0 }, color: [0x9b, 0x30, 0xd9, 255] },
+            Annotation { shape: Shape::Pen { points: vec![(280.0, 200.0)], width: 8.0 }, color: [0x1a, 0x19, 0x15, 255] },
+        ],
+        crop: None,
+    }
+}
+
+#[test]
+fn ellipse_line_and_pen_draw_where_expected() {
+    let mut img = RgbaImage::from_pixel(320, 240, Rgba([255, 255, 255, 255]));
+    let scene = golden_scene_v2();
+    render_into(&mut img, &scene, 1.0);
+    // Ellipse: stroke on the left extreme of the oval (x = 22), centre stays white.
+    assert_eq!(img.get_pixel(22, 55).0, [0xe5, 0x34, 0x2b, 255]);
+    assert_eq!(img.get_pixel(80, 55).0, [255, 255, 255, 255]);
+    // Line: centre of the segment is solid green.
+    assert_eq!(img.get_pixel(160, 130).0, [0x22, 0xa6, 0x52, 255]);
+    // Pen: the stroke passes through its first sample; a single-point pen is a dot.
+    assert_eq!(img.get_pixel(30, 190).0, [0x9b, 0x30, 0xd9, 255]);
+    assert_eq!(img.get_pixel(280, 200).0, [0x1a, 0x19, 0x15, 255]);
+    // Bounds cover the drawn pixels.
+    let (x0, y0, x1, y1) = bounds(&scene.annotations[3]);
+    assert!(x0 <= 28.0 && x1 >= 214.0 && y0 <= 172.0 && y1 >= 208.0, "{x0} {y0} {x1} {y1}");
+    assert_eq!(bounds(&Annotation { shape: Shape::Pen { points: vec![], width: 3.0 }, color: [0; 4] }), (0.0, 0.0, 0.0, 0.0));
+}
+
+/// Frozen render golden for the 0.2 shapes (tests/golden/render/scene-v2.png).
+#[test]
+fn golden_scene_v2_digest_is_frozen() {
+    let mut img = source(320, 240, 77);
+    render_into(&mut img, &golden_scene_v2(), 1.0);
+    if std::env::var_os("SHAREREADY_WRITE_RENDER_GOLDEN_V2").is_some() {
+        img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v2.png")).unwrap();
+        println!("DIGEST_V2={:#018x}", digest(&img));
+    }
+    assert_eq!(digest(&img), GOLDEN_SCENE_V2, "render output changed; review and re-freeze deliberately");
+}
+
+/// Frozen 2026-10-21 after visual review; same toolchain pins as v1.
+const GOLDEN_SCENE_V2: u64 = 0xd654_7732_c6a9_0ce1;

@@ -6,6 +6,7 @@
 
 mod canvas;
 mod capture;
+mod color;
 mod controller;
 mod display;
 mod messages;
@@ -13,7 +14,7 @@ mod platform;
 mod settings;
 
 use canvas::Zoom;
-use controller::{Controller, Delivery, Notice, Tool, INKS, TEXT_SIZES};
+use controller::{Controller, Delivery, Notice, Tool, CUSTOM_INK, TEXT_SIZES};
 use image::RgbaImage;
 use shareready_editor::{EditError, Point, ReviewKey, ReviewResult, SourceCandidate};
 use slint::{CloseRequestResponse, ComponentHandle, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
@@ -60,6 +61,12 @@ struct App {
     restore_editor: bool,
     /// A capture waits for the hidden editor to leave the screen.
     capture_pending: bool,
+    /// Follows the pointer while an overlay is open (R7: the magnifier must track the real
+    /// cursor even when no mouse-move event reaches the overlay).
+    cursor_timer: slint::Timer,
+    last_cursor: Option<(i32, i32)>,
+    /// What to do as soon as a captured image is open (overlay toolbar: copy / save).
+    after_open: Option<Delivery>,
 }
 
 fn to_image(img: &RgbaImage) -> Image {
@@ -95,6 +102,11 @@ impl App {
         ui.set_tiny(ctl.area().0 < 720.0);
         let st = ctl.style;
         ui.set_color_index(st.color as i32);
+        let cc = ctl.custom;
+        ui.set_custom_color(slint::Color::from_rgb_u8(cc[0], cc[1], cc[2]));
+        ui.set_shape_kind(match ctl.selected_kind().unwrap_or(ctl.tool) {
+            Tool::Rect | Tool::Ellipse => "box", Tool::Arrow | Tool::Line => "line", _ => "",
+        }.into());
         ui.set_width_index(st.width as i32);
         ui.set_size_index(st.size as i32);
         ui.set_text_background(st.background);
@@ -145,7 +157,8 @@ impl App {
         let kind = ctl.selected_kind();
         ui.set_has_selection(kind.is_some());
         let mode = match kind.unwrap_or(ctl.tool) {
-            Tool::Redact => "redact", Tool::Mosaic => "mosaic", Tool::Arrow | Tool::Rect => "stroke",
+            Tool::Redact => "redact", Tool::Mosaic => "mosaic",
+            Tool::Arrow | Tool::Rect | Tool::Ellipse | Tool::Line | Tool::Pen => "stroke",
             Tool::Number | Tool::Highlight => "fill", Tool::Text => "text", Tool::Select => "hint-select", Tool::Crop => "crop",
         };
         ui.set_prop_mode(mode.into());
@@ -162,7 +175,7 @@ impl App {
                 ui.set_text_x((view.x + f64::from(t.origin.0) * view.scale) as f32);
                 ui.set_text_y((view.y + f64::from(t.origin.1) * view.scale) as f32);
                 ui.set_text_size((f64::from(TEXT_SIZES[st.size]) * view.scale) as f32);
-                let c = INKS[st.color];
+                let c = ctl.ink();
                 ui.set_text_color(slint::Color::from_rgb_u8(c[0], c[1], c[2]));
                 if !ui.get_text_editing() { ui.set_text_initial(t.initial.clone().into()); }
                 ui.set_text_editing(true);
@@ -202,6 +215,7 @@ impl App {
                 if self.ctl.has_unsaved_edits() {
                     self.ctl.cancel_drag();
                     self.pending = Some(Pending::Replace(candidate, preview, name));
+                    self.show_editor();
                     if let Some(ui) = self.ui() { ui.set_dialog("replace".into()); }
                 } else {
                     self.apply_source(candidate, preview, name);
@@ -219,6 +233,12 @@ impl App {
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
         self.clear_toast();
+        match self.after_open.take() {
+            Some(Delivery::Copy) => { self.start(Delivery::Copy); }
+            // The save dialog is blocking: run it outside the state borrow.
+            Some(Delivery::Save) => { slint::Timer::single_shot(Duration::ZERO, || command("save")); }
+            None => {}
+        }
     }
 
     // ---- delivery ----
@@ -278,6 +298,7 @@ impl App {
                     _ if self.resident && self.settings.hide_after_copy => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
                     AfterCopy::Close if self.resident => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
                     AfterCopy::Close => { let _ = slint::quit_event_loop(); }
+                    AfterCopy::Stay if !self.ui().is_some_and(|ui| ui.window().is_visible()) => self.system_toast("done", "已复制到剪贴板", &detail),
                     AfterCopy::Stay => self.toast("done", "已复制到剪贴板", &detail, None),
                 }
             }
@@ -298,6 +319,7 @@ impl App {
                 if is(Key::Escape) { self.dialog_choice("cancel"); return true; }
                 if is(Key::Return) && ui.get_dialog() == "close" && self.ctl.can_deliver() { self.dialog_choice("copy-close"); return true; }
                 if is(Key::Return) && (ui.get_dialog() == "about" || ui.get_dialog() == "settings") { self.dialog_choice("cancel"); return true; }
+                if is(Key::Return) && ui.get_dialog() == "color" { self.apply_picker(); return true; }
                 return false;
             }
         }
@@ -338,11 +360,12 @@ impl App {
             else if is(Key::Escape) { if self.ctl.dragging() { self.ctl.cancel_drag() } else { self.ctl.deselect() }; true }
             else {
                 match text.chars().next().map(|c| c.to_ascii_lowercase()) {
-                    Some(c @ '1'..='6') => { let i = c as usize - '1' as usize; self.ctl.apply_style(|s| s.color = i); true }
+                    Some(c @ '1'..='7') => { let i = c as usize - '1' as usize; self.ctl.apply_style(|s| s.color = i); true }
                     Some(c) => match tool_for_key(c) {
                         Some(Tool::Crop) => { self.ctl.enter_crop(); true }
                         Some(Tool::Mosaic) => { self.ctl.set_redaction_kind(true); true }
                         Some(Tool::Redact) => { self.ctl.set_redaction_kind(false); true }
+                        Some(t @ (Tool::Rect | Tool::Ellipse | Tool::Arrow | Tool::Line)) => { self.ctl.set_shape_tool(t); true }
                         Some(t) => { self.ctl.tool = t; true }
                         None => false,
                     },
@@ -427,12 +450,7 @@ impl App {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
             let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "显示器区域无效", None); return; };
             if self.overlay_pool.len() <= i {
-                let Ok(win) = CaptureOverlay::new() else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
-                win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
-                win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
-                win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
-                win.on_confirm(|| { with(|a| a.confirm_capture()); });
-                win.on_cancel(|| { with(|a| a.cancel_capture()); });
+                let Some(win) = new_overlay(i) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
                 self.overlay_pool.push(win);
             }
             let win = self.overlay_pool[i].clone_strong();
@@ -449,10 +467,29 @@ impl App {
         if overlays.is_empty() { self.cancel_capture(); return; }
         self.session = Some(session);
         self.overlays = overlays;
-        if let Some((x, y)) = shareready_platform_windows::cursor() {
+        self.last_cursor = shareready_platform_windows::cursor();
+        if let Some((x, y)) = self.last_cursor {
             if let Some(s) = self.session.as_mut() { s.pointer_move(x, y); }
         }
         self.refresh_overlays();
+        self.cursor_timer.start(slint::TimerMode::Repeated, Duration::from_millis(30), || { with(|a| a.poll_cursor()); });
+    }
+    fn poll_cursor(&mut self) {
+        let now = shareready_platform_windows::cursor();
+        if now == self.last_cursor { return; }
+        self.last_cursor = now;
+        if let (Some((x, y)), Some(s)) = (now, self.session.as_mut()) { if !s.pressed() { s.pointer_move(x, y); } }
+        self.refresh_overlays();
+    }
+    /// Overlay toolbar / shortcuts: copy, save, edit, cancel.
+    fn overlay_action(&mut self, action: &str) {
+        match action {
+            "copy" => self.finish_capture(Some(Delivery::Copy)),
+            "save" => self.finish_capture(Some(Delivery::Save)),
+            "edit" => self.finish_capture(None),
+            "cancel" => self.cancel_capture(),
+            _ => {}
+        }
     }
     /// Create and show/hide each monitor's overlay once, off-screen, so the first
     /// hotkey press does not pay window + GL context creation.
@@ -460,12 +497,7 @@ impl App {
         let Ok(monitors) = shareready_platform_windows::monitors() else { return };
         for (i, _) in monitors.iter().enumerate() {
             if self.overlay_pool.len() > i { continue; }
-            let Ok(win) = CaptureOverlay::new() else { return };
-            win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
-            win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
-            win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
-            win.on_confirm(|| { with(|a| a.confirm_capture()); });
-            win.on_cancel(|| { with(|a| a.cancel_capture()); });
+            let Some(win) = new_overlay(i) else { return };
             win.set_show_hint(false);
             win.window().set_position(slint::PhysicalPosition::new(-32000, -32000));
             win.window().set_size(slint::PhysicalSize::new(8, 8));
@@ -493,6 +525,7 @@ impl App {
                 x: (r.x - m.bounds.x) as f32 / k, y: (r.y - m.bounds.y) as f32 / k, w: r.w as f32 / k, h: r.h as f32 / k,
             });
             let sel = s.selection.and_then(local);
+            let has_sel = sel.is_some();
             win.set_has_selection(sel.is_some());
             if let Some(b) = sel { win.set_selection(b); }
             win.set_size_text(s.selection.map(|r| format!("{} × {}", r.w, r.h)).unwrap_or_default().into());
@@ -513,9 +546,11 @@ impl App {
             }
             win.set_show_hint(m.bounds.contains(cursor.map_or(0, |c| c.0), cursor.map_or(0, |c| c.1)) || m.primary);
             win.set_cursor_kind(cursor_kind(s, cursor).into());
+            win.set_show_toolbar(has_sel && !s.pressed());
         }
     }
     fn end_capture(&mut self) {
+        self.cursor_timer.stop();
         for (win, _) in self.overlays.drain(..) {
             let _ = win.hide();
             // Do not keep frozen screen pixels around between captures.
@@ -530,13 +565,17 @@ impl App {
         self.end_capture();
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
     }
-    fn confirm_capture(&mut self) {
+    fn confirm_capture(&mut self) { self.finish_capture(None); }
+    /// Take the selection into the editor; `then` copies or saves it straight away
+    /// through the same Rust render and delivery path (the editor stays hidden for a copy).
+    fn finish_capture(&mut self, then: Option<Delivery>) {
         let Some(s) = self.session.as_ref() else { return };
         let pixels = s.confirm_area().and_then(|r| s.crop(r));
         self.end_capture();
         let Some(pixels) = pixels else { if std::mem::take(&mut self.restore_editor) { self.show_editor(); } return };
-        self.restore_editor = false;
-        self.show_editor();
+        let editor_was_open = std::mem::take(&mut self.restore_editor);
+        self.after_open = then;
+        if then != Some(Delivery::Copy) || editor_was_open { self.show_editor(); }
         // Leave the state borrow before starting the shared intake pipeline.
         slint::Timer::single_shot(Duration::ZERO, move || {
             let (w, h) = pixels.dimensions();
@@ -602,9 +641,38 @@ impl App {
         self.push_settings();
     }
 
+    // ---- custom colour picker ----
+    fn open_picker(&mut self) {
+        let (h, s, v) = color::rgb_to_hsv(self.ctl.custom);
+        self.set_picker(h, s, v);
+        if let Some(ui) = self.ui() {
+            let recent: Vec<slint::Color> = self.settings.recent_colors.iter().map(|c| slint::Color::from_rgb_u8(c[0], c[1], c[2])).collect();
+            ui.set_recent_colors(ModelRc::new(VecModel::from(recent)));
+            ui.set_dialog("color".into());
+        }
+    }
+    fn set_picker(&mut self, h: f32, s: f32, v: f32) {
+        let Some(ui) = self.ui() else { return };
+        let (c, pure) = (color::hsv_to_rgb(h, s, v), color::hsv_to_rgb(h, 1.0, 1.0));
+        ui.set_picker_hue(h); ui.set_picker_sat(s); ui.set_picker_val(v);
+        ui.set_picker_color(slint::Color::from_rgb_u8(c[0], c[1], c[2]));
+        ui.set_picker_hue_color(slint::Color::from_rgb_u8(pure[0], pure[1], pure[2]));
+        ui.set_picker_hex(color::to_hex(c).into());
+    }
+    fn apply_picker(&mut self) {
+        let Some(ui) = self.ui() else { return };
+        let c = color::hsv_to_rgb(ui.get_picker_hue(), ui.get_picker_sat(), ui.get_picker_val());
+        ui.set_dialog(SharedString::new());
+        self.ctl.set_custom_color(c);
+        self.settings.remember_color(c);
+        self.persist();
+        self.refresh();
+    }
+
     fn dialog_choice(&mut self, choice: &str) {
         if let Some(ui) = self.ui() { ui.set_dialog(SharedString::new()); }
         self.ctl.cancel_drag();
+        if choice == "cancel" { self.after_open = None; }
         match (self.pending.take(), choice) {
             (Some(Pending::Replace(c, p, n)), "discard") => self.apply_source(c, p, n),
             (Some(Pending::Close), "discard") => self.close_editor(true),
@@ -666,6 +734,20 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
     let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-");
+    let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
+    if in_picker && cmd.starts_with("picker-") {
+        with(|a| match cmd {
+            "picker-apply" => a.apply_picker(),
+            "picker-cancel" => { if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); } }
+            c if c.starts_with("picker-recent-") => {
+                if let Some(col) = c[14..].parse::<usize>().ok().and_then(|i| a.settings.recent_colors.get(i).copied()) {
+                    let (h, s, v) = color::rgb_to_hsv(col); a.set_picker(h, s, v);
+                }
+            }
+            _ => {}
+        });
+        return;
+    }
     if !(in_settings && settings_cmd) && with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
     match cmd {
         // Blocking dialogs and clipboard reads run outside the state borrow.
@@ -693,8 +775,12 @@ fn command(cmd: &str) {
                     "redo" => { a.ctl.redo(); }
                     "delete" => { a.ctl.delete_selected(); }
                     "tool-select" => a.ctl.tool = Tool::Select,
-                    "tool-arrow" => a.ctl.tool = Tool::Arrow,
-                    "tool-rect" => a.ctl.tool = Tool::Rect,
+                    "tool-arrow" => { a.ctl.set_shape_tool(Tool::Arrow); }
+                    "tool-rect" => { a.ctl.set_shape_tool(Tool::Rect); }
+                    "tool-ellipse" => { a.ctl.set_shape_tool(Tool::Ellipse); }
+                    "tool-line" => { a.ctl.set_shape_tool(Tool::Line); }
+                    "tool-pen" => a.ctl.tool = Tool::Pen,
+                    "color-picker" => a.open_picker(),
                     "tool-text" => a.ctl.tool = Tool::Text,
                     "tool-number" => a.ctl.tool = Tool::Number,
                     "tool-highlight" => a.ctl.tool = Tool::Highlight,
@@ -703,7 +789,7 @@ fn command(cmd: &str) {
                     "tool-crop" => a.ctl.enter_crop(),
                     "bg-on" => { a.ctl.apply_style(|s| s.background = true); }
                     "bg-off" => { a.ctl.apply_style(|s| s.background = false); }
-                    c if c.starts_with("color-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.color = i.min(5)); } }
+                    c if c.starts_with("color-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.color = i.min(CUSTOM_INK)); } }
                     c if c.starts_with("width-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.width = i.min(2)); } }
                     c if c.starts_with("size-") => { if let Ok(i) = c[5..].parse::<usize>() { a.ctl.apply_style(|s| s.size = i.min(4)); } }
                     c if c.starts_with("solid-") => { if let Ok(i) = c[6..].parse::<usize>() { a.ctl.apply_style(|s| s.solid = i.min(1)); } }
@@ -740,6 +826,7 @@ fn main() -> Result<(), slint::PlatformError> {
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
+        cursor_timer: slint::Timer::default(), last_cursor: None, after_open: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -805,6 +892,8 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_text_commit(|t| { with(|a| { a.ctl.commit_text(t.as_str()); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_dialog_choice(|c| { with(|a| a.dialog_choice(c.as_str())); });
+    ui.on_picker_hsv(|h, s, v| { with(|a| a.set_picker(h, s, v)); });
+    ui.on_picker_hex_edited(|t| { with(|a| if let Some(c) = color::parse_hex(t.as_str()) { let (h, s, v) = color::rgb_to_hsv(c); a.set_picker(h, s, v); }); });
     ui.on_key(|text, ctrl, shift, other| {
         let dialog_open = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(true);
         if ctrl && !other && !dialog_open {
@@ -848,13 +937,15 @@ fn tool_name(t: Tool) -> &'static str {
     match t {
         Tool::Select => "select", Tool::Arrow => "arrow", Tool::Rect => "rect", Tool::Text => "text", Tool::Number => "number",
         Tool::Highlight => "highlight", Tool::Redact => "redact", Tool::Mosaic => "mosaic", Tool::Crop => "crop",
+        Tool::Ellipse => "ellipse", Tool::Line => "line", Tool::Pen => "pen",
     }
 }
 /// 02 §5.2 single-key tools.
 fn tool_for_key(c: char) -> Option<Tool> {
     Some(match c {
         'v' => Tool::Select, 'a' => Tool::Arrow, 'r' => Tool::Rect, 't' => Tool::Text, 'n' => Tool::Number,
-        'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop, _ => return None,
+        'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop,
+        'e' => Tool::Ellipse, 'l' => Tool::Line, 'p' => Tool::Pen, _ => return None,
     })
 }
 
@@ -871,6 +962,18 @@ fn cursor_kind(s: &capture::Session, cursor: Option<(i32, i32)>) -> &'static str
             _ => "ns",
         },
     }
+}
+
+/// One pooled overlay window for monitor `i`, with its callbacks wired.
+fn new_overlay(i: usize) -> Option<CaptureOverlay> {
+    let win = CaptureOverlay::new().ok()?;
+    win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
+    win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
+    win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });
+    win.on_confirm(|| { with(|a| a.confirm_capture()); });
+    win.on_cancel(|| { with(|a| a.cancel_capture()); });
+    win.on_action(|k| { let k = k.to_string(); with(|a| a.overlay_action(&k)); });
+    Some(win)
 }
 
 fn canvas_centre(c: &Controller) -> Point { let (w, h) = c.area(); Point { x: w / 2.0, y: h / 2.0 } }

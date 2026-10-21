@@ -509,4 +509,70 @@ if ($clip) {
 if (-not $w.P.HasExited) { $w.P.Kill() }
 [System.IO.File]::Delete($backdrop)
 
+Start-Sleep -Milliseconds 500
+
+# ---- 22. (R7) the magnifier follows the real pointer without any mouse-move event ----
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+[void][E]::SetCursorPos($fx + 333, $fy + 222); Start-Sleep -Milliseconds 400
+$mag = (UiaNames ([pscustomobject]@{ H = $ovh })) | Where-Object { $_ -like '放大镜*' } | Select-Object -First 1
+Log "MAGNIFIER expected=x $($fx + 333)  y $($fy + 222) got=$mag"
+
+# ---- 23. overlay toolbar: Ctrl+C copies the selection without opening the editor ----
+[System.Windows.Forms.Clipboard]::Clear()
+ScreenDrag ($fx + 100) ($fy + 100) ($fx + 300) ($fy + 200)
+Start-Sleep -Milliseconds 300
+$tb = ((UiaNames ([pscustomobject]@{ H = $ovh })) -contains '复制')
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 2000
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) { $clip.Save((Join-Path $Out 'clipboard-quick-copy.png'), [System.Drawing.Imaging.ImageFormat]::Png); $cs = "$($clip.Width)x$($clip.Height)"; $clip.Dispose() } else { $cs = 'none' }
+$ed = [E]::Editor([uint32]$app.Id)
+Log "QUICKCOPY toolbar=$tb clipboard=$cs editor_visible=$(($ed -ne [IntPtr]::Zero) -and [E]::IsWindowVisible($ed)) toasts=$(([E]::Visible([uint32]$app.Id, 'ShareReady')).Count)"
+
+# ---- 24. overlay toolbar: the Edit button opens the selection in the editor ----
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+ScreenDrag ($fx + 50) ($fy + 60) ($fx + 250) ($fy + 160)
+Start-Sleep -Milliseconds 300
+Log "TOOLBAR edit=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '编辑')"
+Start-Sleep -Milliseconds 1500
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 800
+$w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
+Log ("TOOLBAR editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 25. ellipse (E), Shift line (L), pen (P), custom colour ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x45                                   # E: ellipse
+Drag $w ($io.X + 40) ($io.Y + 330) ($io.X + 200) ($io.Y + 410)
+Key 0x1B
+Key 0x4C                                   # L: line, Shift keeps it level
+[E]::keybd_event(0x10, 0, 0, [IntPtr]::Zero)
+Drag $w ($io.X + 230) ($io.Y + 380) ($io.X + 400) ($io.Y + 386)
+[E]::keybd_event(0x10, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 200
+Key 0x1B
+Key 0x50                                   # P: pen
+[void][E]::SetCursorPos($w.O.X + $io.X + 420, $w.O.Y + $io.Y + 330); Start-Sleep -Milliseconds 150
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero)
+foreach ($i in 1..30) { [void][E]::SetCursorPos($w.O.X + $io.X + 420 + $i * 5, $w.O.Y + $io.Y + 330 + [int](20 * [math]::Sin($i / 3.0))); Start-Sleep -Milliseconds 15 }
+[E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+Key 0x1B
+Key 0x52                                   # R: frame, then pick the custom colour
+Log "PICKER open=$(Invoke-Uia $w '自定义…')"
+Start-Sleep -Milliseconds 400
+Shot $w '18-color-picker.png'
+Key 0x0D; Start-Sleep -Milliseconds 300    # Enter: use the shown colour (#9B30D9 default)
+Drag $w ($io.X + 300) ($io.Y + 250) ($io.X + 360) ($io.Y + 300)
+Shot $w '19-new-shapes.png'
+Log "SHAPES copy=$(CopyTo 'clipboard-shapes.png')"
+Log ("PICKER settings=" + ((Get-Content (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') -ErrorAction SilentlyContinue) -match 'recent_colors' -join ''))
+if (-not $w.P.HasExited) { $w.P.Kill() }
+
+# Leave no test settings behind.
+if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_SETTINGS_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

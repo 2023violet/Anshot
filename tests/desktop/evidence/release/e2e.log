@@ -1,4 +1,4 @@
-EXE sha256=fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f path=ShareReady.exe
+EXE sha256=9f6cec327fbb538d295e4fac41a7a7dd777cafa8e60ff449114764a6e4314313 path=ShareReady.exe
 LAYOUT client=1180x760 image_origin=280,196 scale=1
 UIA toast=
 CLIPBOARD image=620x430
@@ -26,7 +26,7 @@ KEYS redone=620x430
 SETTINGS dialog=True
 SETTINGS taken_key_warning=True
 SETTINGS pick_hotkey=True pick_stay=True
-SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir=
+SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir= | recent_colors=
 SETTINGS new_hotkey_overlays=1
 SETTINGS editor_visible_after_copy=True
 DPI125 client=1475x950 logical_origin=280,196 scale=1
@@ -45,3 +45,10 @@ BACKGROUND running=True editor_windows=0
 ADJUST editor_status=240 × 130
 ADJUST copy=240x130
 FREEZE capture=1920x1080 editor_area_samples=18144 mismatches=0
+MAGNIFIER expected=x 533  y 372 got=放大镜 x 533  y 372
+QUICKCOPY toolbar=True clipboard=200x100 editor_visible=False toasts=1
+TOOLBAR edit=True
+TOOLBAR editor_status=200 × 100
+PICKER open=True
+SHAPES copy=620x430
+PICKER settings=recent_colors=#9B30D9
