@@ -449,7 +449,7 @@ export component AppWindow inherits Window {
                 if root.dialog == "history": VerticalLayout { padding: 20px; spacing: 12px;
                     HorizontalLayout { spacing: 8px;
                         Text { text: "截图历史"; font-size: 15px; font-weight: 600; color: Theme.ink; vertical-alignment: center; }
-                        Label { text: "只保存复制或保存过的成品（已遮挡），存在本机"; }
+                        Label { text: "复制或保存过的图片（与分享出去的一致），只存在本机，可在设置中关闭"; }
                         Rectangle { horizontal-stretch: 1; }
                         if root.history-items.length > 0: ActionButton { label: "全部清空"; key: ""; kind: 2; clicked => { root.command("history-clear"); } }
                         ActionButton { label: "关闭"; key: "Esc"; kind: 0; clicked => { root.command("history-close"); } }

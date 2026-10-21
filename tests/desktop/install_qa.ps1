@@ -102,6 +102,9 @@ $main = (Get-Process -Id $app.Id).MainWindowHandle
 $sh = New-Object -ComObject WScript.Shell; $sh.SendKeys('^,'); Start-Sleep -Milliseconds 800
 Log "D autostart_on=$(Invoke-Uia $main '登录后在托盘待命') run_value=$(RunValue)"
 
+# D2. change a setting through the app, so user data exists to be kept or removed later
+Log "D2 keep_200=$(Invoke-Uia $main '200 张') settings_file=$(Test-Path (Join-Path $cfg 'settings.txt'))"
+
 # E. upgrade (silent reinstall) while the app is running: the installer closes it and replaces files
 $up = Start-Process $Setup -ArgumentList '/S' -PassThru; $up.WaitForExit(60000) | Out-Null
 Start-Sleep -Seconds 1
@@ -115,6 +118,33 @@ WaitGone $installed 30; WaitGone $dir 10
 Start-Sleep -Seconds 1
 # G. everything installed is gone; user data is kept by default
 Log "G after_uninstall: $(State) process_gone=$($bg.HasExited) leftover_procs=$((AppProcs).Count)"
+
+# H. default uninstall kept the settings; now reinstall and uninstall with the wizard,
+#    ticking "同时删除设置与截图历史": the user data must go as well.
+Log "H settings_kept_by_default=$(Test-Path (Join-Path $cfg 'settings.txt'))"
+$re = Start-Process $Setup -ArgumentList '/S' -PassThru; $re.WaitForExit(60000) | Out-Null
+$ui = Start-Process (Join-Path $dir 'uninstall.exe') -PassThru
+$uh = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(15)
+while ($uh -eq [IntPtr]::Zero -and (Get-Date) -lt $d) { $uh = [Q]::FindWindow($null, '安截 Anshot 0.2.0 卸载'); Start-Sleep -Milliseconds 300 }
+Log "H uninstall_wizard=$($uh -ne [IntPtr]::Zero) next=$(Click-Native $uh '下一步(N) >')"
+# The components page is a check-box tree: select the optional item and toggle it with Space.
+$root = [System.Windows.Automation.AutomationElement]::FromHandle($uh)
+$item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), '同时删除设置与截图历史'))
+$ticked = $false
+if ($item) {
+    $sel = $null
+    if ($item.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$sel)) { $sel.Select() }
+    [void][Q]::SetForegroundWindow($uh); $item.SetFocus(); Start-Sleep -Milliseconds 300
+    (New-Object -ComObject WScript.Shell).SendKeys(' '); Start-Sleep -Milliseconds 400
+    $tog = $null
+    if ($item.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$tog)) { $ticked = $tog.Current.ToggleState -eq 'On' } else { $ticked = 'unknown' }
+}
+Shot $uh 'uninstall-components.png'
+Log "H data_option_found=$([bool]$item) ticked=$ticked uninstall=$(Click-Native $uh '卸载(U)')"
+$d = (Get-Date).AddSeconds(30); while ((Test-Path $installed) -and (Get-Date) -lt $d) { Start-Sleep -Milliseconds 300 }
+Start-Sleep -Seconds 2
+[void](Click-Native $uh '关闭(L)')
+Log "H after_uninstall_with_data: $(State) appdata_dir=$(Test-Path $cfg) localdata_dir=$(Test-Path $data)"
 
 # Clean up what this QA created (never data that existed before it ran).
 if (-not $cfgExisted -and (Test-Path $cfg)) { Remove-Item -Recurse -Force $cfg; Log "cleanup removed $cfg (created by this QA)" }

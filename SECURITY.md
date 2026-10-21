@@ -19,4 +19,9 @@ Please do **not** post exploitable details in a public issue, and never attach r
 未做：第三方专业审计、覆盖率引导模糊测试、代码签名。
 Done: hostile corpus and mutation tests, `cargo deny`, independent **agent** security reviews (not a professional audit). Not done: third-party audit, coverage-guided fuzzing, code signing.
 
+## 测试用环境变量 / Test-only environment variables
+
+发布版仍会读取 `SHAREREADY_SETTINGS_DIR`、`SHAREREADY_HISTORY_DIR`、`SHAREREADY_RUN_KEY`（自动化测试用来隔离设置、历史与开机启动项）。它们只能由你自己的用户环境设置，不跨越任何权限边界；若被设置，设置 / 历史可能存到别处（例如同步盘）。正常使用不要设置它们。
+Release builds still read `SHAREREADY_SETTINGS_DIR`, `SHAREREADY_HISTORY_DIR` and `SHAREREADY_RUN_KEY` (used by the automated tests to isolate settings, history and the start-at-login entry). Only your own user environment can set them and they cross no privilege boundary, but if set, settings or history may be stored elsewhere (e.g. a synced folder). Do not set them in normal use.
+
 只有最新发布版本会获得修复。/ Only the latest release receives fixes.

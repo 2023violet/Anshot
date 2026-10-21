@@ -37,6 +37,7 @@ VIAddVersionKey /LANG=2052 "ProductVersion" "${VERSION}"
 VIAddVersionKey /LANG=2052 "LegalCopyright" "MIT License"
 
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
 !define MUI_ICON "${SRC}\anshot.ico"
 !define MUI_UNICON "${SRC}\anshot.ico"
 !define MUI_ABORTWARNING
@@ -56,9 +57,17 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "MIT License"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 !insertmacro MUI_LANGUAGE "English"
 
-; A running copy holds the exe open; close it before files are replaced or removed.
+; A running copy holds the exe open; it must be closed before files are replaced or removed.
+; Interactive runs ask first (unsaved edits and pins would be lost); silent runs (/S) close it.
 !macro CloseRunning
-  nsExec::Exec 'taskkill /IM Anshot.exe /F'
+  System::Call 'kernel32::OpenMutexW(i 0x00100000, i 0, w "Local\Anshot.Desktop.Instance") p .r1'
+  ${If} $1 P<> 0
+    System::Call 'kernel32::CloseHandle(p r1)'
+    IfSilent +2
+    MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "安截正在运行。继续将关闭它，未复制或保存的编辑和钉图会丢失。$\n$\nAnshot is running. Continuing closes it; unsaved edits and pins are lost." IDOK +2
+    Abort
+  ${EndIf}
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /IM Anshot.exe /F'
   Pop $0
   Sleep 400
 !macroend

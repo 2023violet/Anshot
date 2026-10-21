@@ -1,7 +1,8 @@
-//! Capture history: the exact PNG bytes the editor copied or saved (its rendered output,
-//! Rust-generated; pins and history re-copies are not recorded) kept in `%LOCALAPPDATA%\Anshot\history`. Original screen pixels
-//! and unredacted sources are never written here. `SHAREREADY_HISTORY_DIR` overrides
-//! the folder (tests).
+//! Capture history: the exact PNG bytes the editor copied or saved — the image as it was
+//! shared, with whatever was or was not covered — kept unencrypted in
+//! `%LOCALAPPDATA%\Anshot\history`. Frozen screens, source files and editing state are
+//! never written here; pins and history re-copies are not recorded.
+//! `SHAREREADY_HISTORY_DIR` overrides the folder (tests).
 #![forbid(unsafe_code)]
 use shareready_core::MAX_INPUT_BYTES;
 use std::path::PathBuf;
@@ -55,8 +56,9 @@ impl History {
             let list = self.list();
             let extra: Vec<Entry> = list.into_iter().skip(limit).collect();
             if extra.is_empty() { break; }
-            for e in &extra { let _ = std::fs::remove_file(&e.path); }
-            if limit >= MAX_LISTED { break; }
+            let removed = extra.iter().filter(|e| std::fs::remove_file(&e.path).is_ok()).count();
+            // A locked or read-only file must not keep this loop (on the UI thread) spinning.
+            if removed == 0 || limit >= MAX_LISTED { break; }
         }
     }
     pub fn clear(&self) { self.prune(0); }

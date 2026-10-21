@@ -12,7 +12,7 @@
 > **未签名提示**：首次运行 Windows 可能显示“已保护你的电脑”。请先核对校验值（`Get-FileHash <文件> -Algorithm SHA256`，与 `SHA256SUMS.txt` 一致），再点“更多信息 → 仍要运行”。
 
 ## 本版内容
-- 截图选区工具条（复制 / 保存 / 钉图 / 长截图 / 编辑）、长截图拼接、钉图到桌面、截图历史（只存已遮挡成品）。
+- 截图选区工具条（复制 / 保存 / 钉图 / 长截图 / 编辑）、长截图拼接、钉图到桌面、截图历史（保存复制或保存过的图片，与分享出去的一致；默认开启、本机未加密存储，可关闭或清空）。
 - 椭圆、直线、画笔、自定义颜色；Shift 约束；可调选区与裁剪框。
 - 安全马赛克与实心遮挡：遮挡区域导出时不含原图任何信息；导出为不带元数据的新 PNG；永不覆盖已有文件。
 - 安装程序、开机启动（可选）、关于页“检查更新”（只打开本页面）。
@@ -41,7 +41,7 @@
   - a selection toolbar to copy, save, pin, take a long screenshot or edit;
   - scroll-and-stitch long screenshots;
   - pin to desktop;
-  - a capture history that keeps only redacted results.
+  - a capture history of the images you copied or saved, exactly as shared. It is on by default, stored unencrypted locally, and can be turned off or cleared.
 - Ellipse, line, pen and a custom colour picker. Shift constraints. Adjustable selection and crop box.
 - Safe mosaic and solid redaction:
   - covered areas carry nothing of the original;

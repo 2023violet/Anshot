@@ -208,6 +208,9 @@ impl App {
 
     fn toast(&mut self, kind: &str, title: &str, detail: &str, action: Option<(&str, ToastAction)>) {
         let Some(ui) = self.ui() else { return };
+        // A quick copy from the capture toolbar runs with the editor hidden: never report
+        // into an invisible window.
+        if !ui.window().is_visible() { self.system_toast(kind, title, detail); return; }
         self.toast_seq += 1;
         let seq = self.toast_seq;
         self.toast_action = action.map(|a| a.1);
@@ -681,6 +684,7 @@ impl App {
         // Encode off the UI thread; very tall pages are trimmed to the 25 MB intake limit.
         std::thread::spawn(move || {
             let mut img = img;
+            let full_h = img.height();
             let mut png = capture::encode_png(img.clone());
             for _ in 0..4 {
                 match &png {
@@ -693,7 +697,10 @@ impl App {
                 }
             }
             let (w, h) = img.dimensions();
-            let _ = slint::invoke_from_event_loop(move || spawn_open(png, Some(format!("长截图 {w}×{h}.png"))));
+            let _ = slint::invoke_from_event_loop(move || {
+                if h < full_h { with(|a| a.toast("warn", "长截图已截短", &format!("超过 25 MB 上限，保留前 {h} 像素高"), None)); }
+                spawn_open(png, Some(format!("长截图 {w}×{h}.png")));
+            });
         });
     }
 
@@ -761,6 +768,7 @@ impl App {
     }
     fn open_history(&mut self) {
         self.show_editor();
+        if self.ui().is_some_and(|ui| !ui.get_dialog().is_empty() && ui.get_dialog() != "history") { return; }
         let Some(ui) = self.ui() else { return };
         ui.set_history_items(ModelRc::default());
         ui.set_history_loading(true);
@@ -1078,7 +1086,7 @@ fn main() -> Result<(), slint::PlatformError> {
         tray.on_capture(|| { with(|a| a.begin_capture()); });
         tray.on_open_image(|| { with(|a| a.show_editor()); command("open"); });
         tray.on_show_editor(|| { with(|a| a.show_editor()); });
-        tray.on_about(|| { with(|a| { a.show_editor(); if let Some(ui) = a.ui() { ui.set_dialog("about".into()); } }); });
+        tray.on_about(|| { with(|a| { a.show_editor(); if let Some(ui) = a.ui() { if ui.get_dialog().is_empty() { ui.set_dialog("about".into()); } } }); });
         tray.on_quit(|| { with(|a| a.request_quit()); });
         tray.on_settings(|| { with(|a| a.open_settings()); });
         tray.on_history(|| { with(|a| a.open_history()); });
@@ -1092,7 +1100,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 let _ = shareready_platform_windows::migrate_legacy_autostart(&new);
                 if let Ok(Some(old)) = shareready_platform_windows::autostart() {
                     // Another installed copy keeps its entry; only a dangling one is taken over.
-                    let target = old.trim_start_matches('"').split('"').next().unwrap_or("");
+                    let target = if old.starts_with('"') { old[1..].split('"').next().unwrap_or("") } else { old.split(" --").next().unwrap_or("").trim() };
                     if old != new && !std::path::Path::new(target).is_file() { let _ = shareready_platform_windows::set_autostart(Some(&new)); }
                 }
             }

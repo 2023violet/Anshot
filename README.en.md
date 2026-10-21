@@ -50,7 +50,10 @@ Requires Windows 10 or 11, x64.
 - **Redact.** Solid black or white, or a **safe mosaic** whose colours depend only on position, never on the original. There is deliberately no reversible blur or pixelation.
 - **Edit.** Select, move, resize from 8 handles, undo / redo, crop with handles, zoom and pan, Tab through objects, nudge with the arrow keys.
 - **Deliver.** Ctrl+C copies. Ctrl+S saves a new PNG and **never overwrites an existing file**: a taken name becomes "name (2).png".
-- **History (Ctrl+H).** Keeps only the **finished images** the editor copied or saved (already redacted), on this machine. Choose 20 / 50 / 200 or off, and clear it in one click. Raw screen captures are never written to disk.
+- **History (Ctrl+H).** Keeps the **images the editor copied or saved**, exactly as they were shared: covered where you covered, unchanged where you did not.
+  - On by default, keeping 50. Choose 20 / 200 or off, and clear it in one click.
+  - Stored **unencrypted** in `%LOCALAPPDATA%\Anshot\history`, and kept on uninstall unless you tick the option to delete it.
+  - Frozen full screens, source files and editing state are never written to disk; pin copies are not recorded.
 - **Settings (Ctrl+,).**
   - Capture hotkey: 4 choices, with a warning if another app already uses it.
   - Hide or keep the editor after copying.
@@ -68,7 +71,7 @@ Keys: V select · A arrow · L line · R frame · E ellipse · P pen · T text �
 | No source metadata in exports | Freshly encoded PNG; before delivery it is read back and must contain only IHDR/IDAT/IEND | MEASURED |
 | No network | No network crates; 0 network endpoints sampled at runtime | MEASURED (this machine) |
 | Never overwrite files | `CREATE_NEW` writes; a failed write leaves nothing behind | Unit tests and a real Save-As e2e |
-| History keeps only finished images | Records only the same PNG bytes the editor successfully delivered | Unit tests and e2e |
+| History keeps only delivered images | Records only the PNG bytes the editor successfully copied or saved (these may contain uncovered content); full screens and source files are never written | Unit tests and e2e |
 
 **Done:**
 - A hostile and malformed image corpus plus about 100k-iteration mutation tests. They found a hang and a panic in the JPEG decoder, both now handled ([security testing](docs/SECURITY_TESTING.md)).
@@ -111,7 +114,8 @@ Known limits:
 - No human usability testing. The project chose agent-driven real-input testing instead; the two are not equivalent.
 - Tested only on one monitor at 100% scaling on Windows 10. Multi-monitor and mixed DPI, 125%/150% system scaling, Windows 11 and Narrator are **not verified**.
 - Not code-signed; no auto-update (manual check).
-- Long screenshots need content that scrolls by whole pixels. Animated or parallax pages may fail to stitch, and the panel will say so.
+- Long screenshots need content that scrolls by whole pixels. Animated or parallax pages may fail to stitch, and the panel will say so. A long screenshot over 25 MB is shortened, with a notice.
+- When you upgrade or uninstall while the app runs, the installer asks before closing it. Unsaved edits and pins are lost; a silent `/S` run does not ask.
 
 ## License
 

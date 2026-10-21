@@ -8,7 +8,7 @@
 - 截图选区工具条：直接复制 / 保存 / 钉图 / 长截图 / 编辑（Ctrl+C / Ctrl+S / Ctrl+T）。/ Selection toolbar: copy, save, pin, long screenshot or edit straight from the capture.
 - 长截图：滚动内容，本机逐帧拼接，识别固定页头页脚。/ Long screenshot: scroll the content, frames are stitched locally, sticky headers and footers are recognised.
 - 钉图到桌面：置顶、拖动、缩放、透明度、复制 / 保存。/ Pin to desktop: always on top, drag, zoom, opacity, copy and save.
-- 截图历史（Ctrl+H）：只保存编辑器交付过的已遮挡成品；20 / 50 / 200 张或关闭。/ Capture history: only the redacted images the editor delivered; 20 / 50 / 200 or off.
+- 截图历史（Ctrl+H）：保存编辑器复制或保存过的图片（与分享出去的一致，可能含未遮挡内容）；默认开启 50 张，可 20 / 200 或关闭；本机未加密存储。/ Capture history: the images the editor copied or saved, exactly as shared (may contain uncovered content); on by default (50), 20 / 200 or off; stored unencrypted locally.
 - 标注：椭圆、直线、画笔；自定义颜色（HSV / HEX，最近使用）。/ Annotations: ellipse, line, pen; custom colour (HSV / HEX, recent colours).
 - 安装程序：按当前用户安装、无需管理员、可卸载；便携 zip；SHA256SUMS 与 release-metadata.json。/ Per-user installer without admin rights, portable zip, checksums and release metadata.
 - 关于：版本号与“检查更新”（只用浏览器打开发布页，程序不联网）。/ About: version and "check for updates" (opens the releases page in the browser; the app never connects).
