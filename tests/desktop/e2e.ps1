@@ -687,6 +687,7 @@ Log ("LONG editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }
 Log "LONG copy=$(CopyTo 'clipboard-long.png')"
 if (-not $app.HasExited) { $app.Kill() }
 
-# Leave no test settings behind.
+# Leave no test settings or history behind.
+if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
 if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_SETTINGS_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

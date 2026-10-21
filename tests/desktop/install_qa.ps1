@@ -16,6 +16,8 @@ public static class Q {
   [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, uint d, IntPtr e);
 }
 '@
 [void][Q]::SetProcessDPIAware()
@@ -31,6 +33,16 @@ $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) '安截 Anshot.lnk'
 $desk = Join-Path ([Environment]::GetFolderPath('Desktop')) '安截 Anshot.lnk'
 $cfg = Join-Path $env:APPDATA 'Anshot'
 $data = Join-Path $env:LOCALAPPDATA 'Anshot'
+function WaitWin([string] $title, [int] $s = 20) {
+    $d = (Get-Date).AddSeconds($s); $h = [IntPtr]::Zero
+    # NSIS titles end with a space: match the trimmed title of any process's main window.
+    while ($h -eq [IntPtr]::Zero -and (Get-Date) -lt $d) {
+        $w = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle.Trim() -eq $title } | Select-Object -First 1
+        if ($w) { $h = $w.MainWindowHandle } else { Start-Sleep -Milliseconds 300 }
+    }
+    if ($h -eq [IntPtr]::Zero) { throw "window '$title' did not appear" }
+    Start-Sleep -Milliseconds 800; $h
+}
 function RunValue { (Get-ItemProperty -Path $runKey -Name Anshot -ErrorAction SilentlyContinue).Anshot }
 function State {
     "dir=$(Test-Path $dir) uninstall_key=$(Test-Path $uninstKey) startmenu=$(Test-Path $lnk) desktop=$(Test-Path $desk) run_value=$([bool](RunValue)) settings_dir=$(Test-Path $cfg)"
@@ -71,9 +83,8 @@ if ((Test-Path $dir) -or (Test-Path $uninstKey) -or (RunValue)) { throw "Anshot 
 $cfgExisted = Test-Path $cfg; $dataExisted = Test-Path $data
 
 # B. interactive install with the real wizard (Chinese UI), default options
-$p = Start-Process $Setup -PassThru; Start-Sleep -Seconds 3
-$h = [Q]::FindWindow($null, '安截 Anshot 0.2.0 安装')
-if ($h -eq [IntPtr]::Zero) { $h = (Get-Process -Id $p.Id).MainWindowHandle }
+$p = Start-Process $Setup -PassThru
+$h = WaitWin '安截 Anshot 0.2.0 安装'
 # (no screenshot of the folder page: it shows the account's profile path)
 Log "B next=$(Click-Native $h '下一步(N) >')"
 Shot $h 'install-2-components.png'
@@ -113,6 +124,27 @@ Log "E upgrade_exit=$($up.ExitCode) old_process_gone=$($app.HasExited) exe_match
 # F. start again (as after login: --background stays in the tray), then uninstall silently while it runs
 $bg = Start-Process $installed -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 3
 Log "F background_running=$(-not $bg.HasExited) visible_window=$([bool]((Get-Process -Id $bg.Id).MainWindowTitle))"
+# F2. interactive upgrade while it runs: the wizard must warn before closing it
+$gui = Start-Process $Setup -PassThru
+$gh = WaitWin '安截 Anshot 0.2.0 安装'
+[void](Click-Native $gh '下一步(N) >'); [void](Click-Native $gh '安装(I)')
+$desktop = [System.Windows.Automation.AutomationElement]::RootElement
+$byPid = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::ProcessIdProperty), $gui.Id
+$warn = $null; $warnText = ''; $d = (Get-Date).AddSeconds(15)
+while (-not $warn -and (Get-Date) -lt $d) {
+    foreach ($top in $desktop.FindAll([System.Windows.Automation.TreeScope]::Children, $byPid)) {
+        $text = (@($top.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) | ForEach-Object { $_.Current.Name }) -join ' '
+        if ($text -match '正在运行') { $warn = $top; $warnText = $text }
+    }
+    if (-not $warn) { Start-Sleep -Milliseconds 300 }
+}
+Log "F2 warning_shown=$($warnText -match '正在运行') app_still_running_at_prompt=$(-not $bg.HasExited)"
+if ($warn) { [void](Click-Native ([IntPtr]$warn.Current.NativeWindowHandle) '确定') }
+$root2 = [System.Windows.Automation.AutomationElement]::FromHandle($gh)
+$cond2 = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), '现在启动 安截'
+$d = (Get-Date).AddSeconds(60); while (-not $root2.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond2) -and (Get-Date) -lt $d) { Start-Sleep -Milliseconds 300 }
+[void](Click-Native $gh '现在启动 安截'); [void][Q]::PostMessage($gh, 0x0111, [IntPtr]1, [IntPtr]::Zero)
+Log "F2 upgraded=$($gui.WaitForExit(15000)) app_closed=$($bg.HasExited) exe_matches=$((Get-FileHash $installed).Hash.ToLower() -eq $exeHash)"
 $un = Start-Process (Join-Path $dir 'uninstall.exe') -ArgumentList '/S' -PassThru; $un.WaitForExit(30000) | Out-Null
 WaitGone $installed 30; WaitGone $dir 10
 Start-Sleep -Seconds 1
@@ -124,26 +156,22 @@ Log "G after_uninstall: $(State) process_gone=$($bg.HasExited) leftover_procs=$(
 Log "H settings_kept_by_default=$(Test-Path (Join-Path $cfg 'settings.txt'))"
 $re = Start-Process $Setup -ArgumentList '/S' -PassThru; $re.WaitForExit(60000) | Out-Null
 $ui = Start-Process (Join-Path $dir 'uninstall.exe') -PassThru
-$uh = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(15)
-while ($uh -eq [IntPtr]::Zero -and (Get-Date) -lt $d) { $uh = [Q]::FindWindow($null, '安截 Anshot 0.2.0 卸载'); Start-Sleep -Milliseconds 300 }
-Log "H uninstall_wizard=$($uh -ne [IntPtr]::Zero) next=$(Click-Native $uh '下一步(N) >')"
-# The components page is a check-box tree: select the optional item and toggle it with Space.
+$uh = WaitWin '安截 Anshot 0.2.0 卸载'
+# The uninstaller is driven with its own commands (IDOK = Next / Uninstall / Close).
+[void][Q]::SetForegroundWindow($uh); Start-Sleep -Milliseconds 300
+[void][Q]::PostMessage($uh, 0x0111, [IntPtr]1, [IntPtr]::Zero); Start-Sleep -Seconds 2
+# The components page is a check-box tree that UIA does not expose: click the second row's box.
 $root = [System.Windows.Automation.AutomationElement]::FromHandle($uh)
-$item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), '同时删除设置与截图历史'))
-$ticked = $false
-if ($item) {
-    $sel = $null
-    if ($item.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$sel)) { $sel.Select() }
-    [void][Q]::SetForegroundWindow($uh); $item.SetFocus(); Start-Sleep -Milliseconds 300
-    (New-Object -ComObject WScript.Shell).SendKeys(' '); Start-Sleep -Milliseconds 400
-    $tog = $null
-    if ($item.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$tog)) { $ticked = $tog.Current.ToggleState -eq 'On' } else { $ticked = 'unknown' }
-}
+$tv = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::ClassNameProperty), 'SysTreeView32'))
+$tvb = $tv.Current.BoundingRectangle
+[void][Q]::SetCursorPos([int]$tvb.Left + 12, [int]$tvb.Top + 26); Start-Sleep -Milliseconds 150
+[Q]::mouse_event(2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [Q]::mouse_event(4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
 Shot $uh 'uninstall-components.png'
-Log "H data_option_found=$([bool]$item) ticked=$ticked uninstall=$(Click-Native $uh '卸载(U)')"
+Log "H data_option_clicked=$($null -ne $tv)"
+[void][Q]::PostMessage($uh, 0x0111, [IntPtr]1, [IntPtr]::Zero)
 $d = (Get-Date).AddSeconds(30); while ((Test-Path $installed) -and (Get-Date) -lt $d) { Start-Sleep -Milliseconds 300 }
 Start-Sleep -Seconds 2
-[void](Click-Native $uh '关闭(L)')
+[void][Q]::PostMessage($uh, 0x0111, [IntPtr]1, [IntPtr]::Zero); Start-Sleep -Seconds 1
 Log "H after_uninstall_with_data: $(State) appdata_dir=$(Test-Path $cfg) localdata_dir=$(Test-Path $data)"
 
 # Clean up what this QA created (never data that existed before it ran).
