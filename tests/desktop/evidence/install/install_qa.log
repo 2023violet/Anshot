@@ -1,4 +1,4 @@
-SETUP sha256=c50d326af56a48835ceee6df36bea8f3e218c11360a3536896b951d6bd6839be exe_sha256=6ad9ec3db292ddddd15ddc8bd6132fadba20254795294aa3547d07e336e0fc6f
+SETUP sha256=96be72b006a0ab369a2684ddcebbeb1ac4836c1bb4c3b25678d5883367f032bc exe_sha256=4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450
 A before: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=False
 B next=True
 B install=True
@@ -7,7 +7,13 @@ B finish=True
 B after: dir=True uninstall_key=True startmenu=True desktop=False run_value=False settings_dir=False exe_matches=True display=安截 Anshot version=0.2.0 uninstall="%USERPROFILE%\AppData\Local\Programs\Anshot\uninstall.exe"
 C running=True window=True
 D autostart_on=True run_value="%USERPROFILE%\AppData\Local\Programs\Anshot\Anshot.exe" --background
-E upgrade_exit=0 old_process_gone=True exe_matches=True dir=True uninstall_key=True startmenu=True desktop=False run_value=True settings_dir=False
+D2 keep_200=True settings_file=True
+E upgrade_exit=0 old_process_gone=True exe_matches=True dir=True uninstall_key=True startmenu=True desktop=False run_value=True settings_dir=True
 F background_running=True visible_window=False
-G after_uninstall: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=False process_gone=True leftover_procs=0
+F2 warning_shown=True app_still_running_at_prompt=True
+F2 upgraded=True app_closed=True exe_matches=True
+G after_uninstall: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=True process_gone=True leftover_procs=0
+H settings_kept_by_default=True
+H data_option_clicked=True
+H after_uninstall_with_data: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=False appdata_dir=False localdata_dir=False
 Z final: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=False

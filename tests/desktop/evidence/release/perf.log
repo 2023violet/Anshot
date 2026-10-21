@@ -1,9 +1,9 @@
-EXE sha256=fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f path=ShareReady.exe
-STARTUP_MS runs=537,542,483
-HOTKEY_TO_OVERLAY_MS mode=tray runs=55,93,49
-HOTKEY_TO_OVERLAY_MS mode=editor_open runs=106,101,89
-OPEN_24MP_MS from_launch=283
-COPY_24MP_MS ctrl_c_to_clipboard=373
+EXE sha256=4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450 path=Anshot.exe
+STARTUP_MS runs=652,552,481
+HOTKEY_TO_OVERLAY_MS mode=tray runs=52,54,49
+HOTKEY_TO_OVERLAY_MS mode=editor_open runs=119,94,86
+OPEN_24MP_MS from_launch=258
+COPY_24MP_MS ctrl_c_to_clipboard=289
 COPY_24MP size=6000x4000
 MEMORY_24MP peak_working_set_mb=407
 NETWORK endpoints_seen=0 
