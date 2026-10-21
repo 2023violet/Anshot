@@ -13,3 +13,6 @@ target/
 # Isolated egui POC compilation output
 poc/native-egui/target/
 dist/
+
+# M4 security corpus is generated locally by tests/security/gen_corpus.py
+tests/security/corpus/

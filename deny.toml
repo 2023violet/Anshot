@@ -1,0 +1,69 @@
+# cargo-deny 0.20.2 policy for both Rust workspaces (M4 supply-chain check).
+#   cargo deny --locked check
+#   cargo deny --locked --manifest-path apps/desktop/Cargo.toml check
+# apps/desktop has its own Cargo.lock; cargo-deny finds this file by walking up
+# from the manifest directory. Results: docs/SECURITY_TESTING.md.
+
+[graph]
+# ShareReady ships for Windows x64 only; the core crates also build to wasm for
+# the frozen e1-spike reference. Other platforms' dependencies are not shipped.
+targets = ["x86_64-pc-windows-msvc", "wasm32-unknown-unknown"]
+all-features = false
+
+[advisories]
+# RustSec advisory DB (public, fetched by cargo-deny). Vulnerabilities always
+# fail; unmaintained/unsound notices fail for any crate in the graph.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+# Every ignore needs a reason and a revisit condition.
+ignore = [
+    # ttf-parser 0.25.1 (via ab_glyph 0.2.32 in shareready-render) is declared
+    # unmaintained; no safe upgrade exists. It is not a vulnerability notice, and
+    # the parser only reads the bundled assets/fonts/NotoSansCJKsc-Regular.otf
+    # (include_bytes!), never user-supplied fonts. Revisit if any vulnerability
+    # advisory names ttf-parser/ab_glyph, or if user fonts are ever accepted.
+    { id = "RUSTSEC-2026-0192", reason = "unmaintained only; parses the bundled font, never user input" },
+]
+
+[licenses]
+# Matches the licenses actually present in both lock files (2026-10-21).
+# Each SPDX OR-expression passes if one alternative is listed here.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "CC0-1.0",
+    "Unlicense",
+    "Unicode-3.0",
+    # Slint 1.18.1 is used under its Royalty-free Desktop, Mobile, and Web
+    # Applications License 2.0 (attribution: AboutSlint in the About dialog),
+    # see apps/desktop/THIRD_PARTY_LICENSES.md. GPL-3.0 is deliberately absent.
+    "LicenseRef-Slint-Royalty-free-2.0",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+# Workspace crates are publish = false; they are MIT but never published.
+ignore = true
+
+[bans]
+# The Slint/winit graph carries duplicate major versions (windows-sys etc.)
+# that cannot be removed without upgrades; report them, do not fail.
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies between the private workspace crates are not wildcards
+# in any published sense.
+allow-wildcard-paths = true
+highlight = "simplest-path"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

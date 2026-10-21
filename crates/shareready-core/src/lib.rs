@@ -135,6 +135,58 @@ pub fn decode_source(input: &[u8]) -> Result<RgbaImage, String> {
     let fmt = if is_png(input) { ImageFormat::Png }
               else if is_jpeg(input) { ImageFormat::Jpeg }
               else { return Err("only PNG and JPEG magic accepted".into()) };
+    if fmt == ImageFormat::Jpeg && !jpeg_reaches_eoi(input) {
+        return Err("invalid image header: incomplete or malformed JPEG marker structure".into());
+    }
+    // M4 finding: the pinned zune-jpeg 0.4.21 (via image =0.25.8) panics on some
+    // malformed JPEGs, e.g. a slice index past a 16-entry buffer in worker.rs. A
+    // hostile file must fail closed, not unwind through the caller. Only the
+    // decoder runs inside; it shares no state with the caller beyond `input`.
+    std::panic::catch_unwind(|| decode_untrusted(input, fmt))
+        .unwrap_or_else(|_| Err("image decode failed: decoder panicked on malformed data".into()))
+}
+
+/// Walk JPEG markers strictly from SOI and require an EOI after the last scan.
+/// M4 finding: zune-jpeg 0.4.21's progressive decoder (non-strict, as image uses
+/// it) loops forever when data runs out before EOI, re-handling the pending
+/// marker. Rejecting streams that end before EOI keeps a hostile or truncated
+/// file from hanging intake. Bytes after EOI are ignored, as before.
+fn jpeg_reaches_eoi(input: &[u8]) -> bool {
+    let mut i = 2usize;
+    loop {
+        if input.get(i) != Some(&0xff) { return false; }
+        while input.get(i) == Some(&0xff) { i += 1; }
+        let Some(&marker) = input.get(i) else { return false; };
+        i += 1;
+        match marker {
+            0xd9 => return true,
+            0x00 | 0xd8 => return false,
+            0x01 | 0xd0..=0xd7 => continue,
+            _ => {}
+        }
+        let len = match input.get(i..i + 2) {
+            Some(a) => usize::from(u16::from_be_bytes([a[0], a[1]])),
+            None => return false,
+        };
+        if len < 2 || i + len > input.len() { return false; }
+        i += len;
+        if marker != 0xda { continue; }
+        // Entropy-coded data runs to the next marker other than a stuffed
+        // 0xff00 or an in-scan restart marker; fill bytes 0xff may precede it.
+        loop {
+            let Some(at) = input[i..].iter().position(|&b| b == 0xff) else { return false; };
+            let mut next = i + at + 1;
+            while input.get(next) == Some(&0xff) { next += 1; }
+            match input.get(next) {
+                None => return false,
+                Some(0x00 | 0xd0..=0xd7) => i = next + 1,
+                Some(_) => { i += at; break; }
+            }
+        }
+    }
+}
+
+fn decode_untrusted(input: &[u8], fmt: ImageFormat) -> Result<RgbaImage, String> {
     let probe = image::ImageReader::with_format(Cursor::new(input), fmt);
     let (w, h) = probe.into_dimensions().map_err(|e| format!("invalid image header: {e}"))?;
     if w == 0 || h == 0 || u64::from(w) * u64::from(h) > MAX_PIXELS {
