@@ -1,5 +1,5 @@
 [package]
-name = "shareready-platform-windows"
+name = "anshot-platform-windows"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

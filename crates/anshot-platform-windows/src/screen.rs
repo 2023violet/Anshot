@@ -167,7 +167,7 @@ impl HotkeyHandle {
 /// Register `hotkey` on a dedicated message thread; `on_press` runs on that thread.
 pub fn spawn_hotkey(hotkey: Hotkey, on_press: impl Fn() + Send + 'static) -> io::Result<HotkeyHandle> {
     let (tx, rx) = std::sync::mpsc::channel();
-    let join = std::thread::Builder::new().name("shareready-hotkey".into()).spawn(move || {
+    let join = std::thread::Builder::new().name("anshot-hotkey".into()).spawn(move || {
         // SAFETY: plain query of the calling thread id.
         let tid = unsafe { windows_sys::Win32::System::Threading::GetCurrentThreadId() };
         let (mods, vk) = hotkey.keys();

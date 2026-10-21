@@ -5,12 +5,12 @@
 //! Default `cargo test` runs the embedded critical cases, the generated corpus
 //! (skipped with a notice when `python tests/security/gen_corpus.py` was not
 //! run) and a short mutation smoke run. Full run, see docs/SECURITY_TESTING.md:
-//!   SHAREREADY_FUZZ_ITERS=100000 cargo test --release --locked -p shareready-core --test intake_hardening
-//! `SHAREREADY_FUZZ_SEED=<u64>` replays a run; `SHAREREADY_FUZZ_TIMEOUT_SECS` bounds one
+//!   ANSHOT_FUZZ_ITERS=100000 cargo test --release --locked -p anshot-core --test intake_hardening
+//! `ANSHOT_FUZZ_SEED=<u64>` replays a run; `ANSHOT_FUZZ_TIMEOUT_SECS` bounds one
 //! call (a watchdog aborts on a hang). A failing input is written to
 //! the cargo target tmpdir before the test fails.
 use image::{DynamicImage,ImageFormat,Rgba,RgbaImage};
-use shareready_core::{decode_generated_png,decode_source,dib_to_png,MAX_DIB_BYTES,MAX_INPUT_BYTES,MAX_PIXELS};
+use anshot_core::{decode_generated_png,decode_source,dib_to_png,MAX_DIB_BYTES,MAX_INPUT_BYTES,MAX_PIXELS};
 use std::alloc::{GlobalAlloc,Layout,System};
 use std::io::Cursor;
 use std::panic::{catch_unwind,AssertUnwindSafe};
@@ -69,7 +69,7 @@ fn now_ms()->u64{TIMER.get_or_init(Instant::now).elapsed().as_millis() as u64+1}
 fn lock<T>(m:&Mutex<T>)->std::sync::MutexGuard<'_,T>{m.lock().unwrap_or_else(|e|e.into_inner())}
 /// Panics inside an intake call are recorded quietly (the call's result is
 /// judged by `check`); any other panic keeps the default report. A watchdog
-/// aborts the run if one call exceeds SHAREREADY_FUZZ_TIMEOUT_SECS (default 120)
+/// aborts the run if one call exceeds ANSHOT_FUZZ_TIMEOUT_SECS (default 120)
 /// and keeps that input, since a hang cannot be caught in-thread.
 fn observe(){
     static ONCE:Once=Once::new();
@@ -86,7 +86,7 @@ fn observe(){
                     info.payload().downcast_ref::<String>().cloned().or_else(||info.payload().downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default());
             }else{default(info);}
         }));
-        let limit=std::env::var("SHAREREADY_FUZZ_TIMEOUT_SECS").ok().and_then(|v|v.parse().ok()).unwrap_or(120u64)*1000;
+        let limit=std::env::var("ANSHOT_FUZZ_TIMEOUT_SECS").ok().and_then(|v|v.parse().ok()).unwrap_or(120u64)*1000;
         std::thread::spawn(move||loop{
             std::thread::sleep(Duration::from_millis(500));
             let started=CALL_STARTED.load(Relaxed);
@@ -385,8 +385,8 @@ fn mutation_seeds()->Vec<(&'static str,Target,Vec<u8>)>{
 #[test]
 fn seeded_mutations_never_panic_or_exceed_limits(){
     let _serial=lock(&SERIAL);
-    let iterations:usize=std::env::var("SHAREREADY_FUZZ_ITERS").ok().and_then(|v|v.parse().ok()).unwrap_or(20_000);
-    let seed:u64=std::env::var("SHAREREADY_FUZZ_SEED").ok().and_then(|v|v.parse().ok()).unwrap_or(0x5eed_2026_1021);
+    let iterations:usize=std::env::var("ANSHOT_FUZZ_ITERS").ok().and_then(|v|v.parse().ok()).unwrap_or(20_000);
+    let seed:u64=std::env::var("ANSHOT_FUZZ_SEED").ok().and_then(|v|v.parse().ok()).unwrap_or(0x5eed_2026_1021);
     let seeds=mutation_seeds();
     let mut rng=XorShift::seeded(seed);
     let mut stats=Stats::default();

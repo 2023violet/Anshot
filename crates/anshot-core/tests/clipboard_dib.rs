@@ -1,4 +1,4 @@
-use shareready_core::{decode_source,dib_to_png};
+use anshot_core::{decode_source,dib_to_png};
 
 fn put32(b:&mut [u8],at:usize,n:u32){b[at..at+4].copy_from_slice(&n.to_le_bytes());}
 fn dib24(top_down:bool)->Vec<u8>{

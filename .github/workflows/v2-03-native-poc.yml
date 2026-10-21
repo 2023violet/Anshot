@@ -5,9 +5,9 @@ on:
     paths:
       - .github/workflows/v2-03-native-poc.yml
       - poc/native-egui/**
-      - crates/shareready-core/**
-      - crates/shareready-editor/**
-      - crates/shareready-platform-windows/**
+      - crates/anshot-core/**
+      - crates/anshot-editor/**
+      - crates/anshot-platform-windows/**
       - Cargo.toml
       - Cargo.lock
   workflow_dispatch:
@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference="Stop"
-          cargo test -p shareready-platform-windows --locked
+          cargo test -p anshot-platform-windows --locked
           if ($LASTEXITCODE -ne 0) {throw "Windows platform tests failed"}
           cargo test --manifest-path poc/native-egui/Cargo.toml --workspace --locked
           if ($LASTEXITCODE -ne 0) {throw "Rust tests failed"}

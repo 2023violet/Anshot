@@ -92,7 +92,7 @@ Section "${APP_ZH}（必需）" SecMain
   WriteRegStr HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr HKCU "${UNINST_KEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
-  WriteRegStr HKCU "${UNINST_KEY}" "URLInfoAbout" "https://github.com/2023violet/ShareReady"
+  WriteRegStr HKCU "${UNINST_KEY}" "URLInfoAbout" "https://github.com/2023violet/Anshot"
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair" 1
   WriteRegDWORD HKCU "${UNINST_KEY}" "EstimatedSize" 33000

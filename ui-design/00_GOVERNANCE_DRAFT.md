@@ -1,5 +1,7 @@
 # 治理调整草稿（2026-10-19 用户确认，已写入 AGENTS.md）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 日期：2026-10-19　基线：`c7919bc`，本地 tag `pre-redesign-2026-10-19`
 
 ## 拟替换 AGENTS.md 的内容要点

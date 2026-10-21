@@ -54,9 +54,9 @@ public static class E {
 [void][E]::SetProcessDPIAware()
 New-Item -ItemType Directory -Force $Out | Out-Null
 # Never touch the user's real settings: every launched instance reads this folder.
-$env:SHAREREADY_SETTINGS_DIR = Join-Path $Out 'settings'
-$env:SHAREREADY_HISTORY_DIR = Join-Path $Out 'history-ime'
-if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Get-ChildItem $env:SHAREREADY_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
+$env:ANSHOT_SETTINGS_DIR = Join-Path $Out 'settings'
+$env:ANSHOT_HISTORY_DIR = Join-Path $Out 'history-ime'
+if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Get-ChildItem $env:ANSHOT_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
@@ -147,5 +147,5 @@ Key 0x0D                                                             # Enter aga
 Shot $w 'ime-4-final.png'
 Log "IME copy=$(CopyTo 'clipboard-ime.png')"
 if (-not $w.P.HasExited) { $w.P.Kill() }
-if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
+if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'ime.log')

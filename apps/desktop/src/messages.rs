@@ -1,7 +1,7 @@
 //! User-facing wording for failures. Raw error text (Rust Debug output, OS error codes,
 //! decoder internals) never reaches the screen.
 #![forbid(unsafe_code)]
-use shareready_editor::EditError;
+use anshot_editor::EditError;
 use std::io::ErrorKind;
 
 /// Why an image could not be taken in (open, paste, drop, capture).

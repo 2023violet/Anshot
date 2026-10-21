@@ -1,8 +1,8 @@
 //! OS boundaries: file dialogs, clipboard image in/out, new-file save.
 //! Writers receive only Rust-generated PNG bytes from a live Editor ticket.
 #![forbid(unsafe_code)]
-use shareready_core::{decode_generated_png, dib_to_png, MAX_DIB_BYTES, MAX_INPUT_BYTES};
-use shareready_platform_windows::{read_clipboard_image, save_new, ClipboardImageFormat};
+use anshot_core::{decode_generated_png, dib_to_png, MAX_DIB_BYTES, MAX_INPUT_BYTES};
+use anshot_platform_windows::{read_clipboard_image, save_new, ClipboardImageFormat};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 

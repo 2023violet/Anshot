@@ -115,7 +115,7 @@ fn transparent_source_alpha_survives_annotation_compositing() {
 fn golden_scene_digest_is_frozen() {
     let mut img = source(320, 240, 77);
     render_into(&mut img, &golden_scene(), 1.0);
-    if std::env::var_os("SHAREREADY_WRITE_RENDER_GOLDEN").is_some() {
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN").is_some() {
         img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v1.png")).unwrap();
         println!("DIGEST={:#018x}", digest(&img));
     }
@@ -174,7 +174,7 @@ fn ellipse_line_and_pen_draw_where_expected() {
 fn golden_scene_v2_digest_is_frozen() {
     let mut img = source(320, 240, 77);
     render_into(&mut img, &golden_scene_v2(), 1.0);
-    if std::env::var_os("SHAREREADY_WRITE_RENDER_GOLDEN_V2").is_some() {
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN_V2").is_some() {
         img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v2.png")).unwrap();
         println!("DIGEST_V2={:#018x}", digest(&img));
     }

@@ -15,9 +15,9 @@ resolver = "2"
 performance-evidence = []
 
 [dependencies]
-shareready-core = { path = "../../crates/shareready-core" }
-shareready-editor = { path = "../../crates/shareready-editor" }
-shareready-platform-windows = { path = "../../crates/shareready-platform-windows" }
+shareready-core = { package = "anshot-core", path = "../../crates/anshot-core" }
+shareready-editor = { package = "anshot-editor", path = "../../crates/anshot-editor" }
+shareready-platform-windows = { package = "anshot-platform-windows", path = "../../crates/anshot-platform-windows" }
 shareready-native-input-bridge = { path = "input-bridge" }
 eframe = { version = "=0.36.2", default-features = false, features = ["glow", "wgpu", "accesskit", "default_fonts"] }
 rfd = { version = "=0.15.4", default-features = false }

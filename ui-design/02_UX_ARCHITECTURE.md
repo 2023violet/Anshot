@@ -1,5 +1,7 @@
 # 02 UX 架构 — ShareReady（临时代号）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 版本 v0.1　日期 2026-10-19　状态：**Gate 02 已确认（用户，2026-10-19，与 Gate 05 一并确认）**
 上游：[01_PRD.md](01_PRD.md)（Gate 01 已确认）　线框：[02_WIREFRAMES.html](02_WIREFRAMES.html)
 视觉风格：已按用户要求先用 awesome-design-md 确定，见 [03_VISUAL_DIRECTIONS.md](03_VISUAL_DIRECTIONS.md) 与 [04_DESIGN.md](04_DESIGN.md)；本文只定义结构与流程，线框保持灰度。

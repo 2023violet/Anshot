@@ -1,16 +1,16 @@
-# AGENTS.md — Anshot (安截), formerly ShareReady
+# AGENTS.md — Anshot (安截)
 
 ## Project truth and scope
 
-- **Product 0.2.0 prepared for the first public release (2026-10-21).** Anshot (安截, formerly code-named ShareReady) is a Rust-trusted Windows desktop tool for *capture → annotate → redact → share*, built in `apps/desktop` (Slint 1.18.1) over `crates/shareready-{core,render,editor,platform-windows}`. Stages 01–07 are documented in `ui-design/`; Gates 01–05 were user-confirmed, Gates 06–07 agent-confirmed under the user's 2026-10-19 delegation (ACCEPT_WITH_LIMITS). It is unsigned (by decision) and unreleased until the user says so; human, multi-monitor/DPI, Windows 11 and Narrator tests remain NOT_VERIFIED.
-- The V1.3 editor (`web-app/`, `desktop-windows/`, `e1-spike/`) and the V2-03 egui prototype (`poc/native-egui/`) are **frozen historical references**: keep them building, add no new features, do not delete them without express user confirmation. Snapshot: local tag `pre-redesign-2026-10-19`.
+- **Product 0.2.0 prepared for the first public release (2026-10-21).** Anshot (安截) is a Rust-trusted Windows desktop tool for *capture → annotate → redact → share*, built in `apps/desktop` (Slint 1.18.1) over `crates/anshot-{core,render,editor,platform-windows}`. Stages 01–07 are documented in `ui-design/`; Gates 01–05 were user-confirmed, Gates 06–07 agent-confirmed under the user's 2026-10-19 delegation (ACCEPT_WITH_LIMITS). It is unsigned (by decision) and unreleased until the user says so; human, multi-monitor/DPI, Windows 11 and Narrator tests remain NOT_VERIFIED.
+- The V1.3 editor (`web-app/`, `desktop-windows/`, `e1-spike/`) and the V2-03 egui prototype (`poc/native-egui/`) are **frozen historical references** (they predate the rename and keep the old code name ShareReady in their own text and package names; leave that wording): keep them building, add no new features, do not delete them without express user confirmation. Snapshot: local tag `pre-redesign-2026-10-19`.
 - Positioning: learning / portfolio project. Do not present release, security audit, or human usability testing as complete when they are not.
-- The product name **Anshot / 安截** was chosen by the user on 2026-10-21 from public-search research only (`docs/NAMING_RESEARCH.md`); do not assert trademark clearance. Internal crate names and test-only `SHAREREADY_*` variables keep the old code name.
+- The product name **Anshot / 安截** was chosen by the user on 2026-10-21 from public-search research only (`docs/NAMING_RESEARCH.md`); do not assert trademark clearance. 
 
 ## Rust trust boundary (non-negotiable)
 
 - Image decoding, pixel transformation, redaction, annotation rasterization into the output, metadata stripping, export, save and clipboard delivery happen **only in Rust**. The UI layer is also Rust native; the GUI framework (egui / iced / Slint) is chosen at Gate 03 by a native feasibility spike.
-- Reuse and extend `crates/shareready-core`, `crates/shareready-editor`, `crates/shareready-platform-windows`. New capabilities get new Rust modules; never break the five frozen goldens (`python tests/golden/verify_v1_baseline.py`).
+- Reuse and extend `crates/anshot-core`, `crates/anshot-editor`, `crates/anshot-platform-windows`. New capabilities get new Rust modules; never break the five frozen goldens (`python tests/golden/verify_v1_baseline.py`).
 - Privacy baseline: local-only processing, opaque pixel replacement for private areas, new-image export without source metadata, synthetic test fixtures, honest limitation wording. None are verified until tests run.
 - No nonessential dependencies; keep lock files locked (`--locked`).
 

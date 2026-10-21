@@ -206,6 +206,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "anshot-core"
+version = "0.1.0"
+dependencies = [
+ "image",
+]
+
+[[package]]
+name = "anshot-desktop"
+version = "0.2.0"
+dependencies = [
+ "anshot-core",
+ "anshot-editor",
+ "anshot-platform-windows",
+ "anshot-render",
+ "arboard",
+ "image",
+ "rfd",
+ "slint",
+ "slint-build",
+]
+
+[[package]]
+name = "anshot-editor"
+version = "0.1.0"
+dependencies = [
+ "anshot-core",
+ "anshot-render",
+]
+
+[[package]]
+name = "anshot-platform-windows"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "anshot-render"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "anshot-core",
+ "image",
+ "tiny-skia 0.11.4",
+]
+
+[[package]]
 name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3890,53 +3937,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7523beb55eece201a2356bee0bbca0d1ab466c14c07703b2e0ee6d42cb0c2c"
 dependencies = [
  "serde_core",
-]
-
-[[package]]
-name = "shareready-core"
-version = "0.1.0"
-dependencies = [
- "image",
-]
-
-[[package]]
-name = "shareready-desktop"
-version = "0.2.0"
-dependencies = [
- "arboard",
- "image",
- "rfd",
- "shareready-core",
- "shareready-editor",
- "shareready-platform-windows",
- "shareready-render",
- "slint",
- "slint-build",
-]
-
-[[package]]
-name = "shareready-editor"
-version = "0.1.0"
-dependencies = [
- "shareready-core",
- "shareready-render",
-]
-
-[[package]]
-name = "shareready-platform-windows"
-version = "0.1.0"
-dependencies = [
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "shareready-render"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "image",
- "shareready-core",
- "tiny-skia 0.11.4",
 ]
 
 [[package]]

@@ -5,27 +5,15 @@ use windows_sys::Win32::System::Registry::{RegDeleteKeyValueW, RegGetValueW, Reg
 
 const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const NAME: &str = "Anshot";
-/// The value 0.1.x wrote under its temporary name.
-const LEGACY_NAME: &str = "ShareReady";
 
 /// Tests point this at a throw-away key so they never touch the real Run list.
-fn run_key() -> String { std::env::var("SHAREREADY_RUN_KEY").unwrap_or_else(|_| RUN.into()) }
+fn run_key() -> String { std::env::var("ANSHOT_RUN_KEY").unwrap_or_else(|_| RUN.into()) }
 fn wide(s: &str) -> Vec<u16> { s.encode_utf16().chain(Some(0)).collect() }
 
 /// The registered command line, if start-at-login is on.
 pub fn autostart() -> io::Result<Option<String>> { read(&run_key(), NAME) }
 /// Register `command` to run at login, or remove the entry with `None`.
 pub fn set_autostart(command: Option<&str>) -> io::Result<()> { write(&run_key(), NAME, command) }
-/// If 0.1.x registered itself under the old name, replace that entry with `command`
-/// under the new name. Returns whether anything was migrated.
-pub fn migrate_legacy_autostart(command: &str) -> io::Result<bool> {
-    let key = run_key();
-    if read(&key, LEGACY_NAME)?.is_none() { return Ok(false); }
-    write(&key, NAME, Some(command))?;
-    write(&key, LEGACY_NAME, None)?;
-    Ok(true)
-}
-
 fn read(subkey: &str, value: &str) -> io::Result<Option<String>> {
     let (key, name) = (wide(subkey), wide(value));
     let mut buf = vec![0u16; 1024];
@@ -68,14 +56,6 @@ mod tests {
         write(&key, NAME, None).unwrap();
         write(&key, NAME, None).unwrap(); // removing twice is fine
         assert_eq!(read(&key, NAME).unwrap(), None);
-        // Legacy value is replaced by the new name.
-        write(&key, LEGACY_NAME, Some("old")).unwrap();
-        assert_eq!(read(&key, LEGACY_NAME).unwrap().as_deref(), Some("old"));
-        std::env::set_var("SHAREREADY_RUN_KEY", &key); // only this test reads the Run key
-        assert!(migrate_legacy_autostart("new").unwrap());
-        assert_eq!((read(&key, LEGACY_NAME).unwrap(), read(&key, NAME).unwrap().as_deref()), (None, Some("new")));
-        assert!(!migrate_legacy_autostart("new").unwrap(), "nothing left to migrate");
-        std::env::remove_var("SHAREREADY_RUN_KEY");
         let k = wide(&key);
         // SAFETY: deletes the throw-away key created above.
         unsafe { windows_sys::Win32::System::Registry::RegDeleteTreeW(HKEY_CURRENT_USER, k.as_ptr()) };

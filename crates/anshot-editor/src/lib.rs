@@ -6,8 +6,8 @@ pub mod viewport;
 pub use geometry::{Handle, PixelRect};
 pub use viewport::{Point, Viewport, ViewportError};
 
-use shareready_core::{decode_source, redact, Region, COVER, MAX_PIXELS};
-pub use shareready_render::{Annotation, RedactStyle, Redaction, Scene, Shape};
+use anshot_core::{decode_source, redact, Region, COVER, MAX_PIXELS};
+pub use anshot_render::{Annotation, RedactStyle, Redaction, Scene, Shape};
 use std::sync::Arc;
 
 const MAX_MASKS: usize = 1024;
@@ -59,11 +59,11 @@ pub struct ReviewResult {key:ReviewKey,dimensions:(u32,u32),bytes:Arc<[u8]>}
 /// A validated source, not a reviewed output or an authority to discard edits.
 /// Presentation code cannot forge dimensions or duplicate this owned candidate.
 /// ```compile_fail
-/// use shareready_editor::SourceCandidate;
+/// use anshot_editor::SourceCandidate;
 /// let forged=SourceCandidate{bytes:std::sync::Arc::from([]),dimensions:(1,1)};
 /// ```
 /// ```compile_fail
-/// use shareready_editor::SourceCandidate;
+/// use anshot_editor::SourceCandidate;
 /// fn duplicate(source:SourceCandidate){let second=source.clone();}
 /// ```
 pub struct SourceCandidate {bytes:Arc<[u8]>,dimensions:(u32,u32)}
@@ -89,7 +89,7 @@ impl RenderWork {
     pub fn scene(&self)->&Scene{&self.scene}
     /// The render crate owns composition; Core owns decoding and PNG validation.
     pub fn run(self)->Result<ReviewResult,EditError>{
-        let bytes=shareready_render::render_png(self.key.source.as_ref(),&self.scene).map_err(EditError::CoreFailure)?;
+        let bytes=anshot_render::render_png(self.key.source.as_ref(),&self.scene).map_err(EditError::CoreFailure)?;
         Ok(ReviewResult{key:self.key,dimensions:self.dimensions,bytes:Arc::from(bytes)})
     }
 }
@@ -154,7 +154,7 @@ impl Editor {
     pub fn crop(&self)->Option<Region>{self.crop}
     /// Exported image size (after crop).
     pub fn output_dimensions(&self)->(u32,u32){
-        shareready_render::output_size(self.dimensions(),&self.scene()).unwrap_or(self.dimensions())
+        anshot_render::output_size(self.dimensions(),&self.scene()).unwrap_or(self.dimensions())
     }
     /// The exact scene an export of the current revision renders.
     pub fn scene(&self)->Scene{
@@ -521,7 +521,7 @@ mod scene_tests{
         assert!(e.finish(review,true));
         let copy=e.begin(OperationKind::Copy).unwrap();
         let png=e.bytes_for(copy).unwrap();
-        assert_eq!(shareready_core::decode_generated_png(png,(400,300)).unwrap().dimensions(),(400,300));
+        assert_eq!(anshot_core::decode_generated_png(png,(400,300)).unwrap().dimensions(),(400,300));
         assert!(e.finish(copy,true));
         // A newer edit makes an older render unacceptable.
         let work=e.prepare_render().unwrap();let result=work.run().unwrap();

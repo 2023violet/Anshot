@@ -1,4 +1,4 @@
-//! ShareReady headless Rust image core. ABI/presentation live in the adapters.
+//! Anshot headless Rust image core. ABI/presentation live in the adapters.
 use image::{DynamicImage, GenericImageView, ImageDecoder, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 

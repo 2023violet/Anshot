@@ -1,5 +1,5 @@
 [package]
-name = "shareready-desktop"
+name = "anshot-desktop"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
@@ -22,10 +22,10 @@ name = "anshot"
 path = "src/main.rs"
 
 [dependencies]
-shareready-core = { path = "../../crates/shareready-core" }
-shareready-editor = { path = "../../crates/shareready-editor" }
-shareready-platform-windows = { path = "../../crates/shareready-platform-windows" }
-shareready-render = { path = "../../crates/shareready-render" }
+anshot-core = { path = "../../crates/anshot-core" }
+anshot-editor = { path = "../../crates/anshot-editor" }
+anshot-platform-windows = { path = "../../crates/anshot-platform-windows" }
+anshot-render = { path = "../../crates/anshot-render" }
 slint = { version = "=1.18.1", features = ["unstable-winit-030", "unstable-fontique-011"] }
 image = { version = "=0.25.8", default-features = false, features = ["png"] }
 rfd = { version = "=0.15.4", default-features = false }

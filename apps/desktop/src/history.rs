@@ -2,14 +2,15 @@
 //! shared, with whatever was or was not covered — kept unencrypted in
 //! `%LOCALAPPDATA%\Anshot\history`. Frozen screens, source files and editing state are
 //! never written here; pins and history re-copies are not recorded.
-//! `SHAREREADY_HISTORY_DIR` overrides the folder (tests).
+//! `ANSHOT_HISTORY_DIR` overrides the folder (tests).
 #![forbid(unsafe_code)]
-use shareready_core::MAX_INPUT_BYTES;
+use anshot_core::MAX_INPUT_BYTES;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Only files named like this are ours: `sr-<unix ms>-<seq>.png`.
-const PREFIX: &str = "sr-";
+/// Only files named like this are ours: `anshot-<unix ms>-<seq>.png` (0.2.0 wrote `sr-…`).
+const PREFIX: &str = "anshot-";
+const PREFIX_020: &str = "sr-";
 /// Never list (or decode thumbnails for) more than the largest history limit.
 const MAX_LISTED: usize = 200;
 
@@ -21,7 +22,7 @@ pub struct History { dir: PathBuf }
 impl History {
     pub fn at(dir: PathBuf) -> Self { Self { dir } }
     pub fn default_dir() -> Option<PathBuf> {
-        std::env::var_os("SHAREREADY_HISTORY_DIR").map(PathBuf::from)
+        std::env::var_os("ANSHOT_HISTORY_DIR").map(PathBuf::from)
             .or_else(|| std::env::var_os("LOCALAPPDATA").map(|a| PathBuf::from(a).join("Anshot").join("history")))
     }
 
@@ -32,7 +33,7 @@ impl History {
         let ms = now_millis();
         let path = (0..1000).map(|n| self.dir.join(format!("{PREFIX}{ms:013}-{n:03}.png"))).find(|p| !p.exists())
             .ok_or("历史文件名冲突")?;
-        shareready_platform_windows::save_new(&path, png).map_err(|e| crate::messages::write_file(e.kind()))?;
+        anshot_platform_windows::save_new(&path, png).map_err(|e| crate::messages::write_file(e.kind()))?;
         self.prune(limit);
         Ok(path)
     }
@@ -42,7 +43,7 @@ impl History {
         let Ok(rd) = std::fs::read_dir(&self.dir) else { return Vec::new() };
         let mut v: Vec<Entry> = rd.filter_map(Result::ok).filter_map(|d| {
             let name = d.file_name().into_string().ok()?;
-            let ms = name.strip_prefix(PREFIX)?.strip_suffix(".png")?.split('-').next()?.parse().ok()?;
+            let ms = name.strip_prefix(PREFIX).or_else(|| name.strip_prefix(PREFIX_020))?.strip_suffix(".png")?.split('-').next()?.parse().ok()?;
             d.file_type().ok()?.is_file().then(|| Entry { path: d.path(), millis: ms })
         }).collect();
         v.sort_by(|a, b| b.millis.cmp(&a.millis).then_with(|| b.path.cmp(&a.path)));

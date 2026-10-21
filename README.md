@@ -5,7 +5,7 @@
 **Windows 截图 · 标注 · 遮挡 · 分享——遮住的地方，导出里真的没有了。**
 
 > 版本 0.2.0（首个公开版本，**未做代码签名**）。所有像素处理与导出都在本机由 Rust 完成；程序不联网、无账号、无遥测。
-> “安截 / Anshot”是 2026-10 起使用的名称，只做过公开检索，**未做商标清查**（见 [命名调研](docs/NAMING_RESEARCH.md)）。原临时代号为 ShareReady，仓库地址暂未改名。
+> “安截 / Anshot”是 2026-10 起使用的名称，只做过公开检索，**未做商标清查**（见 [命名调研](docs/NAMING_RESEARCH.md)）。
 
 按 **Ctrl+Shift+A** 截图，加上箭头、文字、序号，用实心块或**安全马赛克**遮住不该公开的内容，再一键复制或保存。遮挡区域在导出时被替换成**不含原图任何信息**的像素，导出的是全新的 PNG（不带原图元数据）；画布显示什么，导出就是什么。
 
@@ -13,7 +13,7 @@
 
 ## 下载与安装
 
-在 [Releases](https://github.com/2023violet/ShareReady/releases) 下载：
+在 [Releases](https://github.com/2023violet/Anshot/releases) 下载：
 
 | 文件 | 说明 |
 |---|---|
@@ -70,7 +70,7 @@ cargo build --release --locked --manifest-path apps/desktop/Cargo.toml
 pwsh -File scripts/package.ps1      # 生成 dist/ 下的便携 zip、安装程序（需 NSIS 3）、校验值
 ```
 
-架构（Rust 可信边界）：`crates/shareready-core` 解码 / 遮挡 / PNG 编码与回读校验 · `crates/shareready-render` 场景合成（导出与画布预览共用）· `crates/shareready-editor` 对象、撤销历史、版本令牌 · `crates/shareready-platform-windows` 屏幕采集、快捷键、剪贴板、不覆盖保存、开机启动 · `apps/desktop` Slint 1.18.1 界面。界面只发送意图、显示 Rust 渲染的结果。（内部 crate 仍沿用旧代号命名。）
+架构（Rust 可信边界）：`crates/anshot-core` 解码 / 遮挡 / PNG 编码与回读校验 · `crates/anshot-render` 场景合成（导出与画布预览共用）· `crates/anshot-editor` 对象、撤销历史、版本令牌 · `crates/anshot-platform-windows` 屏幕采集、快捷键、剪贴板、不覆盖保存、开机启动 · `apps/desktop` Slint 1.18.1 界面。界面只发送意图、显示 Rust 渲染的结果。
 
 ## 测试与已知限制
 
@@ -90,6 +90,6 @@ pwsh -File scripts/package.ps1      # 生成 dist/ 下的便携 zip、安装程�
 ## 文档
 
 设计与验收（中文）：[PRD](ui-design/01_PRD.md) · [UX](ui-design/02_UX_ARCHITECTURE.md) · [视觉与框架选型](ui-design/03_VISUAL_DIRECTIONS.md) · [设计系统](ui-design/04_DESIGN.md) · [高保真](ui-design/05_HIGH_FIDELITY/README.md) · [实现记录](ui-design/06_IMPLEMENTATION.md) · [验收报告](ui-design/07_UI_QA_REPORT.md) · [代理产品评审](ui-design/07_AGENT_PRODUCT_REVIEW.md) · [更新日志](CHANGELOG.md)。
-历史：V1.3 网页版与 egui 样机作为冻结参考保留在 `web-app/`、`desktop-windows/`、`e1-spike/`、`poc/`（tag `pre-redesign-2026-10-19`）。
+历史：早期临时代号为 ShareReady；V1.3 网页版与 egui 样机作为冻结参考保留在 `web-app/`、`desktop-windows/`、`e1-spike/`、`poc/`（tag `pre-redesign-2026-10-19`）。
 
 **请勿在 issue 中附带真实的私人截图。**

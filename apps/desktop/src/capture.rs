@@ -2,7 +2,7 @@
 //! all in physical virtual-desktop pixels. Pure Rust; overlays only render it.
 #![forbid(unsafe_code)]
 use image::{DynamicImage, ImageFormat, RgbaImage};
-use shareready_platform_windows::{Capture, Monitor, ScreenRect};
+use anshot_platform_windows::{Capture, Monitor, ScreenRect};
 use std::io::Cursor;
 
 const DRAG_THRESHOLD: i32 = 4;
@@ -188,7 +188,7 @@ mod tests {
         let i = oy * s.frozen.area.w as usize + ox;
         assert_eq!(img.get_pixel(0, 0).0, [(i % 251) as u8, (i / 251 % 251) as u8, 7, 255]);
         let png = encode_png(img).unwrap();
-        let back = shareready_core::decode_source(&png).unwrap();
+        let back = anshot_core::decode_source(&png).unwrap();
         assert_eq!(back.dimensions(), (7, 3));
     }
 

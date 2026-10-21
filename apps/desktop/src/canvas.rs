@@ -1,8 +1,8 @@
 //! Canvas geometry: where the image sits inside the canvas area, and what a
 //! pointer position hits. Pure Rust so it is unit-tested without a window.
 #![forbid(unsafe_code)]
-use shareready_core::Region;
-use shareready_editor::{Handle, Point, Viewport};
+use anshot_core::Region;
+use anshot_editor::{Handle, Point, Viewport};
 
 /// Visual handles are 8 logical px; the hit box is 16 x 16 (half-open).
 pub const HANDLE_HIT_HALF: f64 = 8.0;

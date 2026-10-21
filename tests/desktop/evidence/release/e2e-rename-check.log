@@ -1,0 +1,72 @@
+EXE sha256=e90fcc0299b2719e412c2710c53a7731d74b440ffeb9d870ee24ab7c688f8237 path=Anshot.exe
+LAYOUT client=1180x760 image_origin=280,196 scale=1
+UIA toast=
+CLIPBOARD image=620x430
+AFTER_COPY editor_visible=False running=True toast_windows=1
+CLOSE_GUARD exited=False dialog=True
+CLOSE_GUARD_CANCEL still_running=True
+PASTE status=图片画布（已遮挡 0 处） | 620 × 430
+CAPTURE overlays=1
+CAPTURE editor_status=620 × 430
+CAPTURE clipboard=620x430
+SNAP editor_status=620 × 430
+ESC overlays_before=1 after=0
+B3 clipboard=620x430
+DROP status=620 × 430
+ZOOM after_ctrl_wheel=当前缩放 133%，点击实际大小 Ctrl+1
+KEYBOARD clipboard=620x430
+SAVE round=1 dialog=True
+SAVE round=2 dialog=True
+SAVE first=True second=True
+SAVE original_unchanged=True
+KEYS blue=620x430
+KEYS deleted=620x430
+KEYS undone=620x430
+KEYS redone=620x430
+SETTINGS dialog=True
+SETTINGS taken_key_warning=False
+SETTINGS pick_hotkey=True pick_stay=True
+SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir= | recent_colors= | history_limit=50
+SETTINGS new_hotkey_overlays=1
+SETTINGS editor_visible_after_copy=True
+DPI125 client=1475x950 logical_origin=280,196 scale=1
+DPI125 copy=620x430
+MULTILINE copy=620x430
+HIDE overlays=1 editor_visible_during_capture=False
+HIDE editor_visible_after_esc=True
+SHIFT copy=620x430
+ERRORS case=broken message=无法打开 不是有效的 PNG / JPEG 图片，或文件已损坏 raw_text=False
+ERRORS case=missing message=无法打开 找不到这个文件，可能已被移动或删除 raw_text=False
+AUTOSTART on=True
+AUTOSTART value_has_exe=True background=True
+AUTOSTART off=True
+AUTOSTART removed=True
+BACKGROUND running=True editor_windows=0
+ADJUST editor_status=240 × 130
+ADJUST copy=240x130
+FREEZE capture=1920x1080 editor_area_samples=18144 mismatches=0
+MAGNIFIER expected=x 533  y 372 got=放大镜 x 533  y 372
+QUICKCOPY toolbar=True clipboard=200x100 editor_visible=False toasts=1
+TOOLBAR edit=True
+TOOLBAR editor_status=200 × 100
+PICKER open=True
+SHAPES copy=620x430
+PICKER settings=recent_colors=#9B30D9
+HISTORY copy=620x430
+HISTORY files=0
+HISTORY dialog=True items=1
+HISTORY pin=True
+HISTORY pins=1
+HISTORY delete=True
+HISTORY files_after_delete=0
+HISTORY off_files=0
+PIN from_capture=1 rect=300,250,200x100 expected=300,250,200x100
+PIN copy=200x100
+PIN after_esc=0
+PIN from_editor=1
+PIN editor_copy=620x430
+LONG start=True
+LONG panel=长截图 已拼接 2070 像素
+LONG finish=True
+LONG editor_status=550 × 2070
+LONG copy=550x2070

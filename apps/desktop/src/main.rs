@@ -18,11 +18,11 @@ mod stitch;
 use canvas::Zoom;
 use controller::{Controller, Delivery, Notice, Tool, CUSTOM_INK, TEXT_SIZES};
 use image::RgbaImage;
-use shareready_editor::{EditError, Point, ReviewKey, ReviewResult, SourceCandidate};
+use anshot_editor::{EditError, Point, ReviewKey, ReviewResult, SourceCandidate};
 use slint::{CloseRequestResponse, ComponentHandle, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use std::cell::RefCell;
 use std::path::PathBuf;
-use shareready_platform_windows::{Monitor, ScreenRect};
+use anshot_platform_windows::{Monitor, ScreenRect};
 use std::time::Duration;
 
 slint::include_modules!();
@@ -58,7 +58,7 @@ struct App {
     /// Decoded source downscaled for the screen, and its scale (preview px per source px).
     base: Option<(RgbaImage, f32)>,
     settings: settings::Settings,
-    hotkey: Option<shareready_platform_windows::HotkeyHandle>,
+    hotkey: Option<anshot_platform_windows::HotkeyHandle>,
     /// The editor was hidden for a capture and comes back if the capture is cancelled.
     restore_editor: bool,
     /// A capture waits for the hidden editor to leave the screen.
@@ -159,7 +159,7 @@ impl App {
         // WYSIWYG canvas: the same Rust renderer as export, at preview scale.
         if let Some((base, k)) = self.base.as_ref() {
             let mut img = base.clone();
-            shareready_render::render_into(&mut img, &ctl.display_scene(), *k);
+            anshot_render::render_into(&mut img, &ctl.display_scene(), *k);
             ui.set_preview(to_image(&img));
         }
         let mb = |(x, y, w, h): (f64, f64, f64, f64)| MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected: true };
@@ -436,11 +436,11 @@ impl App {
         t.set_heading(heading.into());
         t.set_detail(detail.into());
         // The toast must not take keyboard focus (e.g. from a pin the user is working with).
-        let focus = shareready_platform_windows::foreground_window();
+        let focus = anshot_platform_windows::foreground_window();
         let _ = t.show();
         // The window system shows it on a later frame: hand focus back after that.
-        slint::Timer::single_shot(Duration::from_millis(60), move || shareready_platform_windows::restore_foreground(focus));
-        if let Some(m) = shareready_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
+        slint::Timer::single_shot(Duration::from_millis(60), move || anshot_platform_windows::restore_foreground(focus));
+        if let Some(m) = anshot_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
             let s = t.window().scale_factor();
             let (w, h) = ((300.0 * s) as i32, (64.0 * s) as i32);
             t.window().set_position(slint::PhysicalPosition::new(m.work.x + m.work.w - w - (16.0 * s) as i32, m.work.y + m.work.h - h - (16.0 * s) as i32));
@@ -464,21 +464,21 @@ impl App {
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
         self.capture_pending = true;
         slint::Timer::single_shot(Duration::from_millis(16), || {
-            shareready_platform_windows::wait_for_compositor();
+            anshot_platform_windows::wait_for_compositor();
             with(|a| { a.capture_pending = false; a.freeze_screen(); });
         });
     }
     fn freeze_screen(&mut self) {
-        let monitors = match shareready_platform_windows::monitors() {
+        let monitors = match anshot_platform_windows::monitors() {
             Ok(m) => m,
             Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法读取显示器信息，请重试", None); return; }
         };
         let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
-        let frozen = match shareready_platform_windows::capture(area) {
+        let frozen = match anshot_platform_windows::capture(area) {
             Ok(c) => c,
             Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "系统拒绝读取屏幕（锁屏或安全桌面时无法截图）", None); return; }
         };
-        let session = capture::Session::new(frozen, monitors.clone(), shareready_platform_windows::visible_windows());
+        let session = capture::Session::new(frozen, monitors.clone(), anshot_platform_windows::visible_windows());
         let mut overlays = Vec::new();
         for (i, m) in monitors.iter().copied().enumerate() {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
@@ -501,7 +501,7 @@ impl App {
         if overlays.is_empty() { self.cancel_capture(); return; }
         self.session = Some(session);
         self.overlays = overlays;
-        self.last_cursor = shareready_platform_windows::cursor();
+        self.last_cursor = anshot_platform_windows::cursor();
         if let Some((x, y)) = self.last_cursor {
             if let Some(s) = self.session.as_mut() { s.pointer_move(x, y); }
         }
@@ -509,7 +509,7 @@ impl App {
         self.cursor_timer.start(slint::TimerMode::Repeated, Duration::from_millis(30), || { with(|a| a.poll_cursor()); });
     }
     fn poll_cursor(&mut self) {
-        let now = shareready_platform_windows::cursor();
+        let now = anshot_platform_windows::cursor();
         if now == self.last_cursor { return; }
         self.last_cursor = now;
         if let (Some((x, y)), Some(s)) = (now, self.session.as_mut()) { if !s.pressed() { s.pointer_move(x, y); } }
@@ -530,7 +530,7 @@ impl App {
     /// Create and show/hide each monitor's overlay once, off-screen, so the first
     /// hotkey press does not pay window + GL context creation.
     fn prewarm_overlays(&mut self) {
-        let Ok(monitors) = shareready_platform_windows::monitors() else { return };
+        let Ok(monitors) = anshot_platform_windows::monitors() else { return };
         for (i, _) in monitors.iter().enumerate() {
             if self.overlay_pool.len() > i { continue; }
             let Some(win) = new_overlay(i) else { return };
@@ -554,7 +554,7 @@ impl App {
     }
     fn refresh_overlays(&self) {
         let Some(s) = self.session.as_ref() else { return };
-        let cursor = shareready_platform_windows::cursor();
+        let cursor = anshot_platform_windows::cursor();
         for (win, m) in &self.overlays {
             let k = win.window().scale_factor();
             let local = |r: ScreenRect| r.intersect(m.bounds).map(|r| Box {
@@ -622,7 +622,7 @@ impl App {
         let Some(mon) = s.monitor_at(region.x + region.w / 2, region.y + region.h / 2) else { return };
         // The panel is sized with the scale of the monitor it will appear on.
         let k = self.overlays.iter().find(|(_, m)| m.bounds == mon.bounds).or(self.overlays.first()).map_or(1.0, |(w, _)| w.window().scale_factor());
-        if u64::from(region.w.unsigned_abs()) * u64::from(region.h.unsigned_abs()) > shareready_core::MAX_PIXELS / 2 {
+        if u64::from(region.w.unsigned_abs()) * u64::from(region.h.unsigned_abs()) > anshot_core::MAX_PIXELS / 2 {
             self.end_capture();
             if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
             self.system_toast("warn", "选区太大，无法长截图", "请框选要滚动的那一部分");
@@ -655,10 +655,10 @@ impl App {
     }
     fn poll_long_shot(&mut self) {
         let Some(l) = self.long.as_mut() else { return };
-        let Ok(cap) = shareready_platform_windows::capture(l.region) else { return };
+        let Ok(cap) = anshot_platform_windows::capture(l.region) else { return };
         let Some(frame) = RgbaImage::from_raw(cap.area.w as u32, cap.area.h as u32, cap.rgba) else { return };
         let state = match l.stitcher.as_mut() {
-            None => { l.stitcher = Some(stitch::Stitcher::new(frame, shareready_core::MAX_PIXELS)); "" }
+            None => { l.stitcher = Some(stitch::Stitcher::new(frame, anshot_core::MAX_PIXELS)); "" }
             Some(s) => match s.push(frame) { stitch::Push::Lost => "lost", stitch::Push::Full => "full", _ => "" },
         };
         let h = l.stitcher.as_ref().map_or(0, |s| s.height());
@@ -688,8 +688,8 @@ impl App {
             let mut png = capture::encode_png(img.clone());
             for _ in 0..4 {
                 match &png {
-                    Ok(b) if b.len() > shareready_core::MAX_INPUT_BYTES => {
-                        let keep = (u64::from(img.height()) * shareready_core::MAX_INPUT_BYTES as u64 * 9 / 10 / b.len() as u64).max(1) as u32;
+                    Ok(b) if b.len() > anshot_core::MAX_INPUT_BYTES => {
+                        let keep = (u64::from(img.height()) * anshot_core::MAX_INPUT_BYTES as u64 * 9 / 10 / b.len() as u64).max(1) as u32;
                         img = image::imageops::crop_imm(&img, 0, 0, img.width(), keep).to_image();
                         png = capture::encode_png(img.clone());
                     }
@@ -715,7 +715,7 @@ impl App {
         win.on_zoom(move |dy| { with(|a| a.pin_zoom(id, dy)); });
         win.on_act(move |k| { let k = k.to_string(); slint::Timer::single_shot(Duration::ZERO, move || pin_action(id, &k)); });
         let (x, y) = at.unwrap_or_else(|| {
-            let c = shareready_platform_windows::cursor().unwrap_or((200, 200));
+            let c = anshot_platform_windows::cursor().unwrap_or((200, 200));
             (c.0 - img.width() as i32 / 2, c.1 - img.height() as i32 / 2)
         });
         win.window().set_position(slint::PhysicalPosition::new(x, y));
@@ -726,12 +726,12 @@ impl App {
     }
     fn pin(&self, id: u64) -> Option<&Pin> { self.pins.iter().find(|p| p.id == id) }
     fn pin_drag_start(&mut self, id: u64) {
-        let (Some(p), Some(c)) = (self.pin(id), shareready_platform_windows::cursor()) else { return };
+        let (Some(p), Some(c)) = (self.pin(id), anshot_platform_windows::cursor()) else { return };
         let pos = p.win.window().position();
         self.pin_drag = Some((id, c, (pos.x, pos.y)));
     }
     fn pin_drag_move(&mut self, id: u64) {
-        let (Some((pid, c0, w0)), Some(c)) = (self.pin_drag, shareready_platform_windows::cursor()) else { return };
+        let (Some((pid, c0, w0)), Some(c)) = (self.pin_drag, anshot_platform_windows::cursor()) else { return };
         if pid != id { return; }
         if let Some(p) = self.pin(id) { p.win.window().set_position(slint::PhysicalPosition::new(w0.0 + c.0 - c0.0, w0.1 + c.1 - c0.1)); }
     }
@@ -751,7 +751,7 @@ impl App {
         let Some(src) = e.source_bytes().map(<[u8]>::to_vec) else { return };
         let scene = e.scene();
         std::thread::spawn(move || {
-            let img = shareready_render::render_png(&src, &scene).ok().and_then(|png| shareready_core::decode_source(&png).ok());
+            let img = anshot_render::render_png(&src, &scene).ok().and_then(|png| anshot_core::decode_source(&png).ok());
             let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
                 Some(img) => a.open_pin(img, None),
                 None => a.toast("error", "无法钉图", "生成图片失败", None),
@@ -781,7 +781,7 @@ impl App {
         // Thumbnails decode through Core off the UI thread; files are untrusted input.
         std::thread::spawn(move || {
             let thumbs: Vec<(Option<RgbaImage>, String)> = entries.iter().map(|e| {
-                let img = platform::read_image_file(&e.path).ok().and_then(|b| shareready_core::decode_source(&b).ok())
+                let img = platform::read_image_file(&e.path).ok().and_then(|b| anshot_core::decode_source(&b).ok())
                     .map(|i| image::imageops::thumbnail(&i, 168.min(i.width()), (168 * i.height() / i.width().max(1)).clamp(1, 112)));
                 (img, history::label(e.millis, now))
             }).collect();
@@ -818,7 +818,7 @@ impl App {
     fn register_hotkey(&mut self) -> bool {
         if let Some(h) = self.hotkey.take() { h.stop(); }
         let key = self.settings.hotkey;
-        match shareready_platform_windows::spawn_hotkey(key, || {
+        match anshot_platform_windows::spawn_hotkey(key, || {
             let _ = slint::invoke_from_event_loop(|| { with(|a| a.begin_capture()); });
         }) {
             Ok(h) => { self.hotkey = Some(h); self.push_settings(); true }
@@ -833,12 +833,12 @@ impl App {
         let Some(ui) = self.ui() else { return };
         let s = &self.settings;
         ui.set_hotkey_label(s.hotkey.label().into());
-        ui.set_hotkey_index(shareready_platform_windows::Hotkey::ALL.iter().position(|h| *h == s.hotkey).unwrap_or(0) as i32);
+        ui.set_hotkey_index(anshot_platform_windows::Hotkey::ALL.iter().position(|h| *h == s.hotkey).unwrap_or(0) as i32);
         ui.set_hotkey_active(self.hotkey.is_some());
         ui.set_hide_after_copy(s.hide_after_copy);
         ui.set_save_dir(s.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default().into());
         ui.set_history_limit_index(settings::HISTORY_LIMITS.iter().position(|n| *n == s.history_limit).unwrap_or(2) as i32);
-        ui.set_autostart(matches!(shareready_platform_windows::autostart(), Ok(Some(_))));
+        ui.set_autostart(matches!(anshot_platform_windows::autostart(), Ok(Some(_))));
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); }
     }
     fn open_settings(&mut self) {
@@ -853,7 +853,7 @@ impl App {
         self.push_settings();
     }
     fn set_hotkey(&mut self, i: usize) {
-        let Some(&key) = shareready_platform_windows::Hotkey::ALL.get(i) else { return };
+        let Some(&key) = anshot_platform_windows::Hotkey::ALL.get(i) else { return };
         let old = self.settings.hotkey;
         self.settings.hotkey = key;
         if self.resident && !self.register_hotkey() {
@@ -867,7 +867,7 @@ impl App {
     fn set_autostart(&mut self, on: bool) {
         let cmd = on.then(autostart_command).flatten();
         if on && cmd.is_none() { self.toast("error", "无法设置开机启动", "找不到程序路径", None); self.push_settings(); return; }
-        if shareready_platform_windows::set_autostart(cmd.as_deref()).is_err() {
+        if anshot_platform_windows::set_autostart(cmd.as_deref()).is_err() {
             self.toast("error", "无法设置开机启动", "系统拒绝写入当前用户的启动项", None);
         }
         self.push_settings();
@@ -935,7 +935,7 @@ fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: O
     std::thread::spawn(move || {
         let decoded: Decoded = bytes.and_then(|b| {
             let candidate = SourceCandidate::decode(b).map_err(|e| messages::intake(&e))?;
-            let pixels = shareready_core::decode_source(candidate.bytes()).map_err(|m| messages::decode(&m))?;
+            let pixels = anshot_core::decode_source(candidate.bytes()).map_err(|m| messages::decode(&m))?;
             Ok((candidate, display::preview(pixels)))
         });
         let _ = slint::invoke_from_event_loop(move || { with(|a| a.source_ready(decoded, name, then)); });
@@ -943,7 +943,7 @@ fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: O
 }
 
 /// Where new versions are published (opened in the browser by "检查更新").
-const RELEASES_URL: &str = "https://github.com/2023violet/ShareReady/releases";
+const RELEASES_URL: &str = "https://github.com/2023violet/Anshot/releases";
 
 /// What the Run entry launches: this exe, tray only.
 fn autostart_command() -> Option<String> {
@@ -1068,7 +1068,7 @@ fn main() -> Result<(), slint::PlatformError> {
     // One embedded copy of Noto Sans CJK SC serves both the UI and the exporter.
     {
         use slint::fontique_011::fontique;
-        let blob = fontique::Blob::new(std::sync::Arc::new(shareready_render::font_bytes()));
+        let blob = fontique::Blob::new(std::sync::Arc::new(anshot_render::font_bytes()));
         let _ = slint::fontique_011::shared_collection().register_fonts(blob, None);
     }
     let ui = AppWindow::new()?;
@@ -1081,7 +1081,7 @@ fn main() -> Result<(), slint::PlatformError> {
         pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None,
     }));
     // The first instance owns the tray and the global hotkey.
-    if shareready_platform_windows::claim_single_instance() {
+    if anshot_platform_windows::claim_single_instance() {
         let tray = Tray::new()?;
         tray.on_capture(|| { with(|a| a.begin_capture()); });
         tray.on_open_image(|| { with(|a| a.show_editor()); command("open"); });
@@ -1094,14 +1094,12 @@ fn main() -> Result<(), slint::PlatformError> {
             a.resident = true;
             a.tray = Some(tray);
             a.register_hotkey();
-            // Keep an existing start-at-login entry pointing at this exe if it was moved, and
-            // take over an entry 0.1.x wrote under the temporary name.
+            // Keep an existing start-at-login entry pointing at this exe if it was moved.
             if let Some(new) = autostart_command() {
-                let _ = shareready_platform_windows::migrate_legacy_autostart(&new);
-                if let Ok(Some(old)) = shareready_platform_windows::autostart() {
+                if let Ok(Some(old)) = anshot_platform_windows::autostart() {
                     // Another installed copy keeps its entry; only a dangling one is taken over.
                     let target = if old.starts_with('"') { old[1..].split('"').next().unwrap_or("") } else { old.split(" --").next().unwrap_or("").trim() };
-                    if old != new && !std::path::Path::new(target).is_file() { let _ = shareready_platform_windows::set_autostart(Some(&new)); }
+                    if old != new && !std::path::Path::new(target).is_file() { let _ = anshot_platform_windows::set_autostart(Some(&new)); }
                 }
             }
         });
@@ -1110,7 +1108,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_pointer_down(|x, y| { with(|a| { a.ctl.pointer_down(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
     ui.on_pointer_move(|x, y| { with(|a| if a.ctl.dragging() {
-        a.ctl.shift = shareready_platform_windows::shift_down();
+        a.ctl.shift = anshot_platform_windows::shift_down();
         a.ctl.pointer_move(Point { x: x.into(), y: y.into() });
         a.refresh();
     }); });
@@ -1248,7 +1246,7 @@ fn pin_action(id: u64, act: &str) {
             let dims = img.dimensions();
             // Same check as every export: the bytes must reopen as a clean generated PNG first.
             let result = capture::encode_png(img)
-                .and_then(|png| shareready_core::decode_generated_png(&png, dims).map(|_| png))
+                .and_then(|png| anshot_core::decode_generated_png(&png, dims).map(|_| png))
                 .and_then(|png| platform::write_file(&path, &png));
             with(|a| match result {
                 Ok(()) => a.system_toast("done", "已保存", &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
@@ -1283,11 +1281,11 @@ fn history_command(cmd: &str) {
             match kind {
                 "history-open-" => { with(|a| if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); }); spawn_open(Ok(bytes), Some("历史截图.png".into())); }
                 "history-copy-" => {
-                    let result = shareready_core::decode_source(&bytes).and_then(|img| { let d = img.dimensions(); capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, d)) });
+                    let result = anshot_core::decode_source(&bytes).and_then(|img| { let d = img.dimensions(); capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, d)) });
                     with(|a| match result { Ok(()) => a.toast("done", "已复制到剪贴板", "来自截图历史", None), Err(err) => a.toast("error", "复制失败", &err, None) });
                 }
                 _ => {
-                    let img = shareready_core::decode_source(&bytes);
+                    let img = anshot_core::decode_source(&bytes);
                     with(|a| match img { Ok(img) => a.open_pin(img, None), Err(_) => a.toast("error", "无法钉图", "历史文件已损坏", None) });
                 }
             }

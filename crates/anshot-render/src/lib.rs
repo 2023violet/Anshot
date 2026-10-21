@@ -1,4 +1,4 @@
-//! Scene rendering for ShareReady exports and the on-screen preview.
+//! Scene rendering for Anshot exports and the on-screen preview.
 //!
 //! Order is fixed (02 U06): source pixels -> redactions (opaque replacement,
 //! no source information) -> annotations (anti-aliased, on top) -> crop.
@@ -7,7 +7,7 @@
 
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
 use image::{DynamicImage, ImageFormat, RgbaImage};
-use shareready_core::{decode_generated_png, decode_source, Region};
+use anshot_core::{decode_generated_png, decode_source, Region};
 use std::io::Cursor;
 use std::sync::OnceLock;
 use tiny_skia::{FillRule, LineCap, LineJoin, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};

@@ -7,7 +7,7 @@ Labels follow AGENTS.md: `MEASURED` = a command ran here with the stated result;
 
 ## Scope
 
-Untrusted bytes enter ShareReady only through `crates/shareready-core`:
+Untrusted bytes enter Anshot only through `crates/anshot-core`:
 
 | Intake function | Input | Existing limits |
 |---|---|---|
@@ -15,8 +15,8 @@ Untrusted bytes enter ShareReady only through `crates/shareready-core`:
 | `dib_to_png` | clipboard `CF_DIB` / `CF_DIBV5` | `MAX_DIB_BYTES` (24 MP × 4 + 124 B), 24/32-bit only |
 | `decode_generated_png` | readback of Rust-generated PNG artifacts | `MAX_GENERATED_PNG_BYTES` 128 MiB, expected size, 512 MiB decoder budget |
 
-`shareready_editor::SourceCandidate::decode` is a direct wrapper around `decode_source`
-(`crates/shareready-editor/src/lib.rs`, `SourceCandidate::decode`), so it is covered
+`anshot_editor::SourceCandidate::decode` is a direct wrapper around `decode_source`
+(`crates/anshot-editor/src/lib.rs`, `SourceCandidate::decode`), so it is covered
 transitively; it is not called separately because the core crate cannot depend on the
 editor. A repository search found no other image decoding in `crates/` or `apps/`.
 
@@ -25,15 +25,15 @@ editor. A repository search found no other image decoding in `crates/` or `apps/
 - `tests/security/gen_corpus.py` — writes a hostile corpus (156 files, ~80 MiB) to the
   gitignored `tests/security/corpus/`. Generated locally from Pillow, zlib and struct;
   nothing is downloaded and every image is synthetic.
-- `crates/shareready-core/tests/intake_hardening.rs` — no new dependencies:
+- `crates/anshot-core/tests/intake_hardening.rs` — no new dependencies:
   - a counting `#[global_allocator]` measures, per intake call, the peak growth of live
     heap bytes and the largest single allocation;
   - a panic hook plus `catch_unwind` around every call records any panic and where it
     happened; a watchdog thread aborts and saves the input if one call runs longer than
-    `SHAREREADY_FUZZ_TIMEOUT_SECS` (default 120 s), since a hang cannot be caught in-thread;
+    `ANSHOT_FUZZ_TIMEOUT_SECS` (default 120 s), since a hang cannot be caught in-thread;
   - an inline xorshift64 mutator (bit flips, random/boundary bytes, 32-bit boundary
     values in both byte orders, truncation, deletion, insertion, splicing).
-- `crates/shareready-core/tests/fixtures/zune-jpeg-*.jpg` — three mutation findings kept as
+- `crates/anshot-core/tests/fixtures/zune-jpeg-*.jpg` — three mutation findings kept as
   regression inputs (≤1 KiB each, mutated from synthetic Pillow gradients).
 - `deny.toml` — cargo-deny 0.20.2 policy shared by both Rust workspaces.
 
@@ -79,10 +79,10 @@ orientation 1), deflate bombs (decoder stops at the image size), and the 4000×6
 
 ## Findings and fixes
 
-All three come from the seeded mutation run and live in zune-jpeg 0.4.21, which ShareReady
+All three come from the seeded mutation run and live in zune-jpeg 0.4.21, which Anshot
 gets through the pinned `image =0.25.8` in both lock files. Upgrading `image`/zune-jpeg would
 change the pinned decoder behind the frozen goldens, so it was **not** done; the fixes are
-in `crates/shareready-core/src/lib.rs`.
+in `crates/anshot-core/src/lib.rs`.
 
 | # | Input | Upstream behaviour | Release impact | Fix |
 |---|---|---|---|---|
@@ -124,7 +124,7 @@ python tests/security/gen_corpus.py
 `src_*` 95 → `decode_source`, `dib_*` 53 → `dib_to_png`, `gen_WxH_*` 8 → `decode_generated_png`.
 
 ```bash
-cargo test --locked -p shareready-core --test intake_hardening -- --nocapture
+cargo test --locked -p anshot-core --test intake_hardening -- --nocapture
 ```
 Default run (debug, 20 000 mutations), exit 0, 4 tests pass in ~28 s:
 
@@ -138,8 +138,8 @@ Default run (debug, 20 000 mutations), exit 0, 4 tests pass in ~28 s:
 Full mutation runs (exit 0 each; watchdog 30 s; no escaped panic, hang or limit breach):
 
 ```bash
-SHAREREADY_FUZZ_ITERS=100000 cargo test --release --locked -p shareready-core --test intake_hardening -- --nocapture
-SHAREREADY_FUZZ_SEED=7 SHAREREADY_FUZZ_ITERS=1000000 cargo test --release --locked -p shareready-core --test intake_hardening seeded -- --nocapture
+ANSHOT_FUZZ_ITERS=100000 cargo test --release --locked -p anshot-core --test intake_hardening -- --nocapture
+ANSHOT_FUZZ_SEED=7 ANSHOT_FUZZ_ITERS=1000000 cargo test --release --locked -p anshot-core --test intake_hardening seeded -- --nocapture
 ```
 
 | Build | Seed | Mutations | Accepted | Peak growth | Largest allocation | Contained panics | Time |
@@ -184,7 +184,7 @@ cargo deny --locked --manifest-path apps/desktop/Cargo.toml check
 2026-10-21).
 
 - **Advisory found: RUSTSEC-2026-0192**, `ttf-parser` 0.25.1 is unmaintained (via
-  `ab_glyph` 0.2.32 → `shareready-render`). It is not a vulnerability notice and cargo-deny
+  `ab_glyph` 0.2.32 → `anshot-render`). It is not a vulnerability notice and cargo-deny
   reports no safe upgrade. It is ignored in `deny.toml` with a reason: the parser reads only
   the bundled `assets/fonts/NotoSansCJKsc-Regular.otf` (`include_bytes!`), never a
   user-supplied font. Revisit if a vulnerability advisory names ttf-parser/ab_glyph, or if
@@ -213,7 +213,7 @@ cargo deny --locked --manifest-path apps/desktop/Cargo.toml check
   covered as far as the mutations reached (watchdog 30 s per call).
 - A panic is contained only where unwinding works. A `panic = "abort"` profile, or an abort
   inside a dependency (for example a failed allocation), would still end the process.
-- Windows clipboard capture (`crates/shareready-platform-windows`), drag-and-drop paths and
+- Windows clipboard capture (`crates/anshot-platform-windows`), drag-and-drop paths and
   the desktop UI were not exercised. Only the core functions they hand bytes to were.
 - Upstream reporting of F1–F3 to zune-jpeg, and moving to a fixed zune-jpeg/image, are left
   as decisions for the release owner (an upgrade must be re-checked against the frozen goldens).
@@ -224,10 +224,10 @@ cargo deny --locked --manifest-path apps/desktop/Cargo.toml check
 
 ```bash
 python tests/security/gen_corpus.py
-cargo test --locked -p shareready-core --test intake_hardening -- --nocapture
-SHAREREADY_FUZZ_ITERS=100000 cargo test --release --locked -p shareready-core --test intake_hardening -- --nocapture
+cargo test --locked -p anshot-core --test intake_hardening -- --nocapture
+ANSHOT_FUZZ_ITERS=100000 cargo test --release --locked -p anshot-core --test intake_hardening -- --nocapture
 ```
 
-Environment variables: `SHAREREADY_FUZZ_ITERS` (default 20 000), `SHAREREADY_FUZZ_SEED`
-(u64, default 0x5eed20261021), `SHAREREADY_FUZZ_TIMEOUT_SECS` (default 120). A failing or
+Environment variables: `ANSHOT_FUZZ_ITERS` (default 20 000), `ANSHOT_FUZZ_SEED`
+(u64, default 0x5eed20261021), `ANSHOT_FUZZ_TIMEOUT_SECS` (default 120). A failing or
 hanging input is written to `target/tmp/intake-failure-*.bin` and its path is printed.

@@ -1,5 +1,7 @@
 # 04 DESIGN.md — ShareReady「奶油编辑台」
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 版本 **v1.0（冻结基线）**　日期 2026-10-19　状态：**Gate 04 已冻结（用户，2026-10-19）**；GUI 框架 Slint 1.18.1。变更需递增版本并记录。
 来源：[03_VISUAL_DIRECTIONS.md](03_VISUAL_DIRECTIONS.md) v0.2 —— Cursor 暖奶油编辑风为主，Raycast keycap。样稿：[03_VISUAL_SAMPLE.html](03_VISUAL_SAMPLE.html)
 

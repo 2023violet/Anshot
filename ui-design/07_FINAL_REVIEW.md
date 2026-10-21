@@ -1,5 +1,7 @@
 # 07 最终独立审查 — ShareReady 0.1.0（Windows，Slint）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 日期 2026-10-19　工作树：`main` @ `355c37c` + 未提交改动（main.rs 覆盖窗池/预热、app.slint 图标、.gitignore、scripts/、perf.ps1、release 证据）
 
 ## 身份

@@ -1,5 +1,5 @@
 [package]
-name = "shareready-editor"
+name = "anshot-editor"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,5 +8,5 @@ publish.workspace = true
 description = "Rust editor document identity, history, and asynchronous operation validity."
 
 [dependencies]
-shareready-core = { path = "../shareready-core" }
-shareready-render = { path = "../shareready-render" }
+anshot-core = { path = "../anshot-core" }
+anshot-render = { path = "../anshot-render" }

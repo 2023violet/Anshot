@@ -19,7 +19,7 @@ default = []
 web = ["dep:wasm-bindgen"]
 
 [dependencies]
-shareready-core = { path = "../crates/shareready-core" }
+shareready-core = { package = "anshot-core", path = "../crates/anshot-core" }
 image = { version = "=0.25.8", default-features = false, features = ["png", "jpeg"] }
 wasm-bindgen = { version = "=0.2.105", optional = true }
 

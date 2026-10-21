@@ -1,5 +1,7 @@
 # 01 PRD — ShareReady（临时代号）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 版本 v0.1　日期 2026-10-19　状态：**Gate 01 已确认（用户，2026-10-19）**
 输入：[01_PRD_INPUTS.md](01_PRD_INPUTS.md)　基线：`main`，tag `pre-redesign-2026-10-19`
 

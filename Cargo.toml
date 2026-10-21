@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/shareready-core", "crates/shareready-editor", "crates/shareready-platform-windows", "crates/shareready-render", "e1-spike"]
-default-members = ["crates/shareready-core", "crates/shareready-editor", "e1-spike"]
+members = ["crates/anshot-core", "crates/anshot-editor", "crates/anshot-platform-windows", "crates/anshot-render", "e1-spike"]
+default-members = ["crates/anshot-core", "crates/anshot-editor", "e1-spike"]
 
 [workspace.package]
 version = "0.1.0"

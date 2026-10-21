@@ -5,7 +5,7 @@
 **Screenshot, annotate, redact, share on Windows — what you cover is really gone from the export.**
 
 > Version 0.2.0, the first public release, **not code-signed**. All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
-> "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese). The project was previously code-named ShareReady and the repository has not been renamed yet.
+> "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese).
 
 Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover private parts with a solid block or a **safe mosaic**, then copy or save in one key. Covered areas are replaced by pixels that carry **no information from the original**, and the export is a freshly encoded PNG without source metadata. What the canvas shows is exactly what is exported.
 
@@ -13,7 +13,7 @@ Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover priv
 
 ## Download and install
 
-From [Releases](https://github.com/2023violet/ShareReady/releases):
+From [Releases](https://github.com/2023violet/Anshot/releases):
 
 | File | What it is |
 |---|---|
@@ -93,11 +93,11 @@ cargo build --release --locked --manifest-path apps/desktop/Cargo.toml
 pwsh -File scripts/package.ps1      # portable zip, installer (needs NSIS 3), checksums in dist/
 ```
 
-Architecture (Rust trust boundary). The UI only sends intents and shows what Rust rendered. Internal crate names still use the old code name.
-- `crates/shareready-core`: decoding, redaction, PNG encoding with read-back verification.
-- `crates/shareready-render`: scene composition, shared by the export and the canvas preview.
-- `crates/shareready-editor`: objects, undo history, version tickets.
-- `crates/shareready-platform-windows`: screen capture, hotkeys, clipboard, no-overwrite saving, start at login.
+Architecture (Rust trust boundary). The UI only sends intents and shows what Rust rendered.
+- `crates/anshot-core`: decoding, redaction, PNG encoding with read-back verification.
+- `crates/anshot-render`: scene composition, shared by the export and the canvas preview.
+- `crates/anshot-editor`: objects, undo history, version tickets.
+- `crates/anshot-platform-windows`: screen capture, hotkeys, clipboard, no-overwrite saving, start at login.
 - `apps/desktop`: the Slint 1.18.1 interface.
 
 ## Testing and known limits
@@ -120,5 +120,7 @@ Known limits:
 ## License
 
 Code: [MIT](LICENSE). UI: [Slint](https://slint.dev), Royalty-free 2.0 (AboutSlint is shown in About). Font: Noto Sans CJK SC ([OFL-1.1](assets/fonts/OFL-1.1.txt)). Third-party list: [THIRD_PARTY_LICENSES.md](apps/desktop/THIRD_PARTY_LICENSES.md).
+
+History: the project was code-named ShareReady before 2026-10-21; the frozen V1.3 web editor and egui prototype under `web-app/`, `desktop-windows/`, `e1-spike/` and `poc/` keep that name.
 
 **Please do not attach real private screenshots to issues.**

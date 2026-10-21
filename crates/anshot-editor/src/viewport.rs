@@ -39,12 +39,12 @@ impl Viewport {
         Ok(Point{x,y})
     }
     /// Outward rounding ensures fractional pointer coverage does not leak a pixel at a corner.
-    pub fn pixel_region(self,a:Point,b:Point)->Result<shareready_core::Region,ViewportError>{
+    pub fn pixel_region(self,a:Point,b:Point)->Result<anshot_core::Region,ViewportError>{
         let a=self.screen_to_source(a)?;
         let b=self.screen_to_source(b)?;
         fn bounded_floor(v:f64,max:u32)->i64 {v.floor().clamp(0.0,f64::from(max)) as i64}
         fn bounded_ceil(v:f64,max:u32)->i64 {v.ceil().clamp(0.0,f64::from(max)) as i64}
-        Ok(shareready_core::Region::new(
+        Ok(anshot_core::Region::new(
             bounded_floor(a.x.min(b.x),self.image_width),
             bounded_floor(a.y.min(b.y),self.image_height),
             bounded_ceil(a.x.max(b.x),self.image_width),
@@ -70,9 +70,9 @@ mod tests {
     fn outward_rounding_negative_drag_1px_and_edge_clip(){
         let v=Viewport::new(2400,1600,100.0,50.0,1200.0,800.0).unwrap();
         let r=v.pixel_region(Point{x:101.1,y:50.1},Point{x:100.1,y:50.1}).unwrap();
-        assert_eq!(r,shareready_core::Region::new(0,0,3,1));
+        assert_eq!(r,anshot_core::Region::new(0,0,3,1));
         let edge=v.pixel_region(Point{x:-100.0,y:-100.0},Point{x:1500.0,y:900.0}).unwrap();
-        assert_eq!(edge,shareready_core::Region::new(0,0,2400,1600));
+        assert_eq!(edge,anshot_core::Region::new(0,0,2400,1600));
     }
     #[test]
     fn nan_and_zero_scale_are_rejected(){

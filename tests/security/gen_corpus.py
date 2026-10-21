@@ -1,9 +1,9 @@
-"""Generate a local malformed/hostile intake corpus for ShareReady (M4 hardening).
+"""Generate a local malformed/hostile intake corpus for Anshot (M4 hardening).
 
 Everything is synthesized here from Pillow, zlib and struct; nothing is
 downloaded and no real screenshots are used. Output goes to a gitignored
 folder (default: tests/security/corpus/) and is consumed by
-crates/shareready-core/tests/intake_hardening.rs.
+crates/anshot-core/tests/intake_hardening.rs.
 
     python tests/security/gen_corpus.py [--out DIR]
 

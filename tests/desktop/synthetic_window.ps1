@@ -7,7 +7,7 @@ Add-Type 'using System.Runtime.InteropServices; public static class D { [DllImpo
 [void][D]::SetProcessDPIAware()
 $img = [System.Drawing.Image]::FromFile((Resolve-Path $Image))
 $f = New-Object System.Windows.Forms.Form
-$f.Text = 'ShareReady synthetic fixture'
+$f.Text = 'Anshot synthetic fixture'
 $f.FormBorderStyle = 'None'; $f.StartPosition = 'Manual'; $f.TopMost = -not $Behind; $f.ShowInTaskbar = $true
 $f.Location = New-Object System.Drawing.Point $X, $Y
 $f.ClientSize = New-Object System.Drawing.Size $img.Width, $img.Height

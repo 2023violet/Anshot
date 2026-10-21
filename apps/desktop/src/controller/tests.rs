@@ -138,7 +138,7 @@ fn delivery_writes_the_rendered_png_even_without_redactions() {
     let (_, ticket) = c.review_finished(&work.key(), work.run()).unwrap();
     let mut red = 0;
     c.deliver(ticket, |bytes, dims| {
-        let img = shareready_core::decode_generated_png(bytes, dims)?;
+        let img = anshot_core::decode_generated_png(bytes, dims)?;
         red = img.pixels().filter(|p| p.0 == INKS[0]).count();
         Ok(())
     }).unwrap();
@@ -154,7 +154,7 @@ fn delivered_redaction_pixels_match_the_canvas_style() {
     let (_, ticket) = c.review_finished(&work.key(), work.run()).unwrap();
     let mut seen = None;
     c.deliver(ticket, |bytes, dims| {
-        let img = shareready_core::decode_generated_png(bytes, dims)?;
+        let img = anshot_core::decode_generated_png(bytes, dims)?;
         seen = Some((img.get_pixel(8, 8).0, img.get_pixel(23, 15).0, img.get_pixel(24, 16).0));
         Ok(())
     }).unwrap();
@@ -240,7 +240,7 @@ fn crop_drafts_apply_on_confirm_and_shape_the_export() {
     assert_eq!(editor(&c).output_dimensions(), (100, 60));
     let work = c.begin_delivery(Delivery::Copy).unwrap();
     let (_, ticket) = c.review_finished(&work.key(), work.run()).unwrap();
-    c.deliver(ticket, |bytes, dims| { assert_eq!(dims, (100, 60)); shareready_core::decode_generated_png(bytes, dims).map(|_| ()) }).unwrap();
+    c.deliver(ticket, |bytes, dims| { assert_eq!(dims, (100, 60)); anshot_core::decode_generated_png(bytes, dims).map(|_| ()) }).unwrap();
     c.enter_crop();
     c.cancel_crop();
     assert_eq!(editor(&c).crop(), Some(Region::new(20, 10, 120, 70)));

@@ -1,6 +1,6 @@
 //! Cross-crate proof: Editor owns masks and passes exactly those pixels to Core.
-use shareready_editor::{Editor, GestureKind, Handle, Viewport, Point, OperationKind};
-use shareready_core::{Region,redact};
+use anshot_editor::{Editor, GestureKind, Handle, Viewport, Point, OperationKind};
+use anshot_core::{Region,redact};
 const T04:&[u8]=include_bytes!("../../../docs/research/fixtures/T04_EDGES.png");
 const T05:&[u8]=include_bytes!("../../../docs/research/fixtures/T05_JPEG_EXIF.jpg");
 

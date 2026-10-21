@@ -2,12 +2,12 @@
 //! commands and drives the render -> delivery handshake. No Slint types here.
 #![forbid(unsafe_code)]
 use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF, MAX_ZOOM, MIN_ZOOM};
-use shareready_core::Region;
-use shareready_editor::{
+use anshot_core::Region;
+use anshot_editor::{
     Annotation, EditError, Editor, GestureKind, GestureTicket, Handle, OperationKind, PixelRect, Point, RedactStyle,
     Redaction, RenderWork, ReviewKey, ReviewResult, Scene, Shape, SourceCandidate, Stamp, Ticket,
 };
-use shareready_render::bounds;
+use anshot_render::bounds;
 
 /// 04_DESIGN `ink.*` content colours (keys 1-6).
 pub const INKS: [[u8; 4]; 6] = [

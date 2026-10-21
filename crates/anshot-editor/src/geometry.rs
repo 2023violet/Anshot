@@ -1,5 +1,5 @@
 //! Exact half-open source-pixel geometry: no floating-point pixels cross into PNG export.
-use shareready_core::Region;
+use anshot_core::Region;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Handle { N, Ne, E, Se, S, Sw, W, Nw }

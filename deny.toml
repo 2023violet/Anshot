@@ -5,7 +5,7 @@
 # from the manifest directory. Results: docs/SECURITY_TESTING.md.
 
 [graph]
-# ShareReady ships for Windows x64 only; the core crates also build to wasm for
+# Anshot ships for Windows x64 only; the core crates also build to wasm for
 # the frozen e1-spike reference. Other platforms' dependencies are not shipped.
 targets = ["x86_64-pc-windows-msvc", "wasm32-unknown-unknown"]
 all-features = false
@@ -18,7 +18,7 @@ unsound = "all"
 yanked = "deny"
 # Every ignore needs a reason and a revisit condition.
 ignore = [
-    # ttf-parser 0.25.1 (via ab_glyph 0.2.32 in shareready-render) is declared
+    # ttf-parser 0.25.1 (via ab_glyph 0.2.32 in anshot-render) is declared
     # unmaintained; no safe upgrade exists. It is not a vulnerability notice, and
     # the parser only reads the bundled assets/fonts/NotoSansCJKsc-Regular.otf
     # (include_bytes!), never user-supplied fonts. Revisit if any vulnerability

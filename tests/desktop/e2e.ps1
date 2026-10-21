@@ -52,10 +52,10 @@ public static class E {
 [void][E]::SetProcessDPIAware()
 New-Item -ItemType Directory -Force $Out | Out-Null
 # Never touch the user's real settings: every launched instance reads this folder.
-$env:SHAREREADY_SETTINGS_DIR = Join-Path $Out 'settings'
-$env:SHAREREADY_HISTORY_DIR = Join-Path $Out 'history'
-if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
-if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Get-ChildItem $env:SHAREREADY_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
+$env:ANSHOT_SETTINGS_DIR = Join-Path $Out 'settings'
+$env:ANSHOT_HISTORY_DIR = Join-Path $Out 'history'
+if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
+if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Get-ChildItem $env:ANSHOT_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
@@ -325,8 +325,8 @@ Start-Sleep -Milliseconds 500
 
 # ---- 11. keyboard routing: R, colour 4, Esc, Tab, Delete, Ctrl+Z, Ctrl+Y ----
 # Keep the editor open after copy so the following keys reach it.
-New-Item -ItemType Directory -Force $env:SHAREREADY_SETTINGS_DIR | Out-Null
-Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 $io = ImageOrigin $w $iw $ih
 Key 0x52                                  # R: frame
@@ -340,7 +340,7 @@ Log "KEYS undone=$(CopyTo 'keys-3-undo.png')"
 Key 0x59 -Ctrl                            # Ctrl+Y
 Log "KEYS redone=$(CopyTo 'keys-4-redo.png')"
 if (-not $w.P.HasExited) { $w.P.Kill() }
-[System.IO.File]::Delete((Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'))
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
 Start-Sleep -Milliseconds 500
 
 # ---- 12. settings: Ctrl+, -> choose Ctrl+Alt+A, persisted and active; copy keeps editor ----
@@ -354,7 +354,7 @@ Log "SETTINGS taken_key_warning=$(((UiaNames $w) -match '被其他程序占用')
 Log "SETTINGS pick_hotkey=$(Invoke-Uia $w 'Ctrl+Shift+X') pick_stay=$(Invoke-Uia $w '保留编辑窗')"
 Shot $w '13-settings.png'
 Key 0x1B
-$sf = Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'
+$sf = Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'
 Log ("SETTINGS file=" + ((Get-Content $sf -ErrorAction SilentlyContinue) -join ' | '))
 Key 0x58 -Ctrl -Shift                     # Ctrl+Shift+X, the newly chosen hotkey
 Start-Sleep -Milliseconds 1200
@@ -439,23 +439,23 @@ foreach ($case in @(@('broken', $broken), @('missing', (Join-Path $Out 'no-such-
 [System.IO.File]::Delete($broken)
 
 # ---- 19. (R5) start at login: written to a scratch key only, --background stays in the tray ----
-$env:SHAREREADY_RUN_KEY = 'Software\ShareReady-e2e\Run'
+$env:ANSHOT_RUN_KEY = 'Software\Anshot-e2e\Run'
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0xBC -Ctrl; Start-Sleep -Milliseconds 500
 Log "AUTOSTART on=$(Invoke-Uia $w '登录后在托盘待命')"
-$val = (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue).Anshot
+$val = (Get-ItemProperty -Path 'HKCU:\Software\Anshot-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue).Anshot
 Log "AUTOSTART value_has_exe=$($val -like "*$(Split-Path $Exe -Leaf)*") background=$($val -like '* --background')"
 Shot $w '16-settings-autostart.png'
 Log "AUTOSTART off=$(Invoke-Uia $w '不启动')"
-$gone = $null -eq (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue)
+$gone = $null -eq (Get-ItemProperty -Path 'HKCU:\Software\Anshot-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue)
 Log "AUTOSTART removed=$gone"
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
 $p = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 3
 Log "BACKGROUND running=$(-not $p.HasExited) editor_windows=$(if ([E]::Editor([uint32]$p.Id) -eq [IntPtr]::Zero) { 0 } else { 1 })"
 if (-not $p.HasExited) { $p.Kill() }
-Remove-Item -Path 'HKCU:\Software\ShareReady-e2e' -Recurse -ErrorAction SilentlyContinue
-Remove-Item Env:SHAREREADY_RUN_KEY
+Remove-Item -Path 'HKCU:\Software\Anshot-e2e' -Recurse -ErrorAction SilentlyContinue
+Remove-Item Env:ANSHOT_RUN_KEY
 Start-Sleep -Milliseconds 500
 
 # ---- 20. (R6) capture selection: drag the corner to resize, drag inside to move ----
@@ -572,17 +572,17 @@ Key 0x0D; Start-Sleep -Milliseconds 300    # Enter: use the shown colour (#9B30D
 Drag $w ($io.X + 300) ($io.Y + 250) ($io.X + 360) ($io.Y + 300)
 Shot $w '19-new-shapes.png'
 Log "SHAPES copy=$(CopyTo 'clipboard-shapes.png')"
-Log ("PICKER settings=" + ((Get-Content (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') -ErrorAction SilentlyContinue) -match 'recent_colors' -join ''))
+Log ("PICKER settings=" + ((Get-Content (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') -ErrorAction SilentlyContinue) -match 'recent_colors' -join ''))
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
 Start-Sleep -Milliseconds 500
-function HistoryFiles { @(Get-ChildItem $env:SHAREREADY_HISTORY_DIR -Filter 'sr-*.png' -ErrorAction SilentlyContinue) }
+function HistoryFiles { @(Get-ChildItem $env:ANSHOT_HISTORY_DIR -Filter 'sr-*.png' -ErrorAction SilentlyContinue) }
 function PinWindows($p) { [E]::Visible([uint32]$p.Id, 'Anshot 钉图') }
 
 # ---- 26. history keeps exactly the copied bytes; pin and delete from the history dialog ----
-if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
-New-Item -ItemType Directory -Force $env:SHAREREADY_SETTINGS_DIR | Out-Null
-Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
+if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 $io = ImageOrigin $w $iw $ih
 Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
@@ -601,14 +601,14 @@ Log "HISTORY files_after_delete=$((HistoryFiles).Count)"
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
 # History off: a copy leaves nothing behind.
-Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nhistory_limit=0"
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nhistory_limit=0"
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 $io = ImageOrigin $w $iw $ih
 Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
 [void](CopyTo 'clipboard-history-off.png')
 Log "HISTORY off_files=$((HistoryFiles).Count)"
 if (-not $w.P.HasExited) { $w.P.Kill() }
-[System.IO.File]::Delete((Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'))
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
 Start-Sleep -Milliseconds 500
 
 # ---- 27. pin from the capture selection: same pixels, same place; copy from its menu ----
@@ -649,7 +649,7 @@ if ($pins.Count -gt 0) {
     if ($clip) { $clip.Save((Join-Path $Out 'clipboard-pin-editor.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "PIN editor_copy=$($clip.Width)x$($clip.Height)"; $clip.Dispose() } else { Log "PIN editor_copy=none" }
 }
 if (-not $w.P.HasExited) { $w.P.Kill() }
-if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
+if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 
 Start-Sleep -Milliseconds 500
 
@@ -688,6 +688,6 @@ Log "LONG copy=$(CopyTo 'clipboard-long.png')"
 if (-not $app.HasExited) { $app.Kill() }
 
 # Leave no test settings or history behind.
-if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
-if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_SETTINGS_DIR }
+if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
+if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')

@@ -1,5 +1,7 @@
 # 07 补充 — 代理产品评审（0.1.0）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 日期 2026-10-20　评审人：Claude 代理（亲手驱动真实应用 + 代码核对；**不是真人评审**）
 被测：`dist/ShareReady-0.1.0-win-x64/ShareReady.exe` SHA256 `2786bd7487ee18f62923a5bad38411f34cfa81f88c32cba1061cbb1f06087b10`，代码 `f0a7590`。
 方法：全屏合成桌面上真实按快捷键截图、拖选、编辑；窗口缩放到最小、悬停工具按钮、裁剪、打开损坏 / 不存在的文件；逐项对照 PRD §5/§7 与主流截图工具（Snipaste、PixPin、Windows 截图工具、ShareX）的常见能力。评审截图只留在临时目录，未入库（其中第一轮误含其他程序窗口，已立即删除）。

@@ -19,13 +19,11 @@ pub fn read_clipboard_image(_png_limit:usize,_dib_limit:usize)->std::io::Result<
 #[cfg(windows)]
 mod autostart;
 #[cfg(windows)]
-pub use autostart::{autostart,migrate_legacy_autostart,set_autostart};
+pub use autostart::{autostart,set_autostart};
 #[cfg(not(windows))]
 pub fn autostart()->std::io::Result<Option<String>>{Ok(None)}
 #[cfg(not(windows))]
 pub fn set_autostart(_command:Option<&str>)->std::io::Result<()>{Err(std::io::ErrorKind::Unsupported.into())}
-#[cfg(not(windows))]
-pub fn migrate_legacy_autostart(_command:&str)->std::io::Result<bool>{Ok(false)}
 
 #[cfg(windows)]
 mod windows;

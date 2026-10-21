@@ -25,6 +25,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "anshot-core"
+version = "0.1.0"
+dependencies = [
+ "image",
+]
+
+[[package]]
+name = "anshot-editor"
+version = "0.1.0"
+dependencies = [
+ "anshot-core",
+ "anshot-render",
+]
+
+[[package]]
+name = "anshot-platform-windows"
+version = "0.1.0"
+dependencies = [
+ "windows-sys",
+]
+
+[[package]]
+name = "anshot-render"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "anshot-core",
+ "image",
+ "tiny-skia",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,44 +252,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
-name = "shareready-core"
-version = "0.1.0"
-dependencies = [
- "image",
-]
-
-[[package]]
 name = "shareready-e1"
 version = "0.1.0"
 dependencies = [
+ "anshot-core",
  "image",
- "shareready-core",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "shareready-editor"
-version = "0.1.0"
-dependencies = [
- "shareready-core",
- "shareready-render",
-]
-
-[[package]]
-name = "shareready-platform-windows"
-version = "0.1.0"
-dependencies = [
- "windows-sys",
-]
-
-[[package]]
-name = "shareready-render"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "image",
- "shareready-core",
- "tiny-skia",
 ]
 
 [[package]]

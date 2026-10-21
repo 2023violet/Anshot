@@ -1,5 +1,7 @@
 # 03 视觉方向 — ShareReady（临时代号）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 版本 v0.2　日期 2026-10-19　状态：**Gate 03 已确认（用户，2026-10-19）：视觉方向 v0.2 + Slint 1.18.1**
 来源：用户指定使用 awesome-design-md 语料选定或融合风格。参考规格：`cursor`（主）、`raycast`、`linear.app`、`figma`、`nvidia`、`sentry`（awesome-design-md/design-md/<品牌>/DESIGN.md）。
 

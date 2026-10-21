@@ -1,5 +1,7 @@
 # 05 高保真设计 — ShareReady「奶油编辑台」
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 版本 v0.1　日期 2026-10-19　状态：**Gate 05 已确认（用户，2026-10-19）**
 上游：[01_PRD](../01_PRD.md)（G01）· [02_UX](../02_UX_ARCHITECTURE.md) · [03 方向 + Slint](../03_VISUAL_DIRECTIONS.md)（G03）· [04_DESIGN v1.0](../04_DESIGN.md)（G04 冻结）
 原型：[prototype.html](prototype.html)（状态切换 + 窗口尺寸切换，↑↓ 键逐个浏览，`?s=H06&w=2` 直达；合成截图已内嵌，单文件可打开；HTML 为视觉与交互参考，原生实现为 Slint）

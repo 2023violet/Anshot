@@ -191,6 +191,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "anshot-core"
+version = "0.1.0"
+dependencies = [
+ "image",
+]
+
+[[package]]
+name = "anshot-editor"
+version = "0.1.0"
+dependencies = [
+ "anshot-core",
+ "anshot-render",
+]
+
+[[package]]
+name = "anshot-platform-windows"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "anshot-render"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "anshot-core",
+ "image",
+ "tiny-skia",
+]
+
+[[package]]
 name = "arboard"
 version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2565,31 +2597,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "shareready-core"
-version = "0.1.0"
-dependencies = [
- "image",
-]
-
-[[package]]
-name = "shareready-editor"
-version = "0.1.0"
-dependencies = [
- "shareready-core",
- "shareready-render",
-]
-
-[[package]]
 name = "shareready-native-egui-poc"
 version = "0.1.0"
 dependencies = [
+ "anshot-core",
+ "anshot-editor",
+ "anshot-platform-windows",
  "arboard",
  "eframe",
  "rfd",
- "shareready-core",
- "shareready-editor",
  "shareready-native-input-bridge",
- "shareready-platform-windows",
  "windows-sys 0.61.2",
 ]
 
@@ -2601,23 +2618,6 @@ dependencies = [
  "raw-window-handle",
  "windows-sys 0.61.2",
  "winit",
-]
-
-[[package]]
-name = "shareready-platform-windows"
-version = "0.1.0"
-dependencies = [
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "shareready-render"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "image",
- "shareready-core",
- "tiny-skia",
 ]
 
 [[package]]

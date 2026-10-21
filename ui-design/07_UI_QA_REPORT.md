@@ -1,5 +1,7 @@
 # 07 验收报告 — 安截 Anshot 0.2.0（Windows，Slint）
 
+> 命名说明：本文写于临时代号 ShareReady 时期，文中旧名与旧路径（如 `crates/shareready-*`）保留原样；2026-10-21 起产品名为 **安截 Anshot**，代码在 `crates/anshot-*`，仓库为 <https://github.com/2023violet/Anshot>。
+
 日期 2026-10-19，v1.2 / v1.3 复测 2026-10-20，**v2.0 复测 2026-10-21**　执行：Claude 代理（自动化，真实系统键鼠输入；**不是真人测试**）
 授权：用户 /goal 委托代理确认方案（见 06 文档）。本报告的 Gate 07 结论为**代理确认**。
 被测物（v2.0）：`dist/Anshot-0.2.0-win-x64/Anshot.exe` SHA256 `4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450`（e2e.log / ime.log / perf.log / install_qa.log 首行记录同一哈希）；安装程序 `Anshot-0.2.0-win-x64-setup.exe` SHA256 `c992c04a20a8d9739e10532106b7e7e67e5554ab13870ac8dc31e0b2d1ab44da`；便携 zip SHA256 `5f4dda3eded37493b7120091f0f429a975f21e24cf165bc75bda613a03b95adb`；构建提交 `8466af6a5410599874fa98b909704eb63fdb0060`（`release-metadata.json` dirty=false；未签名、未发布）。历史版本：v1.1 处理最终审查 D1–D6；v1.2 设置页、多行文字、字体去重；v1.3（0.1.1）处理代理产品评审 R1–R6；**v2.0（0.2.0）首个公开版本候选，见 §8**。
@@ -106,6 +108,9 @@
 - 发布前最终审查（16cafb7）：READY_WITH_FIXES，H1、M1–M4、L1–L5 已修复（32c8b8c）。其中 H1 为**文档夸大**：历史保存的是复制 / 保存过的图片原样（可能含未遮挡内容），已在应用、README、更新日志、发布说明中更正。
 - 安装 QA 发现并修复：静默安装 / 卸载在程序运行时被错误中止（6ed3e71）。
 - 测试过程中两次证据截图意外包含其他程序画面，均在提交前删除，并改用窗口自绘截图（PrintWindow）、日志隐去用户名。
+
+### 8.2a 仓库与内部命名统一后的复测（2026-10-21，发布后，未发版）
+crate / 测试变量 / 仓库统一改为 Anshot 后，用本地重新打包的 exe（SHA256 `e90fcc0299b2719e412c2710c53a7731d74b440ffeb9d870ee24ab7c688f8237`，非已发布资产）重跑 e2e 1–29：全部通过，像素读回检查全部 PASS（长截图 550×2070 与合成长页 0 差异）。日志 `tests/desktop/evidence/release/e2e-rename-check.log`；上文 e2e.log 仍为已发布 0.2.0 exe 的记录。
 
 ### 8.3 仍未验证 / 已知限制（如实保留）
 - 真人可用性（A1 / A7）：用户决定不做，**不以代理测试冒充**。
