@@ -1,4 +1,4 @@
-SETUP sha256=96be72b006a0ab369a2684ddcebbeb1ac4836c1bb4c3b25678d5883367f032bc exe_sha256=4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450
+SETUP sha256=c992c04a20a8d9739e10532106b7e7e67e5554ab13870ac8dc31e0b2d1ab44da exe_sha256=4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450
 A before: dir=False uninstall_key=False startmenu=False desktop=False run_value=False settings_dir=False
 B next=True
 B install=True

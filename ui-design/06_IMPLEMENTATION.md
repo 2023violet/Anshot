@@ -139,3 +139,14 @@
 - **R6** `capture.rs` 新增 `Grab::{New, Move, Edge}`、覆盖层八个手柄与指针形状；控制器新增 `Drag::CropAdjust`，复用 `PixelRect::resize / translate`（限制在图像内）。
 - 版本号 0.1.1；exe 32,801,280 字节；SHA256 `fd7b8964c6dbfe1405ea80ff6924bc27dbc60b190e43595749a5f834c53f8b3f`。单测：根 workspace 86 项、desktop 32 项全部通过；V1 冻结金样本通过。
 - 性能修正：首版 R1 用固定 150 ms 等待，导致“编辑窗打开时快捷键→覆盖层”208–232 ms 超出 200 ms 目标；改为合成器刷新后为 89–106 ms。
+
+## B7 — 0.2.0 首个公开版本（代理确认，2026-10-21）
+按用户批准的“第一版正式发布地基计划”实施（M0–M6），每个里程碑单独提交：
+- M1（e7d2f97）椭圆 / 直线 / 画笔（render 新增 `Shape::Ellipse/Line/Pen` 与冻结金样本 scene-v2）、自定义颜色（`color.rs`，HSV / HEX / 最近使用）、选区工具条（复制 / 保存 / 编辑，走完整 Rust 交付路径）、R7 放大镜轮询指针。
+- M2（554781b）钉图（`ui/pin.slint`）、截图历史（`history.rs`，只记录编辑器交付成功的 PNG 字节）。
+- M3（1584dc0）长截图（`stitch.rs`：行签名 + 截尾均值匹配、固定页头页脚、拒绝跳跃、像素上限；控制条在选区外）。
+- M4 安全：恶意样本语料与变异测试（4ae7cac，独立会话完成）；代理安全审查 F1–F7 修复（276e20d）。
+- M5 改名为安截 Anshot（276e20d，含设置与开机启动项迁移）、NSIS 按用户安装程序与发布物（c71284d）、安装 QA（bd8c3b9）、双语 README / 更新日志 / SECURITY / 发布说明 / CI（16cafb7）。
+- M6 发布前最终审查修复（32c8b8c）、静默安装中止修复（6ed3e71）、全量复测证据（8466af6）。
+最终构建：exe `4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450`，setup `c992c04a20a8d9739e10532106b7e7e67e5554ab13870ac8dc31e0b2d1ab44da`，zip `5f4dda3eded37493b7120091f0f429a975f21e24cf165bc75bda613a03b95adb`。测试结果见 07 §8。
+
