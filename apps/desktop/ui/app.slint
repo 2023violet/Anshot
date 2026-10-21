@@ -69,6 +69,7 @@ export component AppWindow inherits Window {
     in property <bool> hotkey-active: true;
     in property <bool> hide-after-copy: true;
     in property <string> save-dir;
+    in property <string> app-version;
     in property <bool> autostart;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
@@ -356,15 +357,18 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 330px : root.dialog == "settings" ? 380px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
+                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 380px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : root.dialog == "color" ? "自定义颜色" : root.dialog == "history" ? "截图历史" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
                     Text { text: "关于 安截 Anshot"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
-                    Text { text: "版本 0.2.0 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
+                    Text { text: "版本 " + root.app-version + " · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
                     Rectangle { height: 150px; AboutSlint { } }
-                    HorizontalLayout { alignment: end; ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
+                    Label { text: "检查更新会用浏览器打开发布页；本程序自身从不联网。"; }
+                    HorizontalLayout { spacing: 8px; alignment: end;
+                        ActionButton { label: "检查更新"; key: ""; kind: 0; clicked => { root.command("check-update"); } }
+                        ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog == "settings": VerticalLayout { padding: 24px; spacing: 12px;
                     Text { text: "设置"; font-size: 15px; font-weight: 600; color: Theme.ink; }

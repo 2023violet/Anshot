@@ -934,6 +934,9 @@ fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: O
     });
 }
 
+/// Where new versions are published (opened in the browser by "检查更新").
+const RELEASES_URL: &str = "https://github.com/2023violet/ShareReady/releases";
+
 /// What the Run entry launches: this exe, tray only.
 fn autostart_command() -> Option<String> {
     std::env::current_exe().ok().map(|p| format!("\"{}\" --background", p.display()))
@@ -985,6 +988,8 @@ fn command(cmd: &str) {
         // Blocking dialogs and clipboard reads run outside the state borrow.
         "open" => { if let Some(p) = picker(platform::pick_image) { open_path(p); } }
         "paste" => spawn_open(platform::read_clipboard(), Some("剪贴板图片.png".into())),
+        // The app never connects anywhere: the default browser opens the release page.
+        "check-update" => { let _ = std::process::Command::new("explorer").arg(RELEASES_URL).spawn(); }
         "capture" => { with(|a| a.begin_capture()); }
         "save-dir" => {
             if let Some(dir) = picker(platform::pick_folder) { with(|a| { a.settings.save_dir = Some(dir); a.persist(); }); }
@@ -1175,6 +1180,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let background = args.iter().any(|a| a == "--background");
     if let Some(path) = args.into_iter().find(|a| a != "--background").map(PathBuf::from) { open_path(path); }
+    ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     with(|a| { a.push_settings(); a.refresh(); });
     let resident = with(|a| a.resident).unwrap_or(false);
     if !(background && resident) { ui.show()?; }
