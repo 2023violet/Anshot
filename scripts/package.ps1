@@ -58,7 +58,8 @@ if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
 # Checksums and honest metadata for the release files.
 $assets = @($setup, $zip)
 $sums = $assets | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $(Split-Path $_ -Leaf)" }
-$sums | Set-Content -Encoding ascii (Join-Path $out 'SHA256SUMS.txt')
+# LF line endings so `sha256sum -c` works on any platform.
+[System.IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'), (($sums -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
 $exeHash = (Get-FileHash "$dist\Anshot.exe" -Algorithm SHA256).Hash.ToLower()
 $meta = [ordered]@{
     name = 'Anshot (安截)'; version = $version; platform = 'windows-x64'
