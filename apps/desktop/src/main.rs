@@ -13,6 +13,7 @@ mod history;
 mod messages;
 mod platform;
 mod settings;
+mod stitch;
 
 use canvas::Zoom;
 use controller::{Controller, Delivery, Notice, Tool, CUSTOM_INK, TEXT_SIZES};
@@ -75,6 +76,15 @@ struct App {
     pin_drag: Option<(u64, (i32, i32), (i32, i32))>,
     /// History entries currently listed in the history dialog (same order as the UI).
     history_shown: Vec<history::Entry>,
+    /// A running long screenshot.
+    long: Option<LongShot>,
+}
+
+struct LongShot {
+    region: ScreenRect,
+    stitcher: Option<stitch::Stitcher>,
+    panel: LongShotPanel,
+    timer: slint::Timer,
 }
 
 struct Pin { id: u64, win: PinWindow, img: RgbaImage, zoom: f32 }
@@ -438,7 +448,7 @@ impl App {
 
     // ---- capture (02 S1) ----
     fn begin_capture(&mut self) {
-        if self.session.is_some() || self.capture_pending { return; }
+        if self.session.is_some() || self.capture_pending || self.long.is_some() { return; }
         if let Some(t) = self.toast_win.as_ref() { let _ = t.hide(); }
         // Never freeze our own editor into the shot: hide it, let the event loop apply the
         // hide, then wait for the compositor to present the desktop without it.
@@ -503,6 +513,7 @@ impl App {
     fn overlay_action(&mut self, action: &str) {
         match action {
             "pin" => self.pin_selection(),
+            "long" => self.start_long_shot(),
             "copy" => self.finish_capture(Some(Delivery::Copy)),
             "save" => self.finish_capture(Some(Delivery::Save)),
             "edit" => self.finish_capture(None),
@@ -593,6 +604,87 @@ impl App {
         self.end_capture();
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
         if let (Some(img), Some(r)) = (pixels, area) { self.open_pin(img, Some((r.x, r.y))); }
+    }
+
+    // ---- long screenshot ----
+    /// Leave the frozen overlay, keep the selected region, and stitch live captures of it
+    /// while the user scrolls the real window underneath.
+    fn start_long_shot(&mut self) {
+        if self.long.is_some() { return; }
+        let Some(s) = self.session.as_ref() else { return };
+        let Some(region) = s.selection else { return };
+        let Some(mon) = s.monitor_at(region.x + region.w / 2, region.y + region.h / 2) else { return };
+        let k = self.overlays.first().map_or(1.0, |(w, _)| w.window().scale_factor());
+        let (pw, ph) = ((300.0 * k) as i32, (96.0 * k) as i32);
+        let gap = (12.0 * k) as i32;
+        let fits = |x: i32, y: i32| x >= mon.bounds.x && y >= mon.bounds.y && x + pw <= mon.bounds.x + mon.bounds.w && y + ph <= mon.bounds.y + mon.bounds.h;
+        let spot = [
+            (region.x + region.w + gap, region.y),
+            (region.x - gap - pw, region.y),
+            (region.x + region.w - pw, region.y + region.h + gap),
+            (region.x + region.w - pw, region.y - gap - ph),
+        ].into_iter().find(|&(x, y)| fits(x, y));
+        self.end_capture();
+        let Some((px, py)) = spot else {
+            if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+            self.system_toast("warn", "无法开始长截图", "请把选区缩小一些，给控制条留出位置");
+            return;
+        };
+        let Ok(panel) = LongShotPanel::new() else { return };
+        panel.on_finish(|| { with(|a| a.finish_long_shot()); });
+        panel.on_cancel(|| { with(|a| a.cancel_long_shot()); });
+        panel.window().set_position(slint::PhysicalPosition::new(px, py));
+        let _ = panel.show();
+        panel.window().set_position(slint::PhysicalPosition::new(px, py));
+        let timer = slint::Timer::default();
+        timer.start(slint::TimerMode::Repeated, Duration::from_millis(120), || { with(|a| a.poll_long_shot()); });
+        self.long = Some(LongShot { region, stitcher: None, panel, timer });
+    }
+    fn poll_long_shot(&mut self) {
+        let Some(l) = self.long.as_mut() else { return };
+        let Ok(cap) = shareready_platform_windows::capture(l.region) else { return };
+        let Some(frame) = RgbaImage::from_raw(cap.area.w as u32, cap.area.h as u32, cap.rgba) else { return };
+        let state = match l.stitcher.as_mut() {
+            None => { l.stitcher = Some(stitch::Stitcher::new(frame, shareready_core::MAX_PIXELS)); "" }
+            Some(s) => match s.push(frame) { stitch::Push::Lost => "lost", stitch::Push::Full => "full", _ => "" },
+        };
+        let h = l.stitcher.as_ref().map_or(0, |s| s.height());
+        l.panel.set_stitched_height(h as i32);
+        l.panel.set_state(state.into());
+        if state == "full" { l.timer.stop(); }
+    }
+    fn close_long_shot(&mut self) -> Option<LongShot> {
+        let l = self.long.take()?;
+        l.timer.stop();
+        let _ = l.panel.hide();
+        Some(l)
+    }
+    fn cancel_long_shot(&mut self) {
+        self.close_long_shot();
+        if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+    }
+    fn finish_long_shot(&mut self) {
+        let Some(l) = self.close_long_shot() else { return };
+        let Some(img) = l.stitcher.and_then(stitch::Stitcher::finish) else { self.cancel_long_shot(); return };
+        self.restore_editor = false;
+        self.show_editor();
+        // Encode off the UI thread; very tall pages are trimmed to the 25 MB intake limit.
+        std::thread::spawn(move || {
+            let mut img = img;
+            let mut png = capture::encode_png(img.clone());
+            for _ in 0..4 {
+                match &png {
+                    Ok(b) if b.len() > shareready_core::MAX_INPUT_BYTES => {
+                        let keep = (u64::from(img.height()) * shareready_core::MAX_INPUT_BYTES as u64 * 9 / 10 / b.len() as u64).max(1) as u32;
+                        img = image::imageops::crop_imm(&img, 0, 0, img.width(), keep).to_image();
+                        png = capture::encode_png(img.clone());
+                    }
+                    _ => break,
+                }
+            }
+            let (w, h) = img.dimensions();
+            let _ = slint::invoke_from_event_loop(move || spawn_open(png, Some(format!("长截图 {w}×{h}.png"))));
+        });
     }
 
     // ---- pins ----
@@ -954,7 +1046,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, after_open: None,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(),
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), long: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {

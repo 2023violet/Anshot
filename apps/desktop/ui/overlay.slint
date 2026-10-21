@@ -97,6 +97,7 @@ export component CaptureOverlay inherits Window {
             TouchArea { } // keep clicks on the bar from starting a new selection
             row := HorizontalLayout { x: 6px; spacing: 6px; alignment: center;
                 VerticalLayout { alignment: center; ActionButton { label: "取消"; key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "长截图"; key: ""; kind: 0; clicked => { root.action("long"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "钉图"; key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "编辑"; key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "保存"; key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }

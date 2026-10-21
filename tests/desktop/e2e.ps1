@@ -651,6 +651,42 @@ if ($pins.Count -gt 0) {
 if (-not $w.P.HasExited) { $w.P.Kill() }
 if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
 
+Start-Sleep -Milliseconds 500
+
+# ---- 29. long screenshot: scroll a synthetic page with the real mouse wheel, stitch, compare ----
+# Page: the synthetic shot repeated, plus a 24 px strip whose colour encodes the row, so every row is unique.
+$page = Join-Path $Out 'long-page-synthetic.png'
+$pbmp = New-Object System.Drawing.Bitmap 600, 2400; $pg = [System.Drawing.Graphics]::FromImage($pbmp)
+$pg.Clear([System.Drawing.Color]::White); $tile = [System.Drawing.Image]::FromFile((Resolve-Path $Image))
+for ($ty = 0; $ty -lt 2400; $ty += $tile.Height) { $pg.DrawImageUnscaled($tile, 24, $ty) }
+$tile.Dispose(); $pg.Dispose()
+for ($y = 0; $y -lt 2400; $y++) { $c = [System.Drawing.Color]::FromArgb(255, $y % 256, [math]::Floor($y / 256) * 20, 128); for ($x = 0; $x -lt 24; $x++) { $pbmp.SetPixel($x, $y, $c) } }
+$pbmp.SetResolution(96, 96)   # shown 1:1, so the stitched result can be compared pixel by pixel
+$pbmp.Save($page, [System.Drawing.Imaging.ImageFormat]::Png); $pbmp.Dispose()
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'scroll_window.ps1'), '-Image', "`"$page`"", '-X', $fx, '-Y', $fy, '-W', 640, '-H', 420) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+ScreenDrag ($fx + 10) ($fy + 10) ($fx + 560) ($fy + 400)
+Start-Sleep -Milliseconds 300
+Log "LONG start=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '长截图')"
+Start-Sleep -Milliseconds 800
+[void][E]::SetCursorPos($fx + 300, $fy + 200); Start-Sleep -Milliseconds 300
+foreach ($i in 1..14) { [E]::mouse_event(0x0800, 0, 0, [uint32]4294967176, [IntPtr]::Zero); Start-Sleep -Milliseconds 350 }
+Start-Sleep -Milliseconds 600
+$panel = [E]::TitleAny('ShareReady 长截图')
+$pn = UiaNames ([pscustomobject]@{ H = $panel })
+Log ("LONG panel=" + (($pn | Where-Object { $_ -like '长截图 已拼接*' }) -join ''))
+Log "LONG finish=$(Invoke-Uia ([pscustomobject]@{ H = $panel }) '完成')"
+Start-Sleep -Milliseconds 2500
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 800
+$w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+Log ("LONG editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }) -join ' | '))
+Log "LONG copy=$(CopyTo 'clipboard-long.png')"
+if (-not $app.HasExited) { $app.Kill() }
+
 # Leave no test settings behind.
 if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_SETTINGS_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'e2e.log')
