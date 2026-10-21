@@ -29,6 +29,7 @@ jobs:
       - name: Frozen V1 goldens
         run: |
           cargo build --release --locked --manifest-path e1-spike/Cargo.toml
+          cargo build --release --locked --manifest-path e1-spike/Cargo.toml --example v1_baseline_preview
           python -m pip install pillow==12.3.0
           python tests/golden/verify_v1_baseline.py
 
