@@ -9,6 +9,7 @@ mod capture;
 mod color;
 mod controller;
 mod display;
+mod history;
 mod messages;
 mod platform;
 mod settings;
@@ -67,7 +68,16 @@ struct App {
     last_cursor: Option<(i32, i32)>,
     /// What to do as soon as a captured image is open (overlay toolbar: copy / save).
     after_open: Option<Delivery>,
+    /// Pinned images (top-most windows); ids stay stable while others close.
+    pins: Vec<Pin>,
+    next_pin: u64,
+    /// Pin being dragged: id, cursor and window position at the press.
+    pin_drag: Option<(u64, (i32, i32), (i32, i32))>,
+    /// History entries currently listed in the history dialog (same order as the UI).
+    history_shown: Vec<history::Entry>,
 }
+
+struct Pin { id: u64, win: PinWindow, img: RgbaImage, zoom: f32 }
 
 fn to_image(img: &RgbaImage) -> Image {
     let (w, h) = img.dimensions();
@@ -264,13 +274,17 @@ impl App {
     fn review_done(&mut self, key: &ReviewKey, result: Result<ReviewResult, EditError>) {
         match self.ctl.review_finished(key, result) {
             Ok((Delivery::Copy, ticket)) => {
-                let outcome = self.ctl.deliver(ticket, platform::write_clipboard);
+                let mut kept = None;
+                let outcome = self.ctl.deliver(ticket, |png, dims| { let r = platform::write_clipboard(png, dims); if r.is_ok() { kept = Some(png.to_vec()); } r });
+                if let Some(png) = kept { self.record_history(&png); }
                 self.after_delivery(Delivery::Copy, outcome, None);
             }
             Ok((Delivery::Save, ticket)) => {
                 let Some(path) = self.save_path.take() else { self.ctl.abandon_delivery(ticket); self.refresh(); return };
                 let path = platform::free_path(&path);
-                let outcome = self.ctl.deliver(ticket, |png, _| platform::write_file(&path, png));
+                let mut kept = None;
+                let outcome = self.ctl.deliver(ticket, |png, _| { let r = platform::write_file(&path, png); if r.is_ok() { kept = Some(png.to_vec()); } r });
+                if let Some(png) = kept { self.record_history(&png); }
                 let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
                 self.after_delivery(Delivery::Save, outcome, name);
             }
@@ -405,7 +419,11 @@ impl App {
         t.set_kind(kind.into());
         t.set_heading(heading.into());
         t.set_detail(detail.into());
+        // The toast must not take keyboard focus (e.g. from a pin the user is working with).
+        let focus = shareready_platform_windows::foreground_window();
         let _ = t.show();
+        // The window system shows it on a later frame: hand focus back after that.
+        slint::Timer::single_shot(Duration::from_millis(60), move || shareready_platform_windows::restore_foreground(focus));
         if let Some(m) = shareready_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
             let s = t.window().scale_factor();
             let (w, h) = ((300.0 * s) as i32, (64.0 * s) as i32);
@@ -484,6 +502,7 @@ impl App {
     /// Overlay toolbar / shortcuts: copy, save, edit, cancel.
     fn overlay_action(&mut self, action: &str) {
         match action {
+            "pin" => self.pin_selection(),
             "copy" => self.finish_capture(Some(Delivery::Copy)),
             "save" => self.finish_capture(Some(Delivery::Save)),
             "edit" => self.finish_capture(None),
@@ -566,6 +585,105 @@ impl App {
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
     }
     fn confirm_capture(&mut self) { self.finish_capture(None); }
+    /// Overlay "pin": the selected screen pixels become a pin at the same place.
+    fn pin_selection(&mut self) {
+        let Some(s) = self.session.as_ref() else { return };
+        let area = s.confirm_area();
+        let pixels = area.and_then(|r| s.crop(r));
+        self.end_capture();
+        if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+        if let (Some(img), Some(r)) = (pixels, area) { self.open_pin(img, Some((r.x, r.y))); }
+    }
+
+    // ---- pins ----
+    fn open_pin(&mut self, img: RgbaImage, at: Option<(i32, i32)>) {
+        let Ok(win) = PinWindow::new() else { self.toast("error", "无法钉图", "无法创建窗口", None); return };
+        let id = self.next_pin;
+        self.next_pin += 1;
+        win.set_img(to_image(&img));
+        win.on_drag_start(move || { with(|a| a.pin_drag_start(id)); });
+        win.on_drag_move(move || { with(|a| a.pin_drag_move(id)); });
+        win.on_zoom(move |dy| { with(|a| a.pin_zoom(id, dy)); });
+        win.on_act(move |k| { let k = k.to_string(); slint::Timer::single_shot(Duration::ZERO, move || pin_action(id, &k)); });
+        let (x, y) = at.unwrap_or_else(|| {
+            let c = shareready_platform_windows::cursor().unwrap_or((200, 200));
+            (c.0 - img.width() as i32 / 2, c.1 - img.height() as i32 / 2)
+        });
+        win.window().set_position(slint::PhysicalPosition::new(x, y));
+        win.window().set_size(slint::PhysicalSize::new(img.width().max(24), img.height().max(24)));
+        let _ = win.show();
+        win.window().set_size(slint::PhysicalSize::new(img.width().max(24), img.height().max(24)));
+        self.pins.push(Pin { id, win, img, zoom: 1.0 });
+    }
+    fn pin(&self, id: u64) -> Option<&Pin> { self.pins.iter().find(|p| p.id == id) }
+    fn pin_drag_start(&mut self, id: u64) {
+        let (Some(p), Some(c)) = (self.pin(id), shareready_platform_windows::cursor()) else { return };
+        let pos = p.win.window().position();
+        self.pin_drag = Some((id, c, (pos.x, pos.y)));
+    }
+    fn pin_drag_move(&mut self, id: u64) {
+        let (Some((pid, c0, w0)), Some(c)) = (self.pin_drag, shareready_platform_windows::cursor()) else { return };
+        if pid != id { return; }
+        if let Some(p) = self.pin(id) { p.win.window().set_position(slint::PhysicalPosition::new(w0.0 + c.0 - c0.0, w0.1 + c.1 - c0.1)); }
+    }
+    fn pin_zoom(&mut self, id: u64, dy: f32) {
+        let Some(p) = self.pins.iter_mut().find(|p| p.id == id) else { return };
+        p.zoom = (p.zoom * if dy < 0.0 { 1.1 } else { 1.0 / 1.1 }).clamp(0.1, 4.0);
+        let (w, h) = ((p.img.width() as f32 * p.zoom).round().max(24.0) as u32, (p.img.height() as f32 * p.zoom).round().max(24.0) as u32);
+        p.win.window().set_size(slint::PhysicalSize::new(w, h));
+        p.win.set_zoom_text(format!("{}%", (p.zoom * 100.0).round()).into());
+    }
+    fn close_pin(&mut self, id: u64) {
+        if let Some(i) = self.pins.iter().position(|p| p.id == id) { let p = self.pins.remove(i); let _ = p.win.hide(); }
+    }
+    /// Editor "pin": render the current document (redactions, annotations, crop) in Rust off-thread.
+    fn pin_document(&mut self) {
+        let Some(e) = self.ctl.editor.as_ref() else { return };
+        let Some(src) = e.source_bytes().map(<[u8]>::to_vec) else { return };
+        let scene = e.scene();
+        std::thread::spawn(move || {
+            let img = shareready_render::render_png(&src, &scene).ok().and_then(|png| shareready_core::decode_source(&png).ok());
+            let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
+                Some(img) => a.open_pin(img, None),
+                None => a.toast("error", "无法钉图", "生成图片失败", None),
+            }); });
+        });
+    }
+
+    // ---- history ----
+    fn history(&self) -> Option<history::History> { history::History::default_dir().map(history::History::at) }
+    fn record_history(&mut self, png: &[u8]) {
+        let limit = self.settings.history_limit;
+        if limit == 0 { return; }
+        if let Some(h) = self.history() { let _ = h.add(png, limit); }
+    }
+    fn open_history(&mut self) {
+        self.show_editor();
+        let Some(ui) = self.ui() else { return };
+        ui.set_history_items(ModelRc::default());
+        ui.set_history_loading(true);
+        ui.set_dialog("history".into());
+        let entries = self.history().map(|h| h.list()).unwrap_or_default();
+        self.history_shown = entries.clone();
+        let now = history::now_millis();
+        // Thumbnails decode through Core off the UI thread; files are untrusted input.
+        std::thread::spawn(move || {
+            let thumbs: Vec<(Option<RgbaImage>, String)> = entries.iter().map(|e| {
+                let img = platform::read_image_file(&e.path).ok().and_then(|b| shareready_core::decode_source(&b).ok())
+                    .map(|i| image::imageops::thumbnail(&i, 168.min(i.width()), (168 * i.height() / i.width().max(1)).clamp(1, 112)));
+                (img, history::label(e.millis, now))
+            }).collect();
+            let _ = slint::invoke_from_event_loop(move || { with(|a| {
+                let Some(ui) = a.ui() else { return };
+                let items: Vec<HistoryItem> = thumbs.iter().map(|(img, label)| HistoryItem {
+                    thumb: img.as_ref().map(to_image).unwrap_or_default(), label: label.clone().into(), broken: img.is_none(),
+                }).collect();
+                ui.set_history_items(ModelRc::new(VecModel::from(items)));
+                ui.set_history_loading(false);
+            }); });
+        });
+    }
+    fn history_entry(&self, i: usize) -> Option<history::Entry> { self.history_shown.get(i).cloned() }
     /// Take the selection into the editor; `then` copies or saves it straight away
     /// through the same Rust render and delivery path (the editor stays hidden for a copy).
     fn finish_capture(&mut self, then: Option<Delivery>) {
@@ -606,6 +724,7 @@ impl App {
         ui.set_hotkey_active(self.hotkey.is_some());
         ui.set_hide_after_copy(s.hide_after_copy);
         ui.set_save_dir(s.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default().into());
+        ui.set_history_limit_index(settings::HISTORY_LIMITS.iter().position(|n| *n == s.history_limit).unwrap_or(2) as i32);
         ui.set_autostart(matches!(shareready_platform_windows::autostart(), Ok(Some(_))));
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); }
     }
@@ -733,7 +852,9 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
-    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-");
+    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-");
+    let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
+    if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
     if in_picker && cmd.starts_with("picker-") {
         with(|a| match cmd {
@@ -798,6 +919,12 @@ fn command(cmd: &str) {
                     "zoom-in" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(1.25, c); }
                     "zoom-out" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(0.8, c); }
                     "settings" => a.open_settings(),
+                    "history" => a.open_history(),
+                    "pin" => a.pin_document(),
+                    c if c.starts_with("keep-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_LIMITS.get(i)) {
+                        a.settings.history_limit = n; a.persist();
+                        if let Some(h) = a.history() { h.prune(n); }
+                    } }
                     c if c.starts_with("hotkey-") => { if let Ok(i) = c[7..].parse::<usize>() { a.set_hotkey(i); } }
                     "copy-hide" => { a.settings.hide_after_copy = true; a.persist(); }
                     "copy-stay" => { a.settings.hide_after_copy = false; a.persist(); }
@@ -827,6 +954,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, after_open: None,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(),
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -837,6 +965,7 @@ fn main() -> Result<(), slint::PlatformError> {
         tray.on_about(|| { with(|a| { a.show_editor(); if let Some(ui) = a.ui() { ui.set_dialog("about".into()); } }); });
         tray.on_quit(|| { with(|a| a.request_quit()); });
         tray.on_settings(|| { with(|a| a.open_settings()); });
+        tray.on_history(|| { with(|a| a.open_history()); });
         with(|a| {
             a.resident = true;
             a.tray = Some(tray);
@@ -903,6 +1032,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 Some('v') => { command("paste"); return true; }
                 Some('s') => { command("save"); return true; }
                 Some(',') => { command("settings"); return true; }
+                Some('h') => { command("history"); return true; }
+                Some('t') => { command("pin"); return true; }
                 _ => {}
             }
         }
@@ -961,6 +1092,70 @@ fn cursor_kind(s: &capture::Session, cursor: Option<(i32, i32)>) -> &'static str
             (true, false) => "ew",
             _ => "ns",
         },
+    }
+}
+
+/// Pin menu / shortcuts. Runs outside the state borrow (the save dialog blocks).
+fn pin_action(id: u64, act: &str) {
+    let Some(img) = with(|a| a.pin(id).map(|p| p.img.clone())).flatten() else { return };
+    match act {
+        "close" => { with(|a| a.close_pin(id)); }
+        "edit" => { with(|a| a.show_editor()); spawn_open(capture::encode_png(img), Some("钉图.png".into())); }
+        "copy" => {
+            let dims = img.dimensions();
+            let result = capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, dims).map(|()| png));
+            with(|a| match result {
+                Ok(png) => { a.record_history(&png); a.system_toast("done", "已复制到剪贴板", &format!("{} × {}", dims.0, dims.1)); }
+                Err(e) => a.system_toast("error", "复制失败", &e),
+            });
+        }
+        "save" => {
+            let dir = with(|a| a.settings.save_dir.clone()).flatten();
+            let Some(path) = picker(|| platform::pick_save_path("钉图.png", dir.as_deref())) else { return };
+            let path = platform::free_path(&path);
+            let result = capture::encode_png(img).and_then(|png| platform::write_file(&path, &png).map(|()| png));
+            with(|a| match result {
+                Ok(png) => { a.record_history(&png); a.system_toast("done", "已保存", &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()); }
+                Err(e) => a.system_toast("error", "保存失败", &e),
+            });
+        }
+        o if o.starts_with("opacity-") => {
+            let level = o[8..].parse::<f32>().unwrap_or(100.0) / 100.0;
+            with(|a| if let Some(p) = a.pin(id) { p.win.set_level(level); });
+        }
+        _ => {}
+    }
+}
+
+/// History dialog actions on the listed entry `i`.
+fn history_command(cmd: &str) {
+    let index = |prefix: &str| cmd.strip_prefix(prefix).and_then(|n| n.parse::<usize>().ok());
+    if cmd == "history-close" { with(|a| if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); }); return; }
+    if cmd == "history-clear" {
+        with(|a| { if let Some(h) = a.history() { h.clear(); } a.open_history(); });
+        return;
+    }
+    let (entry, h) = match ["history-open-", "history-copy-", "history-pin-", "history-delete-"].iter().find_map(|p| index(p).map(|i| (*p, i))) {
+        Some((p, i)) => (with(|a| a.history_entry(i)).flatten().map(|e| (p, e)), with(|a| a.history()).flatten()),
+        None => return,
+    };
+    let (Some((kind, e)), Some(h)) = (entry, h) else { return };
+    match kind {
+        "history-delete-" => { h.remove(&e); with(|a| a.open_history()); }
+        _ => {
+            let bytes = match h.read(&e) { Ok(b) => b, Err(err) => { with(|a| a.toast("error", "无法读取历史", &err, None)); return; } };
+            match kind {
+                "history-open-" => { with(|a| if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); }); spawn_open(Ok(bytes), Some("历史截图.png".into())); }
+                "history-copy-" => {
+                    let result = shareready_core::decode_source(&bytes).and_then(|img| { let d = img.dimensions(); capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, d)) });
+                    with(|a| match result { Ok(()) => a.toast("done", "已复制到剪贴板", "来自截图历史", None), Err(err) => a.toast("error", "复制失败", &err, None) });
+                }
+                _ => {
+                    let img = shareready_core::decode_source(&bytes);
+                    with(|a| match img { Ok(img) => a.open_pin(img, None), Err(_) => a.toast("error", "无法钉图", "历史文件已损坏", None) });
+                }
+            }
+        }
     }
 }
 

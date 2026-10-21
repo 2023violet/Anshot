@@ -34,7 +34,7 @@ export component CaptureOverlay inherits Window {
     callback pointer-up(length, length);
     callback confirm();
     callback cancel();
-    callback action(string); // "copy" | "save" | "edit" | "cancel"
+    callback action(string); // "copy" | "save" | "edit" | "pin" | "cancel"
 
     forward-focus: keys;
     keys := FocusScope {
@@ -44,6 +44,7 @@ export component CaptureOverlay inherits Window {
             // Ctrl+C / Ctrl+S may arrive as the letter or as its control character.
             if root.has-selection && e.modifiers.control && (e.text == "c" || e.text == "C" || e.text == "\u{3}") { root.action("copy"); return accept; }
             if root.has-selection && e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "\u{13}") { root.action("save"); return accept; }
+            if root.has-selection && e.modifiers.control && (e.text == "t" || e.text == "T" || e.text == "\u{14}") { root.action("pin"); return accept; }
             reject
         }
         Image { width: parent.width; height: parent.height; source: root.shot; image-fit: fill; image-rendering: pixelated; accessible-role: none; }
@@ -96,6 +97,7 @@ export component CaptureOverlay inherits Window {
             TouchArea { } // keep clicks on the bar from starting a new selection
             row := HorizontalLayout { x: 6px; spacing: 6px; alignment: center;
                 VerticalLayout { alignment: center; ActionButton { label: "取消"; key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "钉图"; key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "编辑"; key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "保存"; key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "复制"; key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }

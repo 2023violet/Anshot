@@ -1,4 +1,4 @@
-EXE sha256=9f6cec327fbb538d295e4fac41a7a7dd777cafa8e60ff449114764a6e4314313 path=ShareReady.exe
+EXE sha256=3ff43dee16395d721d14df21f404abc45c866f6837637775a8374353f1eddfa5 path=ShareReady.exe
 LAYOUT client=1180x760 image_origin=280,196 scale=1
 UIA toast=
 CLIPBOARD image=620x430
@@ -9,7 +9,7 @@ PASTE status=图片画布（已遮挡 0 处） | 620 × 430
 CAPTURE overlays=1
 CAPTURE editor_status=620 × 430
 CAPTURE clipboard=620x430
-SNAP editor_status=620 × 430
+SNAP editor_status=1920 × 1080
 ESC overlays_before=1 after=0
 B3 clipboard=620x430
 DROP status=620 × 430
@@ -26,7 +26,7 @@ KEYS redone=620x430
 SETTINGS dialog=True
 SETTINGS taken_key_warning=True
 SETTINGS pick_hotkey=True pick_stay=True
-SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir= | recent_colors=
+SETTINGS file=hotkey=Ctrl+Shift+X | hide_after_copy=false | save_dir= | recent_colors= | history_limit=50
 SETTINGS new_hotkey_overlays=1
 SETTINGS editor_visible_after_copy=True
 DPI125 client=1475x950 logical_origin=280,196 scale=1
@@ -52,3 +52,16 @@ TOOLBAR editor_status=200 × 100
 PICKER open=True
 SHAPES copy=620x430
 PICKER settings=recent_colors=#9B30D9
+HISTORY copy=620x430
+HISTORY files=1
+HISTORY dialog=True items=1
+HISTORY pin=True
+HISTORY pins=1
+HISTORY delete=True
+HISTORY files_after_delete=0
+HISTORY off_files=0
+PIN from_capture=1 rect=300,250,200x100 expected=300,250,200x100
+PIN copy=200x100
+PIN after_esc=1
+PIN from_editor=1
+PIN editor_copy=620x430

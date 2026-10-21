@@ -54,6 +54,19 @@ pub fn wait_for_compositor() {
     }
 }
 
+/// The window that has keyboard focus now (opaque handle), to hand it back after
+/// showing a notification window.
+pub fn foreground_window() -> isize {
+    // SAFETY: plain query; returns a handle value or null.
+    unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() as isize }
+}
+/// Give focus back to a window returned by [`foreground_window`] (no-op for null).
+pub fn restore_foreground(hwnd: isize) {
+    if hwnd == 0 { return; }
+    // SAFETY: the handle came from GetForegroundWindow; a stale handle just fails.
+    unsafe { windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(hwnd as _) };
+}
+
 /// Whether a Shift key is held right now (for Shift-constrained drawing).
 pub fn shift_down() -> bool {
     // SAFETY: plain query of the calling thread's keyboard state; no pointers.

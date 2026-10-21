@@ -11,12 +11,14 @@ export component Tray inherits SystemTrayIcon {
     callback show-editor();
     callback about();
     callback settings();
+    callback history();
     callback quit();
     clicked => { root.capture(); }
     Menu {
         MenuItem { title: "截图 (" + root.hotkey-label + ")"; activated => { root.capture(); } }
         MenuItem { title: "打开图片…"; activated => { root.open-image(); } }
         MenuItem { title: "显示编辑窗口"; activated => { root.show-editor(); } }
+        MenuItem { title: "截图历史…"; activated => { root.history(); } }
         MenuSeparator { }
         MenuItem { title: "设置…"; activated => { root.settings(); } }
         MenuItem { title: "关于"; activated => { root.about(); } }

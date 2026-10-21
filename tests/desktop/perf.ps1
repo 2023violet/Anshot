@@ -30,6 +30,7 @@ public static class P {
 [void][P]::SetProcessDPIAware()
 New-Item -ItemType Directory -Force $Out | Out-Null
 $env:SHAREREADY_SETTINGS_DIR = Join-Path $Out "settings"
+$env:SHAREREADY_HISTORY_DIR = Join-Path $Out "history-perf"
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
@@ -97,5 +98,6 @@ NetProbe $p
 $p.Refresh(); Log ("MEMORY_24MP peak_working_set_mb={0:N0}" -f ($p.PeakWorkingSet64 / 1MB))
 $p.Kill()
 Log "NETWORK endpoints_seen=$($netSeen.Count) $(@($netSeen) -join '; ')"
+if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'perf.log')
 

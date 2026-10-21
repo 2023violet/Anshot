@@ -62,7 +62,7 @@ pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
 #[cfg(windows)]
 mod screen;
 #[cfg(windows)]
-pub use screen::{capture,claim_single_instance,cursor,monitors,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
+pub use screen::{capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
 
 #[cfg(not(windows))]
 pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
@@ -76,6 +76,10 @@ pub fn claim_single_instance()->bool{true}
 pub fn cursor()->Option<(i32,i32)>{None}
 #[cfg(not(windows))]
 pub fn shift_down()->bool{false}
+#[cfg(not(windows))]
+pub fn foreground_window()->isize{0}
+#[cfg(not(windows))]
+pub fn restore_foreground(_hwnd:isize){}
 #[cfg(not(windows))]
 pub fn wait_for_compositor(){}
 #[cfg(not(windows))]

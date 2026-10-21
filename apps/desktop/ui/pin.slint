@@ -1,0 +1,62 @@
+// Pin to desktop: a frameless top-most window showing Rust-rendered pixels.
+// Rust owns position and size (physical px); this file only draws and reports intents.
+import { Theme } from "theme.slint";
+
+export component PinWindow inherits Window {
+    no-frame: true;
+    always-on-top: true;
+    title: "ShareReady 钉图";
+    background: transparent;
+    default-font-family: Theme.font-ui;
+
+    in property <image> img;
+    in property <float> level: 1.0; // opacity
+    in-out property <bool> menu-open;
+    in property <string> zoom-text: "100%";
+
+    callback drag-start();
+    callback drag-move();
+    callback zoom(float); // wheel delta-y (negative = in)
+    callback act(string); // "copy" | "save" | "edit" | "close" | "opacity-100" | "opacity-75" | "opacity-50"
+
+    forward-focus: keys;
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape { if root.menu-open { root.menu-open = false; } else { root.act("close"); } return accept; }
+            if e.modifiers.control && (e.text == "c" || e.text == "C" || e.text == "\u{3}") { root.act("copy"); return accept; }
+            if e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "\u{13}") { root.act("save"); return accept; }
+            reject
+        }
+        Image { width: parent.width; height: parent.height; source: root.img; image-fit: fill; opacity: root.level;
+            accessible-role: image; accessible-label: "钉图 " + root.zoom-text; }
+        Rectangle { border-width: 1px; border-color: Theme.brand; }
+        TouchArea {
+            mouse-cursor: move;
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down && e.button == PointerEventButton.left { keys.focus(); root.menu-open = false; root.drag-start(); }
+                if e.kind == PointerEventKind.down && e.button == PointerEventButton.right { root.menu-open = !root.menu-open; }
+            }
+            moved => { if self.pressed { root.drag-move(); } }
+            double-clicked => { root.act("close"); }
+            scroll-event(e) => { root.zoom(e.delta-y / 1px); accept }
+        }
+        if root.menu-open: Rectangle {
+            x: min(8px, parent.width - self.width); y: min(8px, parent.height - self.height);
+            width: 150px; height: col.preferred-height + 12px;
+            border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+            accessible-role: groupbox; accessible-label: "钉图菜单";
+            TouchArea { }
+            col := VerticalLayout { x: 6px; y: 6px; width: parent.width - 12px; spacing: 2px;
+                for item in [{t: "复制  Ctrl+C", k: "copy"}, {t: "另存为…  Ctrl+S", k: "save"}, {t: "在编辑器中打开", k: "edit"},
+                             {t: "不透明 100%", k: "opacity-100"}, {t: "不透明 75%", k: "opacity-75"}, {t: "不透明 50%", k: "opacity-50"},
+                             {t: "关闭  Esc", k: "close"}]: Rectangle {
+                    height: 26px; border-radius: 6px; background: ma.has-hover ? Theme.bg-hover : transparent;
+                    accessible-role: button; accessible-label: item.t; accessible-action-default => { root.menu-open = false; root.act(item.k); }
+                    ma := TouchArea { clicked => { root.menu-open = false; root.act(item.k); } }
+                    Text { x: 8px; text: item.t; font-size: 12px; color: item.k == "close" ? Theme.error : Theme.ink; vertical-alignment: center; accessible-role: none; }
+                }
+            }
+        }
+    }
+    init => { keys.focus(); }
+}

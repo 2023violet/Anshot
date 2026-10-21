@@ -14,12 +14,17 @@ pub struct Settings {
     pub save_dir: Option<PathBuf>,
     /// Most recent custom colours first (at most `RECENT_COLORS`).
     pub recent_colors: Vec<[u8; 4]>,
+    /// How many delivered images to keep in the history (0 = history off).
+    pub history_limit: usize,
 }
+
+/// Choices offered in settings for `history_limit`.
+pub const HISTORY_LIMITS: [usize; 4] = [0, 20, 50, 200];
 
 pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
-    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new() } }
+    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50 } }
 }
 
 impl Settings {
@@ -33,6 +38,7 @@ impl Settings {
                 ("hide_after_copy", "false") => s.hide_after_copy = false,
                 ("save_dir", "") => s.save_dir = None,
                 ("save_dir", v) => s.save_dir = Some(PathBuf::from(v)),
+                ("history_limit", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_LIMITS.contains(n)) { s.history_limit = n; },
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
             }
@@ -41,8 +47,8 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\n", self.hotkey.label(), self.hide_after_copy,
-            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","))
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\n", self.hotkey.label(), self.hide_after_copy,
+            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit)
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("SHAREREADY_SETTINGS_DIR").map(PathBuf::from)
@@ -70,11 +76,11 @@ mod tests {
     use super::*;
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
-        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new() };
+        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200 };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\n");
         assert_eq!(odd, Settings::default());
     }
 }

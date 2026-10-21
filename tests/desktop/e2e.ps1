@@ -53,6 +53,8 @@ public static class E {
 New-Item -ItemType Directory -Force $Out | Out-Null
 # Never touch the user's real settings: every launched instance reads this folder.
 $env:SHAREREADY_SETTINGS_DIR = Join-Path $Out 'settings'
+$env:SHAREREADY_HISTORY_DIR = Join-Path $Out 'history'
+if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
 if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Get-ChildItem $env:SHAREREADY_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
@@ -572,6 +574,82 @@ Shot $w '19-new-shapes.png'
 Log "SHAPES copy=$(CopyTo 'clipboard-shapes.png')"
 Log ("PICKER settings=" + ((Get-Content (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') -ErrorAction SilentlyContinue) -match 'recent_colors' -join ''))
 if (-not $w.P.HasExited) { $w.P.Kill() }
+
+Start-Sleep -Milliseconds 500
+function HistoryFiles { @(Get-ChildItem $env:SHAREREADY_HISTORY_DIR -Filter 'sr-*.png' -ErrorAction SilentlyContinue) }
+function PinWindows($p) { [E]::Visible([uint32]$p.Id, 'ShareReady 钉图') }
+
+# ---- 26. history keeps exactly the copied bytes; pin and delete from the history dialog ----
+if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
+New-Item -ItemType Directory -Force $env:SHAREREADY_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+Log "HISTORY copy=$(CopyTo 'clipboard-history.png')"
+$hf = HistoryFiles
+if ($hf.Count -gt 0) { Copy-Item $hf[0].FullName (Join-Path $Out 'history-entry.png') -Force }
+Log "HISTORY files=$($hf.Count)"
+Key 0x48 -Ctrl; Start-Sleep -Milliseconds 1500          # Ctrl+H
+$names = UiaNames $w
+Log "HISTORY dialog=$($names -contains '截图历史') items=$(@($names | Where-Object { $_ -like '历史 *' }).Count)"
+Shot $w '20-history.png'
+Log "HISTORY pin=$(Invoke-Uia $w '钉图 1')"; Start-Sleep -Milliseconds 800
+Log "HISTORY pins=$((PinWindows $w.P).Count)"
+Log "HISTORY delete=$(Invoke-Uia $w '删除 1')"; Start-Sleep -Milliseconds 800
+Log "HISTORY files_after_delete=$((HistoryFiles).Count)"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+# History off: a copy leaves nothing behind.
+Set-Content -Encoding utf8 (Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nhistory_limit=0"
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+[void](CopyTo 'clipboard-history-off.png')
+Log "HISTORY off_files=$((HistoryFiles).Count)"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+[System.IO.File]::Delete((Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'))
+Start-Sleep -Milliseconds 500
+
+# ---- 27. pin from the capture selection: same pixels, same place; copy from its menu ----
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+ScreenDrag ($fx + 100) ($fy + 100) ($fx + 300) ($fy + 200)
+Key 0x54 -Ctrl; Start-Sleep -Milliseconds 1200           # Ctrl+T
+$pins = PinWindows $app
+$pr = New-Object E+RECT; if ($pins.Count -gt 0) { [void][E]::GetWindowRect($pins[0], [ref]$pr) }
+Log "PIN from_capture=$($pins.Count) rect=$($pr.L),$($pr.T),$($pr.R - $pr.L)x$($pr.B - $pr.T) expected=$($fx + 100),$($fy + 100),200x100"
+# The pin sits over the synthetic window: its inner pixels (inside the 1 px border) are synthetic.
+ScreenCrop ($pr.L + 1) ($pr.T + 1) 198 98 'pin-inner.png'
+[System.Windows.Forms.Clipboard]::Clear()
+[void][E]::SetForegroundWindow($pins[0]); Start-Sleep -Milliseconds 300
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500             # Ctrl+C on the pin
+$clip = [System.Windows.Forms.Clipboard]::GetImage()
+if ($clip) { $clip.Save((Join-Path $Out 'clipboard-pin.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "PIN copy=$($clip.Width)x$($clip.Height)"; $clip.Dispose() } else { Log "PIN copy=none" }
+Key 0x1B; Start-Sleep -Milliseconds 600                    # Esc closes the pin
+Log "PIN after_esc=$((PinWindows $app).Count)"
+Stop-Process -Id $fixture.Id -Force
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+
+# ---- 28. pin from the editor carries the redaction (Rust render of the document) ----
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 518) ($io.Y + 143) ($io.X + 596) ($io.Y + 163)
+Key 0x54 -Ctrl; Start-Sleep -Milliseconds 1500
+$pins = PinWindows $w.P
+Log "PIN from_editor=$($pins.Count)"
+if ($pins.Count -gt 0) {
+    $ph = $pins[0]
+    [void][E]::SetForegroundWindow($ph); Start-Sleep -Milliseconds 300
+    [System.Windows.Forms.Clipboard]::Clear(); Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+    $clip = [System.Windows.Forms.Clipboard]::GetImage()
+    if ($clip) { $clip.Save((Join-Path $Out 'clipboard-pin-editor.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "PIN editor_copy=$($clip.Width)x$($clip.Height)"; $clip.Dispose() } else { Log "PIN editor_copy=none" }
+}
+if (-not $w.P.HasExited) { $w.P.Kill() }
+if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
 
 # Leave no test settings behind.
 if (Test-Path $env:SHAREREADY_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_SETTINGS_DIR }
