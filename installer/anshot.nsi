@@ -40,6 +40,8 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "MIT License"
 !define MUI_ICON "${SRC}\anshot.ico"
 !define MUI_UNICON "${SRC}\anshot.ico"
 !define MUI_ABORTWARNING
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${__FILEDIR__}\wizard.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${__FILEDIR__}\wizard.bmp"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Anshot.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "现在启动 ${APP_ZH}"
 !define MUI_COMPONENTSPAGE_NODESC
