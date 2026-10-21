@@ -1,5 +1,5 @@
 # 07 performance and offline checks on the real app (agent-run, wall-clock, single machine).
-# Usage: pwsh -STA -File tests/desktop/perf.ps1 -Exe <shareready.exe> -Big <6000x4000.png> -Out <dir>
+# Usage: pwsh -STA -File tests/desktop/perf.ps1 -Exe <Anshot.exe> -Big <6000x4000.png> -Out <dir>
 param([Parameter(Mandatory)] [string] $Exe, [Parameter(Mandatory)] [string] $Big, [Parameter(Mandatory)] [string] $Out)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms, UIAutomationClient, UIAutomationTypes
@@ -57,7 +57,7 @@ Get-Process shareready -ErrorAction SilentlyContinue | Stop-Process -Force
 $starts = @()
 foreach ($i in 1..3) {
     $sw = [Diagnostics.Stopwatch]::StartNew(); $p = Start-Process $Exe -PassThru
-    $t = WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady', 300000) -ne [IntPtr]::Zero } 15000
+    $t = WaitUntil { [P]::Find([uint32]$p.Id, 'Anshot', 300000) -ne [IntPtr]::Zero } 15000
     $starts += $t; NetProbe $p; $p.Kill(); $p.WaitForExit(); Start-Sleep -Milliseconds 400
 }
 Log "STARTUP_MS runs=$($starts -join ',')"
@@ -70,7 +70,7 @@ foreach ($mode in @('tray', 'editor_open')) {
     $caps = @()
     foreach ($i in 1..3) {
         $sw = [Diagnostics.Stopwatch]::StartNew(); Key 0x41 -Ctrl -Shift
-        $t = WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady 截图', 1) -ne [IntPtr]::Zero } 10000
+        $t = WaitUntil { [P]::Find([uint32]$p.Id, 'Anshot 截图', 1) -ne [IntPtr]::Zero } 10000
         $caps += $t; NetProbe $p; Start-Sleep -Milliseconds 300; Key 0x1B; Start-Sleep -Milliseconds 600
     }
     Log "HOTKEY_TO_OVERLAY_MS mode=$mode runs=$($caps -join ',')"
@@ -81,8 +81,8 @@ $p.Kill(); $p.WaitForExit(); Start-Sleep -Milliseconds 400
 # 3. open 24MP via argument -> dimensions shown; then redact + copy -> clipboard holds the image
 [System.Windows.Forms.Clipboard]::Clear()
 $sw = [Diagnostics.Stopwatch]::StartNew(); $p = Start-Process $Exe -ArgumentList "`"$((Resolve-Path $Big).Path)`"" -PassThru
-[void](WaitUntil { [P]::Find([uint32]$p.Id, 'ShareReady', 300000) -ne [IntPtr]::Zero } 15000)
-$h = [P]::Find([uint32]$p.Id, 'ShareReady', 300000)
+[void](WaitUntil { [P]::Find([uint32]$p.Id, 'Anshot', 300000) -ne [IntPtr]::Zero } 15000)
+$h = [P]::Find([uint32]$p.Id, 'Anshot', 300000)
 $t = WaitUntil { UiaHas $h '6000 × 4000' } 30000
 Log "OPEN_24MP_MS from_launch=$t"
 [void][P]::SetWindowPos($h, [IntPtr]::Zero, -8, 0, 0, 0, 0x0015); Start-Sleep -Milliseconds 500; [void][P]::SetForegroundWindow($h); Start-Sleep -Milliseconds 300

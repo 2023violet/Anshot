@@ -1,6 +1,7 @@
 //! User settings: capture shortcut, what happens after copy, default save folder,
 //! recent custom colours.
-//! Stored as `key=value` lines in `%APPDATA%\ShareReady\settings.txt`
+//! Stored as `key=value` lines in `%APPDATA%\Anshot\settings.txt`
+//! (0.1.x kept them in `%APPDATA%\ShareReady`; that file is read once as a fallback)
 //! (`SHAREREADY_SETTINGS_DIR` overrides the folder, used by tests).
 #![forbid(unsafe_code)]
 use shareready_platform_windows::Hotkey;
@@ -52,7 +53,7 @@ impl Settings {
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("SHAREREADY_SETTINGS_DIR").map(PathBuf::from)
-            .or_else(|| std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("ShareReady")))?;
+            .or_else(|| std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("Anshot")))?;
         Some(dir.join("settings.txt"))
     }
     /// Remember a custom colour (most recent first, no duplicates).
@@ -61,8 +62,14 @@ impl Settings {
         self.recent_colors.insert(0, c);
         self.recent_colors.truncate(RECENT_COLORS);
     }
+    /// Settings written by 0.1.x under the temporary name (read only, never modified).
+    fn legacy_file() -> Option<PathBuf> {
+        if std::env::var_os("SHAREREADY_SETTINGS_DIR").is_some() { return None; }
+        std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("ShareReady").join("settings.txt"))
+    }
     pub fn load() -> Self {
-        Self::file().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Self::parse(&t)).unwrap_or_default()
+        let read = |f: PathBuf| std::fs::read_to_string(f).ok();
+        Self::file().and_then(read).or_else(|| Self::legacy_file().and_then(read)).map(|t| Self::parse(&t)).unwrap_or_default()
     }
     pub fn save(&self) -> Result<(), String> {
         let f = Self::file().ok_or("找不到设置目录")?;

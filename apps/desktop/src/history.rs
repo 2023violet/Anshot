@@ -1,5 +1,5 @@
-//! Capture history: the exact PNG bytes that were copied or saved (already redacted,
-//! Rust-generated) kept in `%LOCALAPPDATA%\ShareReady\history`. Original screen pixels
+//! Capture history: the exact PNG bytes the editor copied or saved (its rendered output,
+//! Rust-generated; pins and history re-copies are not recorded) kept in `%LOCALAPPDATA%\Anshot\history`. Original screen pixels
 //! and unredacted sources are never written here. `SHAREREADY_HISTORY_DIR` overrides
 //! the folder (tests).
 #![forbid(unsafe_code)]
@@ -9,6 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Only files named like this are ours: `sr-<unix ms>-<seq>.png`.
 const PREFIX: &str = "sr-";
+/// Never list (or decode thumbnails for) more than the largest history limit.
+const MAX_LISTED: usize = 200;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry { pub path: PathBuf, pub millis: u64 }
@@ -19,7 +21,7 @@ impl History {
     pub fn at(dir: PathBuf) -> Self { Self { dir } }
     pub fn default_dir() -> Option<PathBuf> {
         std::env::var_os("SHAREREADY_HISTORY_DIR").map(PathBuf::from)
-            .or_else(|| std::env::var_os("LOCALAPPDATA").map(|a| PathBuf::from(a).join("ShareReady").join("history")))
+            .or_else(|| std::env::var_os("LOCALAPPDATA").map(|a| PathBuf::from(a).join("Anshot").join("history")))
     }
 
     /// Store a delivered PNG, then keep only the newest `limit` entries.
@@ -43,11 +45,19 @@ impl History {
             d.file_type().ok()?.is_file().then(|| Entry { path: d.path(), millis: ms })
         }).collect();
         v.sort_by(|a, b| b.millis.cmp(&a.millis).then_with(|| b.path.cmp(&a.path)));
+        v.truncate(MAX_LISTED);
         v
     }
 
     pub fn prune(&self, limit: usize) {
-        for e in self.list().into_iter().skip(limit) { let _ = std::fs::remove_file(e.path); }
+        // Repeat so entries beyond the listing cap are pruned too.
+        loop {
+            let list = self.list();
+            let extra: Vec<Entry> = list.into_iter().skip(limit).collect();
+            if extra.is_empty() { break; }
+            for e in &extra { let _ = std::fs::remove_file(&e.path); }
+            if limit >= MAX_LISTED { break; }
+        }
     }
     pub fn clear(&self) { self.prune(0); }
     pub fn remove(&self, e: &Entry) { if self.list().contains(e) { let _ = std::fs::remove_file(&e.path); } }

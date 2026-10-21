@@ -41,6 +41,8 @@ pub struct Stitcher {
     rows: u32,
     /// Sticky footer rows seen in the last accepted frame (appended at the end).
     footer: Vec<u8>,
+    /// Footer height, fixed at the first scroll so body rows are never cut twice.
+    footer_rows: Option<usize>,
     last: RgbaImage,
     last_sigs: Vec<Sig>,
     max_pixels: u64,
@@ -121,7 +123,7 @@ impl Stitcher {
         let width = first.width();
         let rows = first.height();
         let sigs = signatures(&first);
-        Self { width, body: first.as_raw().clone(), rows, footer: Vec::new(), last: first, last_sigs: sigs, max_pixels, full: false }
+        Self { width, body: first.as_raw().clone(), rows, footer: Vec::new(), footer_rows: None, last: first, last_sigs: sigs, max_pixels, full: false }
     }
     pub fn height(&self) -> u32 { self.rows + (self.footer.len() / (self.width as usize * 4)) as u32 }
 
@@ -130,13 +132,15 @@ impl Stitcher {
         if frame.dimensions() != self.last.dimensions() { return Push::Lost; }
         let cur = signatures(&frame);
         let dy = match motion(&self.last_sigs, &cur) { Motion::Scrolled(dy) => dy, Motion::Still => return Push::Unchanged, Motion::Lost => return Push::Lost };
-        let (top, bottom) = fixed_bands(&self.last_sigs, &cur, dy);
+        let (top, found) = fixed_bands(&self.last_sigs, &cur, dy);
+        let first_scroll = self.footer_rows.is_none();
+        let bottom = *self.footer_rows.get_or_insert(found);
         // The newly revealed body rows must exist between the sticky bands.
         if top + bottom + dy > cur.len() { return Push::Lost; }
         let stride = self.width as usize * 4;
         let h = frame.height() as usize;
         // On the first move the sticky footer becomes known: take it off the body once.
-        if self.footer.is_empty() && bottom > 0 {
+        if first_scroll && bottom > 0 {
             let cut = bottom.min(self.rows as usize);
             self.body.truncate(self.body.len() - cut * stride);
             self.rows -= cut as u32;

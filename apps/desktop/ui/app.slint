@@ -1,4 +1,4 @@
-// ShareReady main window (02 S2/S3/S5, 05 H01-H22). Logic lives in Rust; this file only renders state.
+// Anshot (安截) main window (02 S2/S3/S5, 05 H01-H22). Logic lives in Rust; this file only renders state.
 // The canvas image is the Rust-rendered scene (WYSIWYG); Slint draws only selection chrome.
 import { Theme } from "theme.slint";
 import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Segmented, Shield, Swatches, Tip, ToolButton, VSep } from "widgets.slint";
@@ -14,7 +14,7 @@ export struct HistoryItem { thumb: image, label: string, broken: bool }
 export struct MaskBox { x: length, y: length, w: length, h: length, selected: bool }
 
 export component AppWindow inherits Window {
-    title: root.doc-title == "" ? "ShareReady" : root.doc-title + " — ShareReady";
+    title: root.doc-title == "" ? "安截 Anshot" : root.doc-title + " — 安截 Anshot";
     icon: @image-url("../assets/icon-64.png");
     preferred-width: 1180px; preferred-height: 760px;
     min-width: 640px; min-height: 420px;
@@ -108,7 +108,7 @@ export component AppWindow inherits Window {
                     padding-left: 10px; padding-right: 10px; spacing: 4px;
                     HorizontalLayout { spacing: 8px; padding-right: 10px; alignment: start; horizontal-stretch: 0;
                         VerticalLayout { alignment: center; Rectangle { width: 12px; height: 12px; border-radius: 3px; background: Theme.brand; accessible-role: none; } }
-                        if !root.tiny: Text { text: "ShareReady"; font-size: 13px; font-weight: 500; color: Theme.ink; vertical-alignment: center; accessible-role: none; }
+                        if !root.tiny: Text { text: "安截"; font-size: 13px; font-weight: 500; color: Theme.ink; vertical-alignment: center; accessible-role: none; }
                     }
                     VerticalLayout { alignment: center; horizontal-stretch: 0; HorizontalLayout { spacing: 4px;
                         ToolButton { label: "选择 V"; d: "M 4 4 L 11 21 L 13.5 13.5 L 21 11 Z"; selected: root.has-document && root.tool == "select"; enabled: root.has-document; clicked => { root.command("tool-select"); } }
@@ -360,7 +360,7 @@ export component AppWindow inherits Window {
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : root.dialog == "color" ? "自定义颜色" : root.dialog == "history" ? "截图历史" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
-                    Text { text: "关于 ShareReady（临时代号）"; font-size: 15px; font-weight: 600; color: Theme.ink; }
+                    Text { text: "关于 安截 Anshot"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     Text { text: "截图、标注、遮挡后分享。图片只在本机处理，不上传、无账号、无遥测。"; color: Theme.body; wrap: word-wrap; }
                     Text { text: "版本 0.2.0 · MIT · 字体 Noto Sans CJK SC（OFL-1.1）"; color: Theme.mute; font-size: 12px; }
                     Rectangle { height: 150px; AboutSlint { } }
@@ -391,7 +391,7 @@ export component AppWindow inherits Window {
                         ActionButton { label: "选择…"; key: ""; kind: 0; clicked => { root.command("save-dir"); } }
                         if root.save-dir != "": ActionButton { label: "清除"; key: ""; kind: 2; clicked => { root.command("save-dir-clear"); } }
                     }
-                    Text { text: "设置保存在本机（%APPDATA%\\ShareReady）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
+                    Text { text: "设置保存在本机（%APPDATA%\\Anshot）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
                     HorizontalLayout { alignment: end; ActionButton { label: "完成"; key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog == "color": VerticalLayout { padding: 24px; spacing: 12px; alignment: start;

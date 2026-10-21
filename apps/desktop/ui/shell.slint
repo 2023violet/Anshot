@@ -5,7 +5,7 @@ import { Pill } from "widgets.slint";
 export component Tray inherits SystemTrayIcon {
     icon: @image-url("../assets/icon-32.png");
     in property <string> hotkey-label: "Ctrl+Shift+A";
-    tooltip: "ShareReady · " + root.hotkey-label + " 截图";
+    tooltip: "安截 Anshot · " + root.hotkey-label + " 截图";
     callback capture();
     callback open-image();
     callback show-editor();
@@ -29,7 +29,7 @@ export component Tray inherits SystemTrayIcon {
 export component ToastWindow inherits Window {
     no-frame: true;
     always-on-top: true;
-    title: "ShareReady";
+    title: "Anshot";
     width: 300px; height: 64px;
     background: transparent;
     default-font-family: Theme.font-ui;

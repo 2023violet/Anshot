@@ -1,7 +1,7 @@
 # Chinese IME composition in a text annotation (Microsoft Pinyin, real OS input).
 # Assumes Pinyin starts in English mode: one Shift tap switches to Chinese, a second restores it.
 # Expect: Space picks 你好, Enter while composing "ma" inserts the letters and keeps editing, the next Enter commits.
-# Usage: pwsh -STA -File tests/desktop/ime.ps1 -Exe <shareready.exe> -Image <png> -Out <dir>
+# Usage: pwsh -STA -File tests/desktop/ime.ps1 -Exe <Anshot.exe> -Image <png> -Out <dir>
 param(
     [Parameter(Mandatory)] [string] $Exe,
     [Parameter(Mandatory)] [string] $Image,
@@ -41,11 +41,11 @@ public static class E {
       if (p == pid && IsWindowVisible(h) && sb.ToString() == title) r.Add(h); return true; }, IntPtr.Zero);
     return r;
   }
-  // Largest visible top-level window of the process whose title mentions ShareReady.
+  // Largest visible top-level window of the process whose title mentions Anshot.
   public static IntPtr Editor(uint pid) {
     IntPtr best = IntPtr.Zero; long area = 0;
     EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
-      RECT r; if (p == pid && IsWindowVisible(h) && sb.ToString().Contains("ShareReady") && GetWindowRect(h, out r)) {
+      RECT r; if (p == pid && IsWindowVisible(h) && sb.ToString().Contains("Anshot") && GetWindowRect(h, out r)) {
         long a = (long)(r.R - r.L) * (r.B - r.T); if (a > area && a > 300000) { area = a; best = h; } } return true; }, IntPtr.Zero);
     return best;
   }

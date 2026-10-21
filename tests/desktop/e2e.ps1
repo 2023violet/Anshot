@@ -1,5 +1,5 @@
 # B1 end-to-end on the real desktop app with real OS input.
-# Usage: pwsh -File tests/desktop/e2e.ps1 -Exe <shareready.exe> -Image <png> -Out <dir>
+# Usage: pwsh -File tests/desktop/e2e.ps1 -Exe <Anshot.exe> -Image <png> -Out <dir>
 param(
     [Parameter(Mandatory)] [string] $Exe,
     [Parameter(Mandatory)] [string] $Image,
@@ -39,11 +39,11 @@ public static class E {
       if (p == pid && IsWindowVisible(h) && sb.ToString() == title) r.Add(h); return true; }, IntPtr.Zero);
     return r;
   }
-  // Largest visible top-level window of the process whose title mentions ShareReady.
+  // Largest visible top-level window of the process whose title mentions Anshot.
   public static IntPtr Editor(uint pid) {
     IntPtr best = IntPtr.Zero; long area = 0;
     EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new System.Text.StringBuilder(256); GetWindowText(h, sb, 256);
-      RECT r; if (p == pid && IsWindowVisible(h) && sb.ToString().Contains("ShareReady") && GetWindowRect(h, out r)) {
+      RECT r; if (p == pid && IsWindowVisible(h) && sb.ToString().Contains("Anshot") && GetWindowRect(h, out r)) {
         long a = (long)(r.R - r.L) * (r.B - r.T); if (a > area && a > 300000) { area = a; best = h; } } return true; }, IntPtr.Zero);
     return best;
   }
@@ -137,7 +137,7 @@ Log ("UIA toast=" + (($names | Where-Object { $_ -match '已复制|复制失败|
 $clip = [System.Windows.Forms.Clipboard]::GetImage()
 if ($clip) { $clip.Save((Join-Path $Out 'clipboard.png'), [System.Drawing.Imaging.ImageFormat]::Png); Log "CLIPBOARD image=$($clip.Width)x$($clip.Height)" } else { Log "CLIPBOARD image=none" }
 # 02 U07: after copy the editor hides, the process stays in the tray, a system toast shows.
-$toast = [E]::Visible([uint32]$w.P.Id, 'ShareReady')
+$toast = [E]::Visible([uint32]$w.P.Id, 'Anshot')
 Log "AFTER_COPY editor_visible=$([E]::IsWindowVisible($w.H)) running=$(-not $w.P.HasExited) toast_windows=$($toast.Count)"
 # Inset by 14 px so rounded transparent corners never include desktop pixels.
 if ($toast.Count -gt 0) { $tr = New-Object E+RECT; [void][E]::GetWindowRect($toast[0], [ref]$tr); ScreenCrop ($tr.L + 14) ($tr.T + 14) ($tr.R - $tr.L - 28) ($tr.B - $tr.T - 28) '03-system-toast-inner.png' }
@@ -176,7 +176,7 @@ $app = Start-Process $Exe -PassThru
 Start-Sleep -Seconds 2
 Key 0x41 -Ctrl -Shift                   # Ctrl+Shift+A (global hotkey)
 Start-Sleep -Milliseconds 1500
-$ov = [E]::Visible([uint32]$app.Id, 'ShareReady 截图')
+$ov = [E]::Visible([uint32]$app.Id, 'Anshot 截图')
 Log "CAPTURE overlays=$($ov.Count)"
 ScreenDrag $fx $fy ($fx + $iw) ($fy + $ih)
 # Crop strictly inside the synthetic window: only synthetic pixels are ever saved.
@@ -215,10 +215,10 @@ Log ("SNAP editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }
 # ---- 6. Esc cancels the overlay ----
 Key 0x41 -Ctrl -Shift
 Start-Sleep -Milliseconds 1200
-$before = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图')).Count
+$before = ([E]::Visible([uint32]$app.Id, 'Anshot 截图')).Count
 Key 0x1B
 Start-Sleep -Milliseconds 600
-Log "ESC overlays_before=$before after=$(([E]::Visible([uint32]$app.Id, 'ShareReady 截图')).Count)"
+Log "ESC overlays_before=$before after=$(([E]::Visible([uint32]$app.Id, 'Anshot 截图')).Count)"
 
 if (-not $app.HasExited) { $app.Kill() }
 if (-not $fixture.HasExited) { Stop-Process -Id $fixture.Id -Force }
@@ -348,7 +348,7 @@ $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0xBC -Ctrl                            # Ctrl+,
 Start-Sleep -Milliseconds 500
 Log "SETTINGS dialog=$(((UiaNames $w) -contains '设置'))"
-# Ctrl+Alt+A is often owned by another app (e.g. QQ); then ShareReady must keep the old key and say so.
+# Ctrl+Alt+A is often owned by another app (e.g. QQ); then Anshot must keep the old key and say so.
 [void](Invoke-Uia $w 'Ctrl+Alt+A')
 Log "SETTINGS taken_key_warning=$(((UiaNames $w) -match '被其他程序占用').Count -gt 0)"
 Log "SETTINGS pick_hotkey=$(Invoke-Uia $w 'Ctrl+Shift+X') pick_stay=$(Invoke-Uia $w '保留编辑窗')"
@@ -358,7 +358,7 @@ $sf = Join-Path $env:SHAREREADY_SETTINGS_DIR 'settings.txt'
 Log ("SETTINGS file=" + ((Get-Content $sf -ErrorAction SilentlyContinue) -join ' | '))
 Key 0x58 -Ctrl -Shift                     # Ctrl+Shift+X, the newly chosen hotkey
 Start-Sleep -Milliseconds 1200
-Log "SETTINGS new_hotkey_overlays=$(([E]::Visible([uint32]$w.P.Id, 'ShareReady 截图')).Count)"
+Log "SETTINGS new_hotkey_overlays=$(([E]::Visible([uint32]$w.P.Id, 'Anshot 截图')).Count)"
 Key 0x1B; Start-Sleep -Milliseconds 500
 [void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
 $io = ImageOrigin $w $iw $ih
@@ -402,7 +402,7 @@ Start-Sleep -Milliseconds 500
 # ---- 15. (0.1.1 R1) the editor leaves the screen before the freeze and returns on Esc ----
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
-$ov = ([E]::Visible([uint32]$w.P.Id, 'ShareReady 截图')).Count
+$ov = ([E]::Visible([uint32]$w.P.Id, 'Anshot 截图')).Count
 Log "HIDE overlays=$ov editor_visible_during_capture=$([E]::IsWindowVisible($w.H))"
 Key 0x1B; Start-Sleep -Milliseconds 800
 Log "HIDE editor_visible_after_esc=$([E]::IsWindowVisible($w.H))"
@@ -443,11 +443,11 @@ $env:SHAREREADY_RUN_KEY = 'Software\ShareReady-e2e\Run'
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0xBC -Ctrl; Start-Sleep -Milliseconds 500
 Log "AUTOSTART on=$(Invoke-Uia $w '登录后在托盘待命')"
-$val = (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name ShareReady -ErrorAction SilentlyContinue).ShareReady
+$val = (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue).Anshot
 Log "AUTOSTART value_has_exe=$($val -like "*$(Split-Path $Exe -Leaf)*") background=$($val -like '* --background')"
 Shot $w '16-settings-autostart.png'
 Log "AUTOSTART off=$(Invoke-Uia $w '不启动')"
-$gone = $null -eq (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name ShareReady -ErrorAction SilentlyContinue)
+$gone = $null -eq (Get-ItemProperty -Path 'HKCU:\Software\ShareReady-e2e\Run' -Name Anshot -ErrorAction SilentlyContinue)
 Log "AUTOSTART removed=$gone"
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
@@ -518,7 +518,7 @@ $fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Jo
 Start-Sleep -Seconds 3
 $app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
-$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
 [void][E]::SetCursorPos($fx + 333, $fy + 222); Start-Sleep -Milliseconds 400
 $mag = (UiaNames ([pscustomobject]@{ H = $ovh })) | Where-Object { $_ -like '放大镜*' } | Select-Object -First 1
 Log "MAGNIFIER expected=x $($fx + 333)  y $($fy + 222) got=$mag"
@@ -532,11 +532,11 @@ Key 0x43 -Ctrl; Start-Sleep -Milliseconds 2000
 $clip = [System.Windows.Forms.Clipboard]::GetImage()
 if ($clip) { $clip.Save((Join-Path $Out 'clipboard-quick-copy.png'), [System.Drawing.Imaging.ImageFormat]::Png); $cs = "$($clip.Width)x$($clip.Height)"; $clip.Dispose() } else { $cs = 'none' }
 $ed = [E]::Editor([uint32]$app.Id)
-Log "QUICKCOPY toolbar=$tb clipboard=$cs editor_visible=$(($ed -ne [IntPtr]::Zero) -and [E]::IsWindowVisible($ed)) toasts=$(([E]::Visible([uint32]$app.Id, 'ShareReady')).Count)"
+Log "QUICKCOPY toolbar=$tb clipboard=$cs editor_visible=$(($ed -ne [IntPtr]::Zero) -and [E]::IsWindowVisible($ed)) toasts=$(([E]::Visible([uint32]$app.Id, 'Anshot')).Count)"
 
 # ---- 24. overlay toolbar: the Edit button opens the selection in the editor ----
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
-$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
 ScreenDrag ($fx + 50) ($fy + 60) ($fx + 250) ($fy + 160)
 Start-Sleep -Milliseconds 300
 Log "TOOLBAR edit=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '编辑')"
@@ -577,7 +577,7 @@ if (-not $w.P.HasExited) { $w.P.Kill() }
 
 Start-Sleep -Milliseconds 500
 function HistoryFiles { @(Get-ChildItem $env:SHAREREADY_HISTORY_DIR -Filter 'sr-*.png' -ErrorAction SilentlyContinue) }
-function PinWindows($p) { [E]::Visible([uint32]$p.Id, 'ShareReady 钉图') }
+function PinWindows($p) { [E]::Visible([uint32]$p.Id, 'Anshot 钉图') }
 
 # ---- 26. history keeps exactly the copied bytes; pin and delete from the history dialog ----
 if (Test-Path $env:SHAREREADY_HISTORY_DIR) { Remove-Item -Recurse -Force $env:SHAREREADY_HISTORY_DIR }
@@ -667,7 +667,7 @@ $fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Jo
 Start-Sleep -Seconds 3
 $app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
-$ovh = ([E]::Visible([uint32]$app.Id, 'ShareReady 截图'))[0]
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
 ScreenDrag ($fx + 10) ($fy + 10) ($fx + 560) ($fy + 400)
 Start-Sleep -Milliseconds 300
 Log "LONG start=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '长截图')"
@@ -675,7 +675,7 @@ Start-Sleep -Milliseconds 800
 [void][E]::SetCursorPos($fx + 300, $fy + 200); Start-Sleep -Milliseconds 300
 foreach ($i in 1..14) { [E]::mouse_event(0x0800, 0, 0, [uint32]4294967176, [IntPtr]::Zero); Start-Sleep -Milliseconds 350 }
 Start-Sleep -Milliseconds 600
-$panel = [E]::TitleAny('ShareReady 长截图')
+$panel = [E]::TitleAny('Anshot 长截图')
 $pn = UiaNames ([pscustomobject]@{ H = $panel })
 Log ("LONG panel=" + (($pn | Where-Object { $_ -like '长截图 已拼接*' }) -join ''))
 Log "LONG finish=$(Invoke-Uia ([pscustomobject]@{ H = $panel }) '完成')"

@@ -22,9 +22,17 @@ pub fn pick_folder() -> Option<PathBuf> {
 
 /// Bounded read of a user-chosen file; Core re-validates size and format.
 pub fn read_image_file(path: &Path) -> Result<Vec<u8>, String> {
-    let meta = std::fs::metadata(path).map_err(|e| crate::messages::read_file(e.kind()))?;
-    if meta.len() > MAX_INPUT_BYTES as u64 { return Err("文件超过 25 MB".into()); }
-    std::fs::read(path).map_err(|e| crate::messages::read_file(e.kind()))
+    use std::io::Read;
+    let err = |e: std::io::Error| crate::messages::read_file(e.kind());
+    if std::fs::symlink_metadata(path).map_err(err)?.file_type().is_symlink() { return Err("不支持打开快捷链接，请选择图片文件本身".into()); }
+    let file = std::fs::File::open(path).map_err(err)?;
+    if !file.metadata().map_err(err)?.is_file() { return Err("这不是一个文件".into()); }
+    // Read at most one byte past the limit from the opened handle: a file that grows
+    // after the check is still bounded.
+    let mut bytes = Vec::new();
+    file.take(MAX_INPUT_BYTES as u64 + 1).read_to_end(&mut bytes).map_err(err)?;
+    if bytes.len() > MAX_INPUT_BYTES { return Err("文件超过 25 MB".into()); }
+    Ok(bytes)
 }
 
 /// Clipboard image as PNG/JPEG-compatible bytes for Core intake.
@@ -44,11 +52,11 @@ pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
     clipboard.set_image(data).map_err(busy)
 }
 
-/// The dialog may already have asked "replace?"; ShareReady never overwrites, so an
+/// The dialog may already have asked "replace?"; Anshot never overwrites, so an
 /// existing name becomes "name (2).png", "name (3).png", ...
 pub fn free_path(path: &Path) -> PathBuf {
     if !path.exists() { return path.to_path_buf(); }
-    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "ShareReady".into());
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Anshot".into());
     let ext = path.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_else(|| "png".into());
     (2..10_000).map(|n| path.with_file_name(format!("{stem} ({n}).{ext}"))).find(|p| !p.exists()).unwrap_or_else(|| path.to_path_buf())
 }
@@ -60,6 +68,20 @@ pub fn write_file(path: &Path, png: &[u8]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn image_reads_are_bounded_and_refuse_folders() {
+        let dir = std::env::temp_dir().join(format!("sr-read-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(read_image_file(&dir).is_err(), "a folder is not an image");
+        let big = dir.join("big.bin");
+        std::fs::File::create(&big).unwrap().set_len(MAX_INPUT_BYTES as u64 + 1).unwrap();
+        assert_eq!(read_image_file(&big).unwrap_err(), "文件超过 25 MB");
+        let ok = dir.join("ok.bin");
+        std::fs::write(&ok, b"abc").unwrap();
+        assert_eq!(read_image_file(&ok).unwrap(), b"abc");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
     #[test]
     fn free_path_never_returns_an_existing_file() {
         let dir = std::env::temp_dir().join(format!("sr-free-path-{}", std::process::id()));

@@ -204,10 +204,10 @@ impl Hotkey {
     }
 }
 
-/// True for the first ShareReady process in this session (named mutex). The
+/// True for the first Anshot process in this session (named mutex). The
 /// handle is intentionally kept for the process lifetime.
 pub fn claim_single_instance() -> bool {
-    let name: Vec<u16> = "Local\\ShareReady.Desktop.Instance\0".encode_utf16().collect();
+    let name: Vec<u16> = "Local\\Anshot.Desktop.Instance\0".encode_utf16().collect();
     // SAFETY: NUL-terminated UTF-16 name; default security; handle never closed.
     let handle = unsafe { windows_sys::Win32::System::Threading::CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
     // SAFETY: reads this thread's last-error value right after the call.

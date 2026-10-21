@@ -1,4 +1,4 @@
-//! ShareReady desktop: capture / open -> redact -> copy / save. Slint UI over the Rust editor;
+//! Anshot (安截) desktop: capture / open -> redact -> copy / save. Slint UI over the Rust editor;
 //! a tray-resident process with a global hotkey (Ctrl+Shift+A).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // Slint's generated code needs `unsafe`; our own modules each `forbid` it.
@@ -29,7 +29,7 @@ slint::include_modules!();
 
 type Decoded = Result<(SourceCandidate, RgbaImage), String>;
 
-enum Pending { Replace(SourceCandidate, RgbaImage, Option<String>), Close, Quit }
+enum Pending { Replace(SourceCandidate, RgbaImage, Option<String>, Option<Delivery>), Close, Quit }
 
 /// What to do once a confirm-dialog copy succeeds.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -67,8 +67,6 @@ struct App {
     /// cursor even when no mouse-move event reaches the overlay).
     cursor_timer: slint::Timer,
     last_cursor: Option<(i32, i32)>,
-    /// What to do as soon as a captured image is open (overlay toolbar: copy / save).
-    after_open: Option<Delivery>,
     /// Pinned images (top-most windows); ids stay stable while others close.
     pins: Vec<Pin>,
     next_pin: u64,
@@ -76,6 +74,8 @@ struct App {
     pin_drag: Option<(u64, (i32, i32), (i32, i32))>,
     /// History entries currently listed in the history dialog (same order as the UI).
     history_shown: Vec<history::Entry>,
+    /// Bumped on every history refresh; a slower, older thumbnail load is discarded.
+    history_gen: u64,
     /// A running long screenshot.
     long: Option<LongShot>,
 }
@@ -227,25 +227,28 @@ impl App {
     }
 
     // ---- intake ----
-    fn source_ready(&mut self, decoded: Decoded, name: Option<String>) {
+    /// `then` (overlay toolbar copy / save) belongs to this image only: it is dropped
+    /// with the image on any failure, refusal or cancelled replace prompt.
+    fn source_ready(&mut self, decoded: Decoded, name: Option<String>, then: Option<Delivery>) {
         self.ctl.opening = false;
         match decoded {
-            Err(e) => self.toast("error", "无法打开", &e, None),
+            Err(e) => { self.show_editor(); self.toast("error", "无法打开", &e, None) }
             Ok((candidate, preview)) => {
                 if self.ctl.has_unsaved_edits() {
                     self.ctl.cancel_drag();
-                    self.pending = Some(Pending::Replace(candidate, preview, name));
+                    self.pending = Some(Pending::Replace(candidate, preview, name, then));
                     self.show_editor();
                     if let Some(ui) = self.ui() { ui.set_dialog("replace".into()); }
                 } else {
-                    self.apply_source(candidate, preview, name);
+                    self.apply_source(candidate, preview, name, then);
                 }
             }
         }
         self.refresh();
     }
-    fn apply_source(&mut self, candidate: SourceCandidate, preview: RgbaImage, name: Option<String>) {
+    fn apply_source(&mut self, candidate: SourceCandidate, preview: RgbaImage, name: Option<String>, then: Option<Delivery>) {
         if let Err(e) = self.ctl.accept_source(candidate, name) {
+            self.show_editor();
             self.toast("error", "无法打开", &messages::intake(&e), None);
             return;
         }
@@ -253,7 +256,7 @@ impl App {
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
         self.clear_toast();
-        match self.after_open.take() {
+        match then {
             Some(Delivery::Copy) => { self.start(Delivery::Copy); }
             // The save dialog is blocking: run it outside the state borrow.
             Some(Delivery::Save) => { slint::Timer::single_shot(Duration::ZERO, || command("save")); }
@@ -614,7 +617,14 @@ impl App {
         let Some(s) = self.session.as_ref() else { return };
         let Some(region) = s.selection else { return };
         let Some(mon) = s.monitor_at(region.x + region.w / 2, region.y + region.h / 2) else { return };
-        let k = self.overlays.first().map_or(1.0, |(w, _)| w.window().scale_factor());
+        // The panel is sized with the scale of the monitor it will appear on.
+        let k = self.overlays.iter().find(|(_, m)| m.bounds == mon.bounds).or(self.overlays.first()).map_or(1.0, |(w, _)| w.window().scale_factor());
+        if u64::from(region.w.unsigned_abs()) * u64::from(region.h.unsigned_abs()) > shareready_core::MAX_PIXELS / 2 {
+            self.end_capture();
+            if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+            self.system_toast("warn", "选区太大，无法长截图", "请框选要滚动的那一部分");
+            return;
+        }
         let (pw, ph) = ((300.0 * k) as i32, (96.0 * k) as i32);
         let gap = (12.0 * k) as i32;
         let fits = |x: i32, y: i32| x >= mon.bounds.x && y >= mon.bounds.y && x + pw <= mon.bounds.x + mon.bounds.w && y + ph <= mon.bounds.y + mon.bounds.h;
@@ -756,7 +766,9 @@ impl App {
         ui.set_history_loading(true);
         ui.set_dialog("history".into());
         let entries = self.history().map(|h| h.list()).unwrap_or_default();
-        self.history_shown = entries.clone();
+        self.history_shown = Vec::new(); // nothing is actionable until the matching thumbnails arrive
+        self.history_gen += 1;
+        let generation = self.history_gen;
         let now = history::now_millis();
         // Thumbnails decode through Core off the UI thread; files are untrusted input.
         std::thread::spawn(move || {
@@ -766,6 +778,8 @@ impl App {
                 (img, history::label(e.millis, now))
             }).collect();
             let _ = slint::invoke_from_event_loop(move || { with(|a| {
+                if a.history_gen != generation { return; }
+                a.history_shown = entries;
                 let Some(ui) = a.ui() else { return };
                 let items: Vec<HistoryItem> = thumbs.iter().map(|(img, label)| HistoryItem {
                     thumb: img.as_ref().map(to_image).unwrap_or_default(), label: label.clone().into(), broken: img.is_none(),
@@ -784,12 +798,11 @@ impl App {
         self.end_capture();
         let Some(pixels) = pixels else { if std::mem::take(&mut self.restore_editor) { self.show_editor(); } return };
         let editor_was_open = std::mem::take(&mut self.restore_editor);
-        self.after_open = then;
         if then != Some(Delivery::Copy) || editor_was_open { self.show_editor(); }
         // Leave the state borrow before starting the shared intake pipeline.
         slint::Timer::single_shot(Duration::ZERO, move || {
             let (w, h) = pixels.dimensions();
-            spawn_open(capture::encode_png(pixels), Some(format!("截图 {w}×{h}.png")));
+            spawn_open_then(capture::encode_png(pixels), Some(format!("截图 {w}×{h}.png")), then);
         });
     }
 
@@ -883,9 +896,8 @@ impl App {
     fn dialog_choice(&mut self, choice: &str) {
         if let Some(ui) = self.ui() { ui.set_dialog(SharedString::new()); }
         self.ctl.cancel_drag();
-        if choice == "cancel" { self.after_open = None; }
         match (self.pending.take(), choice) {
-            (Some(Pending::Replace(c, p, n)), "discard") => self.apply_source(c, p, n),
+            (Some(Pending::Replace(c, p, n, then)), "discard") => self.apply_source(c, p, n, then),
             (Some(Pending::Close), "discard") => self.close_editor(true),
             (Some(Pending::Quit), "discard") => { let _ = slint::quit_event_loop(); }
             // Set only once the copy really started; any refusal leaves the app open.
@@ -897,9 +909,16 @@ impl App {
     }
 }
 
-fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) {
+fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) { spawn_open_then(bytes, name, None) }
+
+/// Decode off the UI thread; `then` (copy / save) runs only once *this* image is open.
+fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: Option<Delivery>) {
     let started = with(|a| {
-        if a.ctl.opening { a.toast("warn", "正在打开上一张图片", "请稍后再试", None); return false; }
+        if a.ctl.opening {
+            if then.is_some() { a.show_editor(); }
+            a.toast("warn", "正在打开上一张图片", "请稍后再试", None);
+            return false;
+        }
         a.ctl.opening = true;
         a.refresh();
         true
@@ -911,7 +930,7 @@ fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) {
             let pixels = shareready_core::decode_source(candidate.bytes()).map_err(|m| messages::decode(&m))?;
             Ok((candidate, display::preview(pixels)))
         });
-        let _ = slint::invoke_from_event_loop(move || { with(|a| a.source_ready(decoded, name)); });
+        let _ = slint::invoke_from_event_loop(move || { with(|a| a.source_ready(decoded, name, then)); });
     });
 }
 
@@ -929,7 +948,7 @@ fn suggested_name() -> String {
     with(|a| a.ctl.source_name.clone()).flatten()
         .and_then(|n| n.rsplit_once('.').map(|(stem, _)| stem.to_string()))
         .map(|stem| format!("{stem}_已遮挡.png"))
-        .unwrap_or_else(|| "ShareReady_已遮挡.png".into())
+        .unwrap_or_else(|| "安截_已遮挡.png".into())
 }
 
 thread_local! { static PICKING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
@@ -1045,8 +1064,8 @@ fn main() -> Result<(), slint::PlatformError> {
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
-        cursor_timer: slint::Timer::default(), last_cursor: None, after_open: None,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), long: None,
+        cursor_timer: slint::Timer::default(), last_cursor: None,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if shareready_platform_windows::claim_single_instance() {
@@ -1062,9 +1081,15 @@ fn main() -> Result<(), slint::PlatformError> {
             a.resident = true;
             a.tray = Some(tray);
             a.register_hotkey();
-            // Keep an existing start-at-login entry pointing at this exe if it was moved.
-            if let (Ok(Some(old)), Some(new)) = (shareready_platform_windows::autostart(), autostart_command()) {
-                if old != new { let _ = shareready_platform_windows::set_autostart(Some(&new)); }
+            // Keep an existing start-at-login entry pointing at this exe if it was moved, and
+            // take over an entry 0.1.x wrote under the temporary name.
+            if let Some(new) = autostart_command() {
+                let _ = shareready_platform_windows::migrate_legacy_autostart(&new);
+                if let Ok(Some(old)) = shareready_platform_windows::autostart() {
+                    // Another installed copy keeps its entry; only a dangling one is taken over.
+                    let target = old.trim_start_matches('"').split('"').next().unwrap_or("");
+                    if old != new && !std::path::Path::new(target).is_file() { let _ = shareready_platform_windows::set_autostart(Some(&new)); }
+                }
             }
         });
         slint::Timer::single_shot(Duration::from_millis(800), || { with(|a| if a.session.is_none() { a.prewarm_overlays(); }); });
@@ -1195,9 +1220,10 @@ fn pin_action(id: u64, act: &str) {
         "edit" => { with(|a| a.show_editor()); spawn_open(capture::encode_png(img), Some("钉图.png".into())); }
         "copy" => {
             let dims = img.dimensions();
-            let result = capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, dims).map(|()| png));
+            // Pins are a viewing aid: their copies are not editor deliveries and stay out of the history.
+            let result = capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, dims));
             with(|a| match result {
-                Ok(png) => { a.record_history(&png); a.system_toast("done", "已复制到剪贴板", &format!("{} × {}", dims.0, dims.1)); }
+                Ok(()) => a.system_toast("done", "已复制到剪贴板", &format!("{} × {}", dims.0, dims.1)),
                 Err(e) => a.system_toast("error", "复制失败", &e),
             });
         }
@@ -1205,9 +1231,13 @@ fn pin_action(id: u64, act: &str) {
             let dir = with(|a| a.settings.save_dir.clone()).flatten();
             let Some(path) = picker(|| platform::pick_save_path("钉图.png", dir.as_deref())) else { return };
             let path = platform::free_path(&path);
-            let result = capture::encode_png(img).and_then(|png| platform::write_file(&path, &png).map(|()| png));
+            let dims = img.dimensions();
+            // Same check as every export: the bytes must reopen as a clean generated PNG first.
+            let result = capture::encode_png(img)
+                .and_then(|png| shareready_core::decode_generated_png(&png, dims).map(|_| png))
+                .and_then(|png| platform::write_file(&path, &png));
             with(|a| match result {
-                Ok(png) => { a.record_history(&png); a.system_toast("done", "已保存", &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()); }
+                Ok(()) => a.system_toast("done", "已保存", &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
                 Err(e) => a.system_toast("error", "保存失败", &e),
             });
         }
