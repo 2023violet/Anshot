@@ -1,0 +1,53 @@
+name: Anshot desktop CI
+
+# Tests, dependency audit and the unsigned release files for the Slint desktop app.
+# Nothing is published from here: the packaged files are kept as a workflow artifact.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Core crates (root workspace)
+        run: cargo test --workspace --locked
+
+      - name: Desktop app
+        run: cargo test --locked --manifest-path apps/desktop/Cargo.toml
+
+      - name: Frozen V1 goldens
+        run: python tests/golden/verify_v1_baseline.py
+
+      - name: Dependency audit (cargo-deny)
+        shell: pwsh
+        run: |
+          cargo install cargo-deny --locked --version 0.20.2
+          cargo deny check
+          cargo deny --manifest-path apps/desktop/Cargo.toml check
+
+      - name: Package (zip, installer, checksums)
+        shell: pwsh
+        env:
+          MAKENSIS: C:\Program Files (x86)\NSIS\makensis.exe
+        run: pwsh -File scripts/package.ps1
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: anshot-windows-x64
+          path: |
+            dist/Anshot-*-win-x64-setup.exe
+            dist/Anshot-*-win-x64.zip
+            dist/SHA256SUMS.txt
+            dist/release-metadata.json
+          retention-days: 14
