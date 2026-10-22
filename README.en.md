@@ -11,6 +11,10 @@ Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover priv
 
 ![Editor with arrow, ellipse, line, pen and a custom colour (synthetic sample image)](tests/desktop/evidence/release/19-new-shapes.png)
 
+![Launch film excerpt: the safe mosaic covers a phone number; zoomed in, every cell's grey is chosen by its coordinates alone (synthetic sample)](docs/media/launch-preview.gif)
+
+*A 10-second, silent excerpt of the 30-second launch film. The mosaic is drawn by the same algorithm as the app; the chat is synthetic test data.*
+
 ## Download and install
 
 From [Releases](https://github.com/2023violet/Anshot/releases):
@@ -33,7 +37,7 @@ Get-FileHash .\Anshot-0.2.0-win-x64-setup.exe -Algorithm SHA256   # compare with
 
 **Uninstall.** Settings → Apps → 安截 Anshot. Settings and history are kept unless you tick the option to delete them, and the start-at-login entry is always removed.
 
-Requires Windows 10 or 11, x64.
+Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, the clipboard and start-at-login call Win32 directly; there is no macOS or Linux build and no port is planned for now.
 
 ## Features
 

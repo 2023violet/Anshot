@@ -3,6 +3,7 @@
 ## 未发布 / Unreleased
 - GitHub 仓库改名为 `2023violet/Anshot`（旧地址自动跳转）；内部 crate、测试变量统一为 anshot / `ANSHOT_*`。/ Repository renamed to `2023violet/Anshot` (old URLs redirect); internal crates and test variables renamed.
 - 移除 0.1.x 设置与开机启动项的迁移代码（0.1.x 从未公开发布）。/ Removed the 0.1.x migration code (0.1.x was never released).
+- README 加入发布片片段（`docs/media/launch-preview.gif`），并写明只支持 Windows。/ README gains a launch-film excerpt and states Windows-only support.
 - 新截图历史文件名前缀为 `anshot-`，仍读取 0.2.0 的 `sr-` 文件。/ New history files use the `anshot-` prefix; 0.2.0 `sr-` files are still listed.
 
 ## 0.2.0 — 2026-10-21（首个公开版本 / first public release）

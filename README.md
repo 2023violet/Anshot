@@ -11,6 +11,10 @@
 
 ![编辑器：箭头、椭圆、直线、画笔与自定义颜色（合成示例图）](tests/desktop/evidence/release/19-new-shapes.png)
 
+![发布片片段：安全马赛克遮住手机号，放大后每个格子的颜色只由坐标决定（合成示例）](docs/media/launch-preview.gif)
+
+*30 秒发布片片段（10 秒，无声 GIF）。画面中的马赛克由与产品相同的算法生成，聊天内容为测试用合成数据。*
+
 ## 下载与安装
 
 在 [Releases](https://github.com/2023violet/Anshot/releases) 下载：
@@ -30,7 +34,7 @@ Get-FileHash .\Anshot-0.2.0-win-x64-setup.exe -Algorithm SHA256   # 与 SHA256SU
 升级：直接运行新版安装程序覆盖安装（会自动关闭正在运行的旧版）。关于 → “检查更新”只是用浏览器打开 Releases 页，程序自身不联网。
 卸载：设置 → 应用 → 安截 Anshot；设置与截图历史默认保留，卸载时可勾选一并删除。开机启动项会随卸载删除。
 
-系统要求：Windows 10 / 11 x64。
+系统要求：Windows 10 / 11 x64。**只支持 Windows**：截图、全局快捷键、剪贴板与开机启动直接调用 Win32 接口，目前没有 macOS / Linux 版本，也暂无移植计划。
 
 ## 功能
 
