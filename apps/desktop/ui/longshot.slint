@@ -14,6 +14,7 @@ export component LongShotPanel inherits Window {
 
     in property <int> stitched-height;
     in property <string> state; // "" | "lost" | "full"
+    in property <bool> narrowed; // only part of the region's width scrolls
     callback finish();
     callback cancel();
 
@@ -22,7 +23,8 @@ export component LongShotPanel inherits Window {
         accessible-role: groupbox; accessible-label: "长截图 已拼接 " + root.stitched-height + " 像素";
         VerticalLayout { padding: 12px; spacing: 6px;
             Text { text: root.state == "full" ? "已到长度上限，点“完成”" : "长截图：慢慢向下滚动刚才选的区域"; font-size: 13px; font-weight: 500; color: Theme.ink; }
-            Text { text: root.state == "lost" ? "滚动太快，没接上——请往回滚一点" : "已拼接 " + root.stitched-height + " 像素高";
+            Text { text: root.state == "lost" ? "滚动太快，没接上——请往回滚一点"
+                    : (root.narrowed ? "仅拼接滚动的一栏 · " : "") + "已拼接 " + root.stitched-height + " 像素高";
                 font-size: 12px; color: root.state == "lost" ? Theme.error : Theme.mute; }
             HorizontalLayout { spacing: 8px; alignment: end;
                 ActionButton { label: "取消"; key: ""; kind: 0; clicked => { root.cancel(); } }

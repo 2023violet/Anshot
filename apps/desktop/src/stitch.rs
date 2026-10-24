@@ -8,6 +8,12 @@
 //! matched by its vertical offset, and only the newly revealed rows are appended, taken
 //! from the captured pixels. Frames that do not overlap the previous one (scrolled too
 //! fast) are rejected rather than guessed.
+//!
+//! When only part of the region's width scrolls (a sidebar or a second pane stays put),
+//! the first scroll narrows the stitch to the band of columns that moved; later frames are
+//! cut to the same columns. A still column only counts as another pane if it has content
+//! (blank margins scroll with the page as far as anyone can tell). A narrowed result is
+//! reported so the UI can say so.
 #![forbid(unsafe_code)]
 use image::RgbaImage;
 
@@ -19,6 +25,12 @@ const SEGMENTS: usize = 16;
 const ROW_TOL: f32 = 1.5;
 /// Mean difference over the overlap accepted for a scroll match.
 const MATCH_TOL: f32 = 2.0;
+/// Narrowest scrolling column band worth stitching on its own (px).
+const MIN_BAND: u32 = 48;
+/// Narrowest band of still, non-blank columns treated as a separate pane (px).
+const MIN_PANE: u32 = 16;
+/// Largest per-channel sum difference for a pixel to count as unchanged in place.
+const PX_TOL: u32 = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Push {
@@ -47,6 +59,12 @@ pub struct Stitcher {
     last_sigs: Vec<Sig>,
     max_pixels: u64,
     full: bool,
+    /// Columns `[x0, x1)` of each captured frame that are stitched (all, unless narrowed).
+    cols: (u32, u32),
+    /// Set once the content has scrolled; narrowing is only tried before that.
+    scrolled: bool,
+    /// Width of the captured frames.
+    frame_w: u32,
 }
 
 fn signatures(img: &RgbaImage) -> Vec<Sig> {
@@ -123,15 +141,31 @@ impl Stitcher {
         let width = first.width();
         let rows = first.height();
         let sigs = signatures(&first);
-        Self { width, body: first.as_raw().clone(), rows, footer: Vec::new(), footer_rows: None, last: first, last_sigs: sigs, max_pixels, full: false }
+        Self { width, body: first.as_raw().clone(), rows, footer: Vec::new(), footer_rows: None, last: first, last_sigs: sigs, max_pixels, full: false, cols: (0, width), scrolled: false, frame_w: width }
     }
+    /// The captured columns kept in the result, when only part of the region scrolled.
+    pub fn narrowed(&self) -> Option<(u32, u32)> { (self.cols != (0, self.frame_w)).then_some(self.cols) }
     pub fn height(&self) -> u32 { self.rows + (self.footer.len() / (self.width as usize * 4)) as u32 }
 
     pub fn push(&mut self, frame: RgbaImage) -> Push {
         if self.full { return Push::Full; }
+        if frame.width() != self.frame_w { return Push::Lost; }
+        let frame = if self.cols == (0, self.frame_w) { frame } else {
+            image::imageops::crop_imm(&frame, self.cols.0, 0, self.cols.1 - self.cols.0, frame.height()).to_image()
+        };
         if frame.dimensions() != self.last.dimensions() { return Push::Lost; }
-        let cur = signatures(&frame);
-        let dy = match motion(&self.last_sigs, &cur) { Motion::Scrolled(dy) => dy, Motion::Still => return Push::Unchanged, Motion::Lost => return Push::Lost };
+        let mut frame = frame;
+        let mut cur = signatures(&frame);
+        let full = motion(&self.last_sigs, &cur);
+        if matches!(full, Motion::Still) { return Push::Unchanged; }
+        // Before the first scroll, a still pane beside the moving one must not be stitched
+        // as if it scrolled (a low-contrast sidebar can still "match" a full-width shift).
+        let dy = match (self.narrow(&frame), full) {
+            (Some((f, c, dy)), _) => { frame = f; cur = c; dy }
+            (None, Motion::Scrolled(dy)) => dy,
+            _ => return Push::Lost,
+        };
+        self.scrolled = true;
         let (top, found) = fixed_bands(&self.last_sigs, &cur, dy);
         let first_scroll = self.footer_rows.is_none();
         let bottom = *self.footer_rows.get_or_insert(found);
@@ -156,6 +190,57 @@ impl Stitcher {
         self.last_sigs = cur;
         self.last = frame;
         if self.full { Push::Full } else { Push::Appended(take as u32) }
+    }
+
+    /// Before anything has scrolled: if a band of columns moved while the rest stayed in
+    /// place, restart the stitch on that band and return the cut frame, its signatures and
+    /// the shift.
+    fn narrow(&mut self, frame: &RgbaImage) -> Option<(RgbaImage, Vec<Sig>, usize)> {
+        if self.scrolled || self.cols != (0, self.width) { return None; }
+        let (w, h) = frame.dimensions();
+        let near = |a: [u8; 4], b: [u8; 4]| (0..3).map(|i| u32::from(a[i].abs_diff(b[i]))).sum::<u32>() <= PX_TOL;
+        // Rows that stayed in place across the whole width at the top / bottom are sticky
+        // bars; judge columns only between them, so a margin under a full-width header
+        // still counts as blank.
+        let (ps, cs) = (&self.last_sigs, signatures(frame));
+        let same = |i: usize| row_dist(&ps[i], &cs[i]) <= ROW_TOL;
+        let lo = (0..h as usize).take_while(|&i| same(i)).count() as u32;
+        let hi = h - (0..(h - lo) as usize).take_while(|&k| same(h as usize - 1 - k)).count() as u32;
+        if hi <= lo { return None; }
+        // A column is another pane if it stayed in place and is not blank.
+        let pane = |x: u32| {
+            let first = self.last.get_pixel(x, lo).0;
+            (lo..hi).all(|y| near(self.last.get_pixel(x, y).0, frame.get_pixel(x, y).0))
+                && (lo..hi).any(|y| !near(self.last.get_pixel(x, y).0, first))
+        };
+        let panes: Vec<bool> = (0..w).map(pane).collect();
+        // Only bands of pane columns wide enough to be real panes count.
+        let mut keep = vec![true; w as usize];
+        let mut x = 0;
+        while x < w as usize {
+            if !panes[x] { x += 1; continue; }
+            let s0 = x;
+            while x < w as usize && panes[x] { x += 1; }
+            if (x - s0) as u32 >= MIN_PANE { keep[s0..x].iter_mut().for_each(|k| *k = false); }
+        }
+        // Longest run of the remaining columns.
+        let (mut best, mut start) = ((0u32, 0u32), None);
+        for x in 0..=w {
+            let k = x < w && keep[x as usize];
+            match (k, start) {
+                (true, None) => start = Some(x),
+                (false, Some(s0)) => { if x - s0 > best.1 - best.0 { best = (s0, x); } start = None; }
+                _ => {}
+            }
+        }
+        let (x0, x1) = best;
+        if x1 - x0 < MIN_BAND || x1 - x0 == w { return None; }
+        let cut = |img: &RgbaImage| image::imageops::crop_imm(img, x0, 0, x1 - x0, h).to_image();
+        let (first, now) = (cut(&self.last), cut(frame));
+        let (ps, cs) = (signatures(&first), signatures(&now));
+        let Motion::Scrolled(dy) = motion(&ps, &cs) else { return None };
+        *self = Self { cols: (x0, x1), frame_w: w, ..Self::new(first, self.max_pixels) };
+        Some((now, cs, dy))
     }
 
     /// The stitched image: body followed by the sticky footer.
@@ -251,6 +336,73 @@ mod tests {
         assert_eq!(s.push(viewport(&p, 180, 100, 0, 0)), Push::Full);
         assert_eq!(s.push(viewport(&p, 240, 100, 0, 0)), Push::Full);
         assert_eq!(s.finish().unwrap().height(), 250);
+    }
+
+    /// A still sidebar on the left of a scrolling pane (with its own sticky header).
+    fn split(page: &RgbaImage, scroll: u32, vh: u32, side: u32) -> RgbaImage {
+        let pane = viewport(page, scroll, vh, 20, 0);
+        RgbaImage::from_fn(side + page.width(), vh, |x, y| if x < side { Rgba([(y * 5 % 256) as u8, 120, (x * 9 % 256) as u8, 255]) } else { *pane.get_pixel(x - side, y) })
+    }
+
+    #[test]
+    fn narrows_to_the_pane_that_scrolls() {
+        let p = page(120, 1200);
+        let (vh, side) = (220, 70);
+        let mut s = Stitcher::new(split(&p, 0, vh, side), u64::MAX);
+        let mut scroll = 0;
+        for step in [60, 90, 75] {
+            scroll += step;
+            assert_eq!(s.push(split(&p, scroll, vh, side)), Push::Appended(step), "step {step}");
+        }
+        assert_eq!(s.narrowed(), Some((side, side + 120)));
+        let out = s.finish().unwrap();
+        assert_eq!(out.dimensions(), (120, vh + scroll));
+        let expected = RgbaImage::from_fn(120, vh + scroll, |x, y| if y < 20 { Rgba([200, 10, 10, 255]) } else { *p.get_pixel(x, y - 20) });
+        assert!(out == expected, "stitched pane differs from the page");
+    }
+
+    #[test]
+    fn a_faint_sidebar_is_not_stitched_as_if_it_scrolled() {
+        let p = page(120, 1200);
+        let faint = |scroll: u32| {
+            let pane = viewport(&p, scroll, 200, 0, 0);
+            RgbaImage::from_fn(60 + 120, 200, |x, y| if x < 60 { Rgba([240, 240, (230 + y / 20) as u8, 255]) } else { *pane.get_pixel(x - 60, y) })
+        };
+        let mut s = Stitcher::new(faint(0), u64::MAX);
+        assert_eq!(s.push(faint(50)), Push::Appended(50));
+        assert_eq!(s.narrowed(), Some((60, 180)));
+        assert!(s.finish().unwrap() == image::imageops::crop_imm(&p, 0, 0, 120, 250).to_image());
+    }
+
+    #[test]
+    fn margins_under_a_full_width_header_stay_in_the_picture() {
+        let p = page(100, 900);
+        let framed = |scroll: u32| {
+            let v = viewport(&p, scroll, 180, 0, 0);
+            RgbaImage::from_fn(160, 200, |x, y| if y < 20 { Rgba([200, 10, 10, 255]) } else if !(30..130).contains(&x) { Rgba([255, 255, 255, 255]) } else { *v.get_pixel(x - 30, y - 20) })
+        };
+        let mut s = Stitcher::new(framed(0), u64::MAX);
+        assert_eq!(s.push(framed(40)), Push::Appended(40));
+        assert_eq!(s.narrowed(), None);
+        assert_eq!(s.finish().unwrap().dimensions(), (160, 240));
+    }
+
+    #[test]
+    fn blank_margins_stay_in_the_picture() {
+        let p = page(100, 900);
+        let framed = |scroll: u32| { let v = viewport(&p, scroll, 160, 0, 0); RgbaImage::from_fn(140, 160, |x, y| if !(20..120).contains(&x) { Rgba([255, 255, 255, 255]) } else { *v.get_pixel(x - 20, y) }) };
+        let mut s = Stitcher::new(framed(0), u64::MAX);
+        assert_eq!(s.push(framed(30)), Push::Appended(30));
+        assert_eq!(s.narrowed(), None);
+        assert_eq!(s.finish().unwrap().width(), 140);
+    }
+
+    #[test]
+    fn a_full_width_scroll_is_not_narrowed() {
+        let p = page(80, 900);
+        let mut s = Stitcher::new(viewport(&p, 0, 150, 0, 0), u64::MAX);
+        assert_eq!(s.push(viewport(&p, 40, 150, 0, 0)), Push::Appended(40));
+        assert_eq!(s.narrowed(), None);
     }
 
     #[test]

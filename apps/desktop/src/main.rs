@@ -663,6 +663,7 @@ impl App {
         };
         let h = l.stitcher.as_ref().map_or(0, |s| s.height());
         l.panel.set_stitched_height(h as i32);
+        l.panel.set_narrowed(l.stitcher.as_ref().is_some_and(|s| s.narrowed().is_some()));
         l.panel.set_state(state.into());
         if state == "full" { l.timer.stop(); }
     }

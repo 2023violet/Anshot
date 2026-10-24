@@ -688,6 +688,33 @@ Log ("LONG editor_status=" + (((UiaNames $w) | Where-Object { $_ -match ' × ' }
 Log "LONG copy=$(CopyTo 'clipboard-long.png')"
 if (-not $app.HasExited) { $app.Kill() }
 
+# ---- 30. long screenshot hard case: a still sidebar plus a sticky header and footer ----
+# The region also covers the sidebar; only the scrolling pane may be stitched, header and footer once.
+$hx = 160; $hdr = 40; $ftr = 32; $inset = 10; $fw = 800; $fh = 420
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'scroll_window.ps1'), '-Image', "`"$page`"", '-X', $fx, '-Y', $fy, '-W', $fw, '-H', $fh, '-Side', $hx, '-Header', $hdr, '-Footer', $ftr) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
+ScreenDrag ($fx + $inset) ($fy + $inset) ($fx + $fw - $inset) ($fy + $fh - $inset)
+Start-Sleep -Milliseconds 300
+Log "LONGHARD start=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '长截图')"
+Start-Sleep -Milliseconds 800
+[void][E]::SetCursorPos($fx + $hx + 300, $fy + 200); Start-Sleep -Milliseconds 300
+foreach ($i in 1..10) { [E]::mouse_event(0x0800, 0, 0, [uint32]4294967176, [IntPtr]::Zero); Start-Sleep -Milliseconds 350 }
+Start-Sleep -Milliseconds 600
+$panel = [E]::TitleAny('Anshot 长截图')
+$pn = UiaNames ([pscustomobject]@{ H = $panel })
+Log ("LONGHARD panel=" + (($pn | Where-Object { $_ -like '*拼接*' }) -join ' | '))
+Log "LONGHARD finish=$(Invoke-Uia ([pscustomobject]@{ H = $panel }) '完成')"
+Start-Sleep -Milliseconds 2500
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 800
+$w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
+[void][E]::SetForegroundWindow($w.H); Start-Sleep -Milliseconds 300
+Log "LONGHARD copy=$(CopyTo 'clipboard-long-hard.png')"
+Log ("LONGHARD check=" + (python (Join-Path $PSScriptRoot 'check_longshot.py') (Join-Path $Out 'clipboard-long-hard.png') $page $hdr $ftr $inset))
+if (-not $app.HasExited) { $app.Kill() }
+
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }
