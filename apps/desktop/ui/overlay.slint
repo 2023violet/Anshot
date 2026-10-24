@@ -28,13 +28,19 @@ export component CaptureOverlay inherits Window {
     in property <string> cursor-kind: "new";
     // Selection toolbar: shown once a selection exists and no button is held.
     in property <bool> show-toolbar;
+    // A region from an earlier capture this run can be put back with R.
+    in property <bool> has-last;
+    // A short message shown in the hint bar instead of the usual hint ("已复制颜色 …").
+    in property <string> notice;
+    // The toolbar's size panel (ratios and an exact W × H) is open.
+    property <bool> size-open;
 
     callback pointer-down(length, length);
     callback pointer-move(length, length);
     callback pointer-up(length, length);
     callback confirm();
     callback cancel();
-    callback action(string); // "copy" | "save" | "edit" | "pin" | "cancel"
+    callback action(string); // "copy" | "save" | "edit" | "pin" | "cancel" | "long" | "repeat" | "color" | "ratio:W:H" | "size:WxH"
 
     forward-focus: keys;
     keys := FocusScope {
@@ -45,6 +51,9 @@ export component CaptureOverlay inherits Window {
             if root.has-selection && e.modifiers.control && (e.text == "c" || e.text == "C" || e.text == "\u{3}") { root.action("copy"); return accept; }
             if root.has-selection && e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "\u{13}") { root.action("save"); return accept; }
             if root.has-selection && e.modifiers.control && (e.text == "t" || e.text == "T" || e.text == "\u{14}") { root.action("pin"); return accept; }
+            // R: the last region again; Shift+C: copy the colour under the pointer.
+            if root.has-last && !e.modifiers.control && (e.text == "r" || e.text == "R") { root.action("repeat"); return accept; }
+            if e.modifiers.shift && !e.modifiers.control && (e.text == "C" || e.text == "c") { root.action("color"); return accept; }
             reject
         }
         Image { width: parent.width; height: parent.height; source: root.shot; image-fit: fill; image-rendering: pixelated; accessible-role: none; }
@@ -97,11 +106,36 @@ export component CaptureOverlay inherits Window {
             TouchArea { } // keep clicks on the bar from starting a new selection
             row := HorizontalLayout { x: 6px; spacing: 6px; alignment: center;
                 VerticalLayout { alignment: center; ActionButton { label: "取消"; key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: "尺寸"; key: ""; kind: 0; clicked => { root.size-open = !root.size-open; } } }
                 VerticalLayout { alignment: center; ActionButton { label: "长截图"; key: ""; kind: 0; clicked => { root.action("long"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "钉图"; key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "编辑"; key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "保存"; key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: "复制"; key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }
+            }
+        }
+
+        // Size panel: preset ratios about the centre, or an exact size in physical px.
+        if root.show-toolbar && root.size-open: Rectangle {
+            property <length> pw: srow.preferred-width + 16px;
+            x: max(8px, min(lit.x + lit.w - self.pw, parent.width - self.pw - 8px));
+            // Same placement rule as the toolbar, then one row further out (or in, if no room).
+            property <length> ty: lit.y + lit.h + 8px + 44px <= parent.height ? lit.y + lit.h + 8px : lit.y - 8px - 44px >= 0 ? lit.y - 52px : lit.y + lit.h - 52px;
+            y: self.ty + 96px <= parent.height ? self.ty + 52px : self.ty - 52px;
+            width: self.pw; height: 44px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+            accessible-role: groupbox; accessible-label: "选区尺寸";
+            TouchArea { }
+            srow := HorizontalLayout { x: 8px; spacing: 6px; alignment: center;
+                for r in ["1:1", "4:3", "16:9"]: VerticalLayout { alignment: center;
+                    ActionButton { label: r; key: ""; kind: 0; clicked => { root.action("ratio:" + r); } } }
+                Rectangle { width: 1px; height: 22px; background: Theme.line; }
+                VerticalLayout { alignment: center; Rectangle { width: 64px; height: 28px; border-radius: 6px; border-width: 1px; border-color: Theme.line-strong; background: Theme.bg-soft;
+                    win := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: "宽"; } } }
+                Text { text: "×"; vertical-alignment: center; color: Theme.mute; }
+                VerticalLayout { alignment: center; Rectangle { width: 64px; height: 28px; border-radius: 6px; border-width: 1px; border-color: Theme.line-strong; background: Theme.bg-soft;
+                    hin := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: "高";
+                        accepted => { root.action("size:" + win.text + "x" + hin.text); keys.focus(); } } } }
+                VerticalLayout { alignment: center; ActionButton { label: "应用"; key: ""; kind: 1; clicked => { root.action("size:" + win.text + "x" + hin.text); keys.focus(); } } }
             }
         }
 
@@ -120,7 +154,11 @@ export component CaptureOverlay inherits Window {
             x: (parent.width - self.width) / 2; y: parent.height - 56px;
             width: hl.preferred-width + 24px; height: 32px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
             hl := HorizontalLayout { padding-left: 12px; spacing: 8px; alignment: center;
-                Text { text: root.has-selection ? "Ctrl+C 复制 · Enter 编辑 · 拖边角调整 · 拖内部移动" : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕"; font-size: 12px; color: Theme.ink; vertical-alignment: center; }
+                Text { text: root.notice != "" ? root.notice
+                        : root.has-selection ? "Ctrl+C 复制 · Enter 编辑 · Shift 锁定比例 · Shift+C 复制颜色"
+                        : root.has-last ? "拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · R 重复上次区域"
+                        : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · Shift+C 复制颜色";
+                    font-size: 12px; color: Theme.ink; vertical-alignment: center; }
                 VerticalLayout { alignment: center; Keycap { label: "Esc"; } }
                 Text { text: "取消"; font-size: 12px; color: Theme.mute; vertical-alignment: center; }
             }

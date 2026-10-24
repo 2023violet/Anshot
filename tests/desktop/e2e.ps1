@@ -521,7 +521,7 @@ Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
 $ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
 [void][E]::SetCursorPos($fx + 333, $fy + 222); Start-Sleep -Milliseconds 400
 $mag = (UiaNames ([pscustomobject]@{ H = $ovh })) | Where-Object { $_ -like '放大镜*' } | Select-Object -First 1
-Log "MAGNIFIER expected=x $($fx + 333)  y $($fy + 222) got=$mag"
+Log "MAGNIFIER expected=$($fx + 333), $($fy + 222) got=$mag"
 
 # ---- 23. overlay toolbar: Ctrl+C copies the selection without opening the editor ----
 [System.Windows.Forms.Clipboard]::Clear()
@@ -714,6 +714,102 @@ $w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W
 Log "LONGHARD copy=$(CopyTo 'clipboard-long-hard.png')"
 Log ("LONGHARD check=" + (python (Join-Path $PSScriptRoot 'check_longshot.py') (Join-Path $Out 'clipboard-long-hard.png') $page $hdr $ftr $inset))
 if (-not $app.HasExited) { $app.Kill() }
+
+# ---- 31. capture aids: colour readout and Shift+C, Shift square, size panel, R repeats, pointer drawn in, delay ----
+function Typed([string] $digits) { foreach ($ch in $digits.ToCharArray()) { Key ([byte][char]$ch) } }
+function UiaClick($h, [string] $name) {
+    $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+    $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $name))
+    if (-not $el) { return $false }
+    $r = $el.Current.BoundingRectangle
+    [void][E]::SetCursorPos([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2)); Start-Sleep -Milliseconds 150
+    [E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+    $true
+}
+function SizeText($h) { ((UiaNames ([pscustomobject]@{ H = $h })) | Where-Object { $_ -match '^\d+ × \d+$' } | Select-Object -First 1) }
+function ClipSave([string] $name) {
+    $c = [System.Windows.Forms.Clipboard]::GetImage()
+    if (-not $c) { return 'none' }
+    $c.Save((Join-Path $Out $name), [System.Drawing.Imaging.ImageFormat]::Png); $r = "$($c.Width)x$($c.Height)"; $c.Dispose(); $r
+}
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
+# colour under the pointer: the magnifier shows it, Shift+C copies it as text
+[void][E]::SetCursorPos($fx + 333, $fy + 222); Start-Sleep -Milliseconds 400
+$sb = New-Object System.Drawing.Bitmap (Resolve-Path $Image).Path; $px = $sb.GetPixel(333, 222); $sb.Dispose()
+$want = '#{0:X2}{1:X2}{2:X2}' -f $px.R, $px.G, $px.B
+$mag = (UiaNames ([pscustomobject]@{ H = $ovh })) | Where-Object { $_ -like '放大镜*' } | Select-Object -First 1
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Shift; Start-Sleep -Milliseconds 500
+Log "AIDS color want=$want magnifier=$mag clip=$([System.Windows.Forms.Clipboard]::GetText())"
+# Shift held while dragging: a square
+[E]::keybd_event(0x10, 0, 0, [IntPtr]::Zero)
+ScreenDrag ($fx + 50) ($fy + 50) ($fx + 250) ($fy + 130)
+[E]::keybd_event(0x10, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+Log "AIDS square=$(SizeText $ovh)"
+# size panel: 16:9 about the centre, then an exact 300 × 150
+Log "AIDS panel=$(UiaClick $ovh '尺寸') ratio=$(UiaClick $ovh '16:9') after_ratio=$(SizeText $ovh)"
+[void](UiaClick $ovh '宽'); Typed '300'
+[void](UiaClick $ovh '高'); Typed '150'; Key 0x0D
+Start-Sleep -Milliseconds 300
+Log "AIDS exact=$(SizeText $ovh)"
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "AIDS exact_copy=$(ClipSave 'clipboard-exact-size.png')"
+# R puts the last region back in the next capture
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
+Key 0x52; Start-Sleep -Milliseconds 300
+Log "AIDS repeat=$(SizeText $ovh)"
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "AIDS repeat_copy=$(ClipSave 'clipboard-repeat.png')"
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+# pointer drawn in: click-to-snap the fixture without moving the pointer, copy
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "include_cursor=true`ndelay=3"
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+[void][E]::SetCursorPos($fx + 400, $fy + 300); Start-Sleep -Milliseconds 300
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+[E]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 60; [E]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "AIDS cursor_copy=$(ClipSave 'clipboard-with-cursor.png')"
+Log ("AIDS cursor_check=" + (python (Join-Path $PSScriptRoot 'check_cursor.py') (Resolve-Path $Image).Path (Join-Path $Out 'clipboard-with-cursor.png') 400 300))
+Log ("AIDS exact_check=" + (python (Join-Path $PSScriptRoot 'check_png.py') crop (Resolve-Path $Image).Path 50 94 (Join-Path $Out 'clipboard-exact-size.png')))
+Log ("AIDS repeat_check=" + (python (Join-Path $PSScriptRoot 'check_png.py') crop (Resolve-Path $Image).Path 50 94 (Join-Path $Out 'clipboard-repeat.png')))
+# delayed capture (the tray's "延时 N 秒截图" runs the same code; the tray itself is hard to drive from
+# a script because Windows hides new icons in the overflow area): the countdown shows, stays out of
+# the capture, and the overlay opens after the delay.
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+$app = Start-Process $Exe -ArgumentList @('--background', '--delayed-capture') -PassThru
+Start-Sleep -Milliseconds 1500
+$cdh = [E]::TitleAny('Anshot 延时截图')
+$ov0 = ([E]::Visible([uint32]$app.Id, 'Anshot 截图')).Count
+$cdr = New-Object E+RECT; [void][E]::GetWindowRect($cdh, [ref]$cdr)
+Start-Sleep -Milliseconds 2500
+$ovs = [E]::Visible([uint32]$app.Id, 'Anshot 截图')
+Log "AIDS delay countdown=$($cdh -ne [IntPtr]::Zero) overlay_during=$ov0 overlay_after=$($ovs.Count) countdown_gone=$([E]::TitleAny('Anshot 延时截图') -eq [IntPtr]::Zero)"
+# The countdown sat in the corner while the screen was frozen: the frozen picture must not contain it.
+if ($ovs.Count -gt 0) {
+    ScreenDrag ($cdr.L - 20) ($cdr.T - 20) ($cdr.R + 20) ($cdr.B + 20)
+    [System.Windows.Forms.Clipboard]::Clear()
+    Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+    $cb = [System.Windows.Forms.Clipboard]::GetImage()
+    if ($cb) {
+        # The countdown card is white with an orange number; the corner behind it is the desktop. Count brand-orange pixels.
+        $orange = 0; for ($y = 0; $y -lt $cb.Height; $y++) { for ($x = 0; $x -lt $cb.Width; $x++) { $c = $cb.GetPixel($x, $y); if ($c.R -gt 230 -and $c.G -gt 60 -and $c.G -lt 100 -and $c.B -lt 30) { $orange++ } } }
+        Log "AIDS delay excluded=$($orange -eq 0) brand_px=$orange size=$($cb.Width)x$($cb.Height)"; $cb.Dispose()
+    } else { Log "AIDS delay excluded=clipboard_empty" }
+}
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 500
+if (-not $app.HasExited) { $app.Kill() }
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
 
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }

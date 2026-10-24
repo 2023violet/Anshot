@@ -16,7 +16,14 @@ pub struct Settings {
     pub recent_colors: Vec<[u8; 4]>,
     /// How many delivered images to keep in the history (0 = history off).
     pub history_limit: usize,
+    /// Seconds before a delayed capture (one of `DELAYS`).
+    pub delay_secs: u32,
+    /// Draw the mouse pointer into captures.
+    pub include_cursor: bool,
 }
+
+/// Choices offered for `delay_secs`.
+pub const DELAYS: [u32; 3] = [3, 5, 10];
 
 /// Choices offered in settings for `history_limit`.
 pub const HISTORY_LIMITS: [usize; 4] = [0, 20, 50, 200];
@@ -24,7 +31,7 @@ pub const HISTORY_LIMITS: [usize; 4] = [0, 20, 50, 200];
 pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
-    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50 } }
+    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false } }
 }
 
 impl Settings {
@@ -39,6 +46,9 @@ impl Settings {
                 ("save_dir", "") => s.save_dir = None,
                 ("save_dir", v) => s.save_dir = Some(PathBuf::from(v)),
                 ("history_limit", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_LIMITS.contains(n)) { s.history_limit = n; },
+                ("delay", v) => if let Some(n) = v.parse().ok().filter(|n| DELAYS.contains(n)) { s.delay_secs = n; },
+                ("include_cursor", "true") => s.include_cursor = true,
+                ("include_cursor", "false") => s.include_cursor = false,
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
             }
@@ -47,8 +57,8 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\n", self.hotkey.label(), self.hide_after_copy,
-            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit)
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\n", self.hotkey.label(), self.hide_after_copy,
+            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor)
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -76,11 +86,11 @@ mod tests {
     use super::*;
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
-        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200 };
+        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\n");
         assert_eq!(odd, Settings::default());
     }
 }

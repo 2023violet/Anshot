@@ -4,7 +4,7 @@ import { Theme } from "theme.slint";
 import { ActionButton, Icon, Keycap, Label, NumberField, Pill, Segmented, Shield, Swatches, Tip, ToolButton, VSep } from "widgets.slint";
 import { AboutSlint } from "std-widgets.slint";
 export { CaptureOverlay, Box } from "overlay.slint";
-export { Tray, ToastWindow } from "shell.slint";
+export { Tray, ToastWindow, CountdownWindow } from "shell.slint";
 export { PinWindow } from "pin.slint";
 export { LongShotPanel } from "longshot.slint";
 import { ScrollView } from "std-widgets.slint";
@@ -71,6 +71,8 @@ export component AppWindow inherits Window {
     in property <string> save-dir;
     in property <string> app-version;
     in property <bool> autostart;
+    in property <int> delay-index;
+    in property <bool> include-cursor;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
 
@@ -357,7 +359,7 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 380px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
+                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 470px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : root.dialog == "color" ? "自定义颜色" : root.dialog == "history" ? "截图历史" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
@@ -380,6 +382,14 @@ export component AppWindow inherits Window {
                     HorizontalLayout { spacing: 12px;
                         Label { text: "复制之后"; width: 84px; }
                         VerticalLayout { alignment: center; Segmented { options: ["收起编辑窗", "保留编辑窗"]; selected: root.hide-after-copy ? 0 : 1; picked(i) => { root.command(i == 0 ? "copy-hide" : "copy-stay"); } } }
+                    }
+                    HorizontalLayout { spacing: 12px;
+                        Label { text: "延时截图"; width: 84px; }
+                        VerticalLayout { alignment: center; Segmented { options: ["3 秒", "5 秒", "10 秒"]; selected: root.delay-index; picked(i) => { root.command("delay-" + i); } } }
+                    }
+                    HorizontalLayout { spacing: 12px;
+                        Label { text: "鼠标指针"; width: 84px; }
+                        VerticalLayout { alignment: center; Segmented { options: ["不截入", "截入图片"]; selected: root.include-cursor ? 1 : 0; picked(i) => { root.command(i == 1 ? "cursor-on" : "cursor-off"); } } }
                     }
                     HorizontalLayout { spacing: 12px;
                         Label { text: "开机启动"; width: 84px; }

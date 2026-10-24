@@ -52,6 +52,12 @@ pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
     clipboard.set_image(data).map_err(busy)
 }
 
+/// Plain text (a colour value, recognised text) to the clipboard.
+pub fn write_text(text: &str) -> Result<(), String> {
+    let busy = |_| "剪贴板正被其他程序占用，请稍后重试".to_string();
+    arboard::Clipboard::new().map_err(busy)?.set_text(text.to_owned()).map_err(busy)
+}
+
 /// The dialog may already have asked "replace?"; Anshot never overwrites, so an
 /// existing name becomes "name (2).png", "name (3).png", ...
 pub fn free_path(path: &Path) -> PathBuf {

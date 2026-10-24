@@ -28,6 +28,8 @@ pub struct Session {
     pub hover: Option<ScreenRect>,
     press: Option<((i32, i32), Grab)>,
     current: (i32, i32),
+    /// Shift held: a new selection is square, a corner drag keeps the ratio.
+    pub lock: bool,
 }
 
 pub fn union(monitors: &[Monitor]) -> Option<ScreenRect> {
@@ -47,7 +49,7 @@ fn span(a: (i32, i32), b: (i32, i32)) -> ScreenRect {
 
 impl Session {
     pub fn new(frozen: Capture, monitors: Vec<Monitor>, windows: Vec<ScreenRect>) -> Self {
-        Self { frozen, monitors, windows, selection: None, hover: None, press: None, current: (0, 0) }
+        Self { frozen, monitors, windows, selection: None, hover: None, press: None, current: (0, 0), lock: false }
     }
     pub fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
         self.monitors.iter().copied().find(|m| m.bounds.contains(x, y))
@@ -85,7 +87,18 @@ impl Session {
             if self.dragging() {
                 let (dx, dy) = (x - p.0, y - p.1);
                 self.selection = match grab {
+                    Grab::New if self.lock => {
+                        let side = dx.abs().max(dy.abs());
+                        self.clamp(span(p, (p.0 + side * dx.signum(), p.1 + side * dy.signum())), p)
+                    }
                     Grab::New => self.clamp(span(p, (x, y)), p),
+                    Grab::Edge { rect: r, left, right, top, bottom } if self.lock && (left || right) && (top || bottom) => {
+                        // Corner with Shift: follow the horizontal drag, keep the ratio.
+                        let w = (r.w + if right { dx } else { -dx }).max(1);
+                        let h = (i64::from(w) * i64::from(r.h) / i64::from(r.w.max(1))).max(1) as i32;
+                        let (l, t) = (if left { r.x + r.w - w } else { r.x }, if top { r.y + r.h - h } else { r.y });
+                        self.clamp(ScreenRect { x: l, y: t, w, h }, (r.x + r.w / 2, r.y + r.h / 2))
+                    }
                     Grab::Move(r) => self.shifted(r, dx, dy),
                     Grab::Edge { rect: r, left, right, top, bottom } => {
                         let (mut l, mut t, mut rr, mut b) = (r.x, r.y, r.x + r.w, r.y + r.h);
@@ -121,6 +134,44 @@ impl Session {
     /// Enter: the selection, else the monitor under the cursor.
     pub fn confirm_area(&self) -> Option<ScreenRect> {
         self.selection.or_else(|| self.monitor_at(self.current.0, self.current.1).map(|m| m.bounds))
+    }
+    /// Colour of the frozen pixel at (x, y), for the magnifier's readout.
+    pub fn pixel(&self, x: i32, y: i32) -> Option<[u8; 4]> {
+        let a = self.frozen.area;
+        if !a.contains(x, y) { return None; }
+        let i = ((y - a.y) as usize * a.w as usize + (x - a.x) as usize) * 4;
+        self.frozen.rgba.get(i..i + 4).map(|p| [p[0], p[1], p[2], p[3]])
+    }
+    /// Put back an earlier region (the last capture's), kept on the monitor under its centre.
+    /// (Monitors may have changed since: fall back to the one under its corner, then the primary.)
+    pub fn restore(&mut self, r: ScreenRect) -> bool {
+        let m = self.monitor_at(r.x + r.w / 2, r.y + r.h / 2).or_else(|| self.monitor_at(r.x, r.y))
+            .or_else(|| self.monitors.iter().copied().find(|m| m.primary)).map(|m| m.bounds);
+        let Some(m) = m else { return false };
+        let (w, h) = (r.w.clamp(1, m.w), r.h.clamp(1, m.h));
+        let (x, y) = (r.x.clamp(m.x, m.x + m.w - w), r.y.clamp(m.y, m.y + m.h - h));
+        self.selection = Some(ScreenRect { x, y, w, h });
+        true
+    }
+    /// Exact size in physical px, keeping the top-left corner where it fits.
+    pub fn resize_to(&mut self, w: i32, h: i32) -> bool {
+        let Some(r) = self.selection else { return false };
+        if w < 1 || h < 1 { return false; }
+        let Some(m) = self.monitor_at(r.x + r.w / 2, r.y + r.h / 2) else { return false };
+        let (w, h) = (w.min(m.bounds.w), h.min(m.bounds.h));
+        self.selection = self.shifted(ScreenRect { x: r.x, y: r.y, w, h }, 0, 0);
+        self.selection.is_some()
+    }
+    /// Change to the ratio `rw:rh` about the centre, keeping the width unless that is too tall.
+    pub fn set_ratio(&mut self, rw: i32, rh: i32) -> bool {
+        let Some(r) = self.selection else { return false };
+        if rw < 1 || rh < 1 { return false; }
+        let Some(m) = self.monitor_at(r.x + r.w / 2, r.y + r.h / 2) else { return false };
+        let (mut w, mut h) = (r.w, (i64::from(r.w) * i64::from(rh) / i64::from(rw)) as i32);
+        if h > m.bounds.h { h = m.bounds.h; w = (i64::from(h) * i64::from(rw) / i64::from(rh)) as i32; }
+        let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
+        self.selection = self.shifted(ScreenRect { x: cx - w / 2, y: cy - h / 2, w: w.max(1), h: h.max(1) }, 0, 0);
+        self.selection.is_some()
     }
     pub fn crop(&self, r: ScreenRect) -> Option<RgbaImage> {
         let r = r.intersect(self.frozen.area)?;
@@ -212,6 +263,36 @@ mod tests {
         assert_eq!(s.selection, Some(ScreenRect { x: 30, y: 20, w: 20, h: 30 }));
         s.pointer_down(5, 5); s.pointer_move(25, 15); s.pointer_up(25, 15);
         assert_eq!(s.selection, Some(ScreenRect { x: 5, y: 5, w: 20, h: 10 }));
+    }
+
+    #[test]
+    fn shift_makes_a_square_and_keeps_the_ratio_on_a_corner() {
+        let mut s = session();
+        s.lock = true;
+        s.pointer_down(10, 10); s.pointer_move(40, 22); s.pointer_up(40, 22);
+        assert_eq!(s.selection, Some(ScreenRect { x: 10, y: 10, w: 30, h: 30 }));
+        s.lock = false;
+        s.selection = None;
+        s.pointer_down(10, 10); s.pointer_move(50, 30); s.pointer_up(50, 30);
+        assert_eq!(s.selection, Some(ScreenRect { x: 10, y: 10, w: 40, h: 20 }));
+        s.lock = true;
+        s.pointer_down(50, 30); s.pointer_move(70, 31); s.pointer_up(70, 31);
+        assert_eq!(s.selection, Some(ScreenRect { x: 10, y: 10, w: 60, h: 30 }), "2:1 kept");
+    }
+
+    #[test]
+    fn last_region_exact_size_and_ratio() {
+        let mut s = session();
+        assert!(s.restore(ScreenRect { x: 90, y: 50, w: 30, h: 20 }), "shifted back on screen");
+        assert_eq!(s.selection, Some(ScreenRect { x: 70, y: 40, w: 30, h: 20 }));
+        assert!(s.resize_to(40, 25));
+        assert_eq!(s.selection, Some(ScreenRect { x: 60, y: 35, w: 40, h: 25 }), "kept whole on the monitor");
+        assert!(s.set_ratio(16, 9));
+        let r = s.selection.unwrap();
+        assert_eq!((r.w, r.h), (40, 22));
+        assert!(!s.resize_to(0, 5));
+        assert_eq!(s.pixel(-80, 0), Some([0, 0, 7, 255]));
+        assert_eq!(s.pixel(200, 0), None);
     }
 
     #[test]

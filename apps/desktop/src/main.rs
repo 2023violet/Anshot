@@ -67,6 +67,10 @@ struct App {
     /// cursor even when no mouse-move event reaches the overlay).
     cursor_timer: slint::Timer,
     last_cursor: Option<(i32, i32)>,
+    /// The region of the last capture this run (memory only, never saved): R puts it back.
+    last_region: Option<ScreenRect>,
+    /// Bumped on every overlay notice; an older notice's timer does not clear a newer one.
+    notice_seq: u64,
     /// Pinned images (top-most windows); ids stay stable while others close.
     pins: Vec<Pin>,
     next_pin: u64,
@@ -78,6 +82,8 @@ struct App {
     history_gen: u64,
     /// A running long screenshot.
     long: Option<LongShot>,
+    /// A delayed capture counting down: its window, the tick timer, seconds left.
+    countdown: Option<(CountdownWindow, slint::Timer, u32)>,
 }
 
 struct LongShot {
@@ -452,6 +458,37 @@ impl App {
         });
     }
 
+    // ---- delayed capture ----
+    fn start_countdown(&mut self) {
+        if self.countdown.is_some() || self.session.is_some() || self.long.is_some() { return; }
+        let Ok(win) = CountdownWindow::new() else { return };
+        win.on_cancel(|| { with(|a| a.stop_countdown()); });
+        let secs = self.settings.delay_secs;
+        win.set_remaining(secs as i32);
+        let focus = anshot_platform_windows::foreground_window();
+        let _ = win.show();
+        if let Some(m) = anshot_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
+            let s = win.window().scale_factor();
+            let (w, h) = ((220.0 * s) as i32, (56.0 * s) as i32);
+            win.window().set_position(slint::PhysicalPosition::new(m.work.x + m.work.w - w - (16.0 * s) as i32, m.work.y + m.work.h - h - (16.0 * s) as i32));
+        }
+        // Never in the picture; never steals focus from what the user is setting up.
+        if let Some(h) = hwnd_of(win.window()) { anshot_platform_windows::exclude_from_capture(h); }
+        slint::Timer::single_shot(Duration::from_millis(60), move || anshot_platform_windows::restore_foreground(focus));
+        let timer = slint::Timer::default();
+        timer.start(slint::TimerMode::Repeated, Duration::from_secs(1), || { with(|a| a.tick_countdown()); });
+        self.countdown = Some((win, timer, secs));
+    }
+    fn tick_countdown(&mut self) {
+        let Some((win, _, left)) = self.countdown.as_mut() else { return };
+        *left = left.saturating_sub(1);
+        win.set_remaining(*left as i32);
+        if *left == 0 { self.stop_countdown(); self.begin_capture(); }
+    }
+    fn stop_countdown(&mut self) {
+        if let Some((win, timer, _)) = self.countdown.take() { timer.stop(); let _ = win.hide(); }
+    }
+
     // ---- capture (02 S1) ----
     fn begin_capture(&mut self) {
         if self.session.is_some() || self.capture_pending || self.long.is_some() { return; }
@@ -474,7 +511,7 @@ impl App {
             Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法读取显示器信息，请重试", None); return; }
         };
         let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
-        let frozen = match anshot_platform_windows::capture(area) {
+        let frozen = match anshot_platform_windows::capture_ex(area, self.settings.include_cursor) {
             Ok(c) => c,
             Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "系统拒绝读取屏幕（锁屏或安全桌面时无法截图）", None); return; }
         };
@@ -499,6 +536,10 @@ impl App {
             overlays.push((win, m));
         }
         if overlays.is_empty() { self.cancel_capture(); return; }
+        // Keyboard input (Esc, Enter, R, Shift+C) must reach the overlay before any click:
+        // bring the one under the pointer to the front (allowed right after our hotkey).
+        let under = anshot_platform_windows::cursor().and_then(|(x, y)| overlays.iter().find(|(_, m)| m.bounds.contains(x, y)));
+        if let Some(h) = under.or(overlays.first()).and_then(|(w, _)| hwnd_of(w.window())) { anshot_platform_windows::restore_foreground(h); }
         self.session = Some(session);
         self.overlays = overlays;
         self.last_cursor = anshot_platform_windows::cursor();
@@ -524,8 +565,42 @@ impl App {
             "save" => self.finish_capture(Some(Delivery::Save)),
             "edit" => self.finish_capture(None),
             "cancel" => self.cancel_capture(),
-            _ => {}
+            "repeat" => {
+                if let (Some(r), Some(s)) = (self.last_region, self.session.as_mut()) { s.restore(r); }
+                self.refresh_overlays();
+            }
+            "color" => {
+                let px = self.last_cursor.and_then(|(x, y)| self.session.as_ref().and_then(|s| s.pixel(x, y)));
+                if let Some([r, g, b, _]) = px {
+                    let hex = format!("#{r:02X}{g:02X}{b:02X}");
+                    let msg = match platform::write_text(&hex) { Ok(()) => format!("已复制颜色 {hex}"), Err(e) => e };
+                    self.overlay_notice(&msg);
+                }
+            }
+            other => {
+                // "ratio:W:H" or "size:WxH" from the selection toolbar's size panel.
+                let Some(s) = self.session.as_mut() else { return };
+                let num = |t: &str| t.trim().parse::<i32>().ok();
+                let ok = if let Some(r) = other.strip_prefix("ratio:") {
+                    let mut it = r.split(':');
+                    matches!((it.next().and_then(num), it.next().and_then(num)), (Some(w), Some(h)) if s.set_ratio(w, h))
+                } else if let Some(r) = other.strip_prefix("size:") {
+                    let mut it = r.split(['x', '×', 'X', '*']);
+                    matches!((it.next().and_then(num), it.next().and_then(num)), (Some(w), Some(h)) if s.resize_to(w, h))
+                } else { return };
+                if !ok { self.overlay_notice("尺寸无效：请填写 1 以上的整数宽高"); }
+                self.refresh_overlays();
+            }
         }
+    }
+    /// A short message in the overlay's hint bar (cleared after 1.5 s).
+    fn overlay_notice(&mut self, msg: &str) {
+        self.notice_seq += 1;
+        let seq = self.notice_seq;
+        for (win, _) in &self.overlays { win.set_notice(msg.into()); }
+        slint::Timer::single_shot(Duration::from_millis(1500), move || {
+            with(|a| if a.notice_seq == seq { for (w, _) in &a.overlays { w.set_notice("".into()); } });
+        });
     }
     /// Create and show/hide each monitor's overlay once, off-screen, so the first
     /// hotkey press does not pay window + GL context creation.
@@ -549,6 +624,7 @@ impl App {
         let k = win.window().scale_factor();
         let (x, y) = (m.bounds.x + (lx * k).round() as i32, m.bounds.y + (ly * k).round() as i32);
         let Some(s) = self.session.as_mut() else { return };
+        s.lock = anshot_platform_windows::shift_down();
         match phase { Phase::Down => s.pointer_down(x, y), Phase::Move => s.pointer_move(x, y), Phase::Up => s.pointer_up(x, y) }
         self.refresh_overlays();
     }
@@ -575,7 +651,8 @@ impl App {
                     win.set_cursor_y(py as f32 / k);
                     win.set_mag_x((px - 7).clamp(0, (m.bounds.w - 15).max(0)));
                     win.set_mag_y((py - 7).clamp(0, (m.bounds.h - 15).max(0)));
-                    win.set_mag_text(format!("x {x}  y {y}").into());
+                    let hex = s.pixel(x, y).map(|[r, g, b, _]| format!("  #{r:02X}{g:02X}{b:02X}")).unwrap_or_default();
+                    win.set_mag_text(format!("{x}, {y}{hex}").into());
                     win.set_show_magnifier(true);
                 }
                 None => win.set_show_magnifier(false),
@@ -583,6 +660,7 @@ impl App {
             win.set_show_hint(m.bounds.contains(cursor.map_or(0, |c| c.0), cursor.map_or(0, |c| c.1)) || m.primary);
             win.set_cursor_kind(cursor_kind(s, cursor).into());
             win.set_show_toolbar(has_sel && !s.pressed());
+            win.set_has_last(self.last_region.is_some());
         }
     }
     fn end_capture(&mut self) {
@@ -607,6 +685,7 @@ impl App {
         let Some(s) = self.session.as_ref() else { return };
         let area = s.confirm_area();
         let pixels = area.and_then(|r| s.crop(r));
+        if area.is_some() { self.last_region = area; }
         self.end_capture();
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
         if let (Some(img), Some(r)) = (pixels, area) { self.open_pin(img, Some((r.x, r.y))); }
@@ -619,6 +698,7 @@ impl App {
         if self.long.is_some() { return; }
         let Some(s) = self.session.as_ref() else { return };
         let Some(region) = s.selection else { return };
+        self.last_region = Some(region);
         let Some(mon) = s.monitor_at(region.x + region.w / 2, region.y + region.h / 2) else { return };
         // The panel is sized with the scale of the monitor it will appear on.
         let k = self.overlays.iter().find(|(_, m)| m.bounds == mon.bounds).or(self.overlays.first()).map_or(1.0, |(w, _)| w.window().scale_factor());
@@ -803,7 +883,9 @@ impl App {
     /// through the same Rust render and delivery path (the editor stays hidden for a copy).
     fn finish_capture(&mut self, then: Option<Delivery>) {
         let Some(s) = self.session.as_ref() else { return };
-        let pixels = s.confirm_area().and_then(|r| s.crop(r));
+        let area = s.confirm_area();
+        let pixels = area.and_then(|r| s.crop(r));
+        if area.is_some() { self.last_region = area; }
         self.end_capture();
         let Some(pixels) = pixels else { if std::mem::take(&mut self.restore_editor) { self.show_editor(); } return };
         let editor_was_open = std::mem::take(&mut self.restore_editor);
@@ -840,7 +922,9 @@ impl App {
         ui.set_save_dir(s.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default().into());
         ui.set_history_limit_index(settings::HISTORY_LIMITS.iter().position(|n| *n == s.history_limit).unwrap_or(2) as i32);
         ui.set_autostart(matches!(anshot_platform_windows::autostart(), Ok(Some(_))));
-        if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); }
+        ui.set_delay_index(settings::DELAYS.iter().position(|n| *n == s.delay_secs).unwrap_or(0) as i32);
+        ui.set_include_cursor(s.include_cursor);
+        if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); t.set_delay_secs(s.delay_secs as i32); }
     }
     fn open_settings(&mut self) {
         // Never replace a pending close/replace prompt (the tray bypasses command gating).
@@ -975,7 +1059,7 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
-    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-");
+    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1051,6 +1135,9 @@ fn command(cmd: &str) {
                         if let Some(h) = a.history() { h.prune(n); }
                     } }
                     c if c.starts_with("hotkey-") => { if let Ok(i) = c[7..].parse::<usize>() { a.set_hotkey(i); } }
+                    c if c.starts_with("delay-") => { if let Some(&n) = c[6..].parse::<usize>().ok().and_then(|i| settings::DELAYS.get(i)) { a.settings.delay_secs = n; a.persist(); a.push_settings(); } }
+                    "cursor-on" => { a.settings.include_cursor = true; a.persist(); a.push_settings(); }
+                    "cursor-off" => { a.settings.include_cursor = false; a.persist(); a.push_settings(); }
                     "copy-hide" => { a.settings.hide_after_copy = true; a.persist(); }
                     "copy-stay" => { a.settings.hide_after_copy = false; a.persist(); }
                     "save-dir-clear" => { a.settings.save_dir = None; a.persist(); }
@@ -1078,13 +1165,14 @@ fn main() -> Result<(), slint::PlatformError> {
         after_copy: AfterCopy::Stay, toast_seq: 0, toast_action: None,
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
-        cursor_timer: slint::Timer::default(), last_cursor: None,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None,
+        cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
         let tray = Tray::new()?;
         tray.on_capture(|| { with(|a| a.begin_capture()); });
+        tray.on_delayed_capture(|| { with(|a| a.start_countdown()); });
         tray.on_open_image(|| { with(|a| a.show_editor()); command("open"); });
         tray.on_show_editor(|| { with(|a| a.show_editor()); });
         tray.on_about(|| { with(|a| { a.show_editor(); if let Some(ui) = a.ui() { if ui.get_dialog().is_empty() { ui.set_dialog("about".into()); } } }); });
@@ -1183,14 +1271,17 @@ fn main() -> Result<(), slint::PlatformError> {
         }).unwrap_or(CloseRequestResponse::HideWindow)
     });
 
-    // "Open with" / command-line path; `--background` (start at login) stays in the tray.
+    // "Open with" / command-line path; `--background` (start at login) stays in the tray;
+    // `--delayed-capture` starts a delayed capture (with --background: tray only).
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let background = args.iter().any(|a| a == "--background");
-    if let Some(path) = args.into_iter().find(|a| a != "--background").map(PathBuf::from) { open_path(path); }
+    let delayed = args.iter().any(|a| a == "--delayed-capture");
+    if let Some(path) = args.into_iter().find(|a| a != "--background" && a != "--delayed-capture").map(PathBuf::from) { open_path(path); }
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     with(|a| { a.push_settings(); a.refresh(); });
     let resident = with(|a| a.resident).unwrap_or(false);
     if !(background && resident) { ui.show()?; }
+    if delayed && resident { slint::Timer::single_shot(Duration::from_millis(300), || { with(|a| a.start_countdown()); }); }
     slint::run_event_loop_until_quit()
 }
 
@@ -1295,6 +1386,12 @@ fn history_command(cmd: &str) {
 }
 
 /// One pooled overlay window for monitor `i`, with its callbacks wired.
+/// The native window handle behind a Slint window (once it is shown).
+fn hwnd_of(w: &slint::Window) -> Option<isize> {
+    use slint::winit_030::{winit::raw_window_handle::{HasWindowHandle, RawWindowHandle}, WinitWindowAccessor};
+    w.with_winit_window(|ww| match ww.window_handle().ok()?.as_raw() { RawWindowHandle::Win32(h) => Some(h.hwnd.get()), _ => None }).flatten()
+}
+
 fn new_overlay(i: usize) -> Option<CaptureOverlay> {
     let win = CaptureOverlay::new().ok()?;
     win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });

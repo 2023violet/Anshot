@@ -6,7 +6,9 @@ export component Tray inherits SystemTrayIcon {
     icon: @image-url("../assets/icon-32.png");
     in property <string> hotkey-label: "Ctrl+Shift+A";
     tooltip: "安截 Anshot · " + root.hotkey-label + " 截图";
+    in property <int> delay-secs: 3;
     callback capture();
+    callback delayed-capture();
     callback open-image();
     callback show-editor();
     callback about();
@@ -16,6 +18,7 @@ export component Tray inherits SystemTrayIcon {
     clicked => { root.capture(); }
     Menu {
         MenuItem { title: "截图 (" + root.hotkey-label + ")"; activated => { root.capture(); } }
+        MenuItem { title: "延时 " + root.delay-secs + " 秒截图"; activated => { root.delayed-capture(); } }
         MenuItem { title: "打开图片…"; activated => { root.open-image(); } }
         MenuItem { title: "显示编辑窗口"; activated => { root.show-editor(); } }
         MenuItem { title: "截图历史…"; activated => { root.history(); } }
@@ -23,6 +26,31 @@ export component Tray inherits SystemTrayIcon {
         MenuItem { title: "设置…"; activated => { root.settings(); } }
         MenuItem { title: "关于"; activated => { root.about(); } }
         MenuItem { title: "退出"; activated => { root.quit(); } }
+    }
+}
+
+// Delayed capture: a small countdown in the corner. It is excluded from screen capture, so
+// it never ends up in the shot; it takes no focus so menus being opened stay open.
+export component CountdownWindow inherits Window {
+    no-frame: true;
+    always-on-top: true;
+    title: "Anshot 延时截图";
+    width: 220px; height: 56px;
+    background: transparent;
+    default-font-family: Theme.font-ui;
+    in property <int> remaining;
+    callback cancel();
+    Rectangle {
+        border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+        accessible-role: groupbox; accessible-label: root.remaining + " 秒后截图";
+        HorizontalLayout { padding-left: 14px; padding-right: 10px; spacing: 10px;
+            Text { text: root.remaining; font-size: 22px; font-weight: 600; color: Theme.brand; vertical-alignment: center; }
+            Text { text: "秒后截图"; font-size: 13px; color: Theme.ink; vertical-alignment: center; horizontal-stretch: 1; }
+            VerticalLayout { alignment: center;
+                Rectangle { width: 52px; height: 28px; border-radius: 6px; background: ta.has-hover ? Theme.bg-hover : transparent;
+                    Text { text: "取消"; font-size: 13px; color: Theme.ink; }
+                    ta := TouchArea { clicked => { root.cancel(); } accessible-role: button; accessible-label: "取消"; } } }
+        }
     }
 }
 

@@ -90,8 +90,41 @@ impl Drop for Bitmap { fn drop(&mut self) {
     unsafe { DeleteObject(self.0) };
 } }
 
+/// Keep one of our own windows out of every screen capture (ours and other programs'):
+/// pins, toasts, the countdown and the long-screenshot panel. Windows 10 2004 or later;
+/// returns false where unsupported. This is a cooperative flag, not a security boundary.
+pub fn exclude_from_capture(hwnd: isize) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE};
+    if hwnd == 0 { return false; }
+    // SAFETY: plain call on a window handle owned by this process; a bad handle just fails.
+    unsafe { SetWindowDisplayAffinity(hwnd as HWND, WDA_EXCLUDEFROMCAPTURE) != 0 }
+}
+
+/// Draw the current mouse pointer into a capture of `area` (the mem DC holds the copy).
+/// SAFETY: `mem` is a valid memory DC with a bitmap of `area`'s size selected.
+unsafe fn draw_cursor(mem: HDC, area: ScreenRect) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{DrawIconEx, GetCursorInfo, GetIconInfo, CURSORINFO, CURSOR_SHOWING, DI_NORMAL, ICONINFO};
+    let mut ci: CURSORINFO = unsafe { std::mem::zeroed() };
+    ci.cbSize = std::mem::size_of::<CURSORINFO>() as u32;
+    // SAFETY: sized CURSORINFO owned by this frame.
+    if unsafe { GetCursorInfo(&mut ci) } == 0 || ci.flags & CURSOR_SHOWING == 0 || ci.hCursor.is_null() { return; }
+    let mut ii: ICONINFO = unsafe { std::mem::zeroed() };
+    // SAFETY: the cursor handle comes from GetCursorInfo; the returned bitmaps are ours to delete.
+    if unsafe { GetIconInfo(ci.hCursor, &mut ii) } == 0 { return; }
+    let (x, y) = (ci.ptScreenPos.x - ii.xHotspot as i32 - area.x, ci.ptScreenPos.y - ii.yHotspot as i32 - area.y);
+    // SAFETY: draws into the caller's memory DC; the icon bitmaps are released once.
+    unsafe {
+        DrawIconEx(mem, x, y, ci.hCursor, 0, 0, 0, std::ptr::null_mut(), DI_NORMAL);
+        if !ii.hbmMask.is_null() { DeleteObject(ii.hbmMask); }
+        if !ii.hbmColor.is_null() { DeleteObject(ii.hbmColor); }
+    }
+}
+
 /// Copy a physical-pixel rectangle of the desktop into straight RGBA8.
-pub fn capture(area: ScreenRect) -> io::Result<Capture> {
+pub fn capture(area: ScreenRect) -> io::Result<Capture> { capture_ex(area, false) }
+
+/// [`capture`], optionally with the mouse pointer drawn in.
+pub fn capture_ex(area: ScreenRect, with_cursor: bool) -> io::Result<Capture> {
     if area.w <= 0 || area.h <= 0 || i64::from(area.w) * i64::from(area.h) > 100_000_000 {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "capture area out of range"));
     }
@@ -109,6 +142,7 @@ pub fn capture(area: ScreenRect) -> io::Result<Capture> {
         let bmp = Bitmap(bmp);
         let old = SelectObject(mem.0, bmp.0);
         let blit = BitBlt(mem.0, 0, 0, area.w, area.h, screen.0, area.x, area.y, SRCCOPY | CAPTUREBLT);
+        if blit != 0 && with_cursor { draw_cursor(mem.0, area); }
         SelectObject(mem.0, old);
         if blit == 0 { return Err(io::Error::last_os_error()); }
         let mut info: BITMAPINFO = std::mem::zeroed();

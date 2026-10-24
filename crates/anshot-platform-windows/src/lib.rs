@@ -62,12 +62,16 @@ pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
 #[cfg(windows)]
 mod screen;
 #[cfg(windows)]
-pub use screen::{capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
+pub use screen::{capture,capture_ex,exclude_from_capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
 
 #[cfg(not(windows))]
 pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
 #[cfg(not(windows))]
 pub fn capture(_area:ScreenRect)->std::io::Result<Capture>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
+#[cfg(not(windows))]
+pub fn capture_ex(area:ScreenRect,_with_cursor:bool)->std::io::Result<Capture>{capture(area)}
+#[cfg(not(windows))]
+pub fn exclude_from_capture(_hwnd:isize)->bool{false}
 #[cfg(not(windows))]
 pub fn visible_windows()->Vec<ScreenRect>{Vec::new()}
 #[cfg(not(windows))]
