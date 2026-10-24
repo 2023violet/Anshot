@@ -2,6 +2,9 @@
 # Usage: pwsh -STA -File tests/desktop/install_qa.ps1 -Setup <Anshot-x-setup.exe> -Exe <portable Anshot.exe> -Out <dir>
 # Refuses to run if Anshot is already installed; removes everything it created at the end.
 param([Parameter(Mandatory)] [string] $Setup, [Parameter(Mandatory)] [string] $Exe, [Parameter(Mandatory)] [string] $Out)
+# The wizard titles carry the version; take it from the setup file name (Anshot-<ver>-win-x64-setup.exe).
+$Ver = [regex]::Match((Split-Path $Setup -Leaf), 'Anshot-(\d+\.\d+\.\d+)').Groups[1].Value
+if (-not $Ver) { throw "cannot read the version from $Setup" }
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing, UIAutomationClient, UIAutomationTypes
 Add-Type @'
@@ -84,7 +87,7 @@ $cfgExisted = Test-Path $cfg; $dataExisted = Test-Path $data
 
 # B. interactive install with the real wizard (Chinese UI), default options
 $p = Start-Process $Setup -PassThru
-$h = WaitWin '安截 Anshot 0.2.0 安装'
+$h = WaitWin "安截 Anshot $Ver 安装"
 # (no screenshot of the folder page: it shows the account's profile path)
 Log "B next=$(Click-Native $h '下一步(N) >')"
 Shot $h 'install-2-components.png'
@@ -126,7 +129,7 @@ $bg = Start-Process $installed -ArgumentList '--background' -PassThru; Start-Sle
 Log "F background_running=$(-not $bg.HasExited) visible_window=$([bool]((Get-Process -Id $bg.Id).MainWindowTitle))"
 # F2. interactive upgrade while it runs: the wizard must warn before closing it
 $gui = Start-Process $Setup -PassThru
-$gh = WaitWin '安截 Anshot 0.2.0 安装'
+$gh = WaitWin "安截 Anshot $Ver 安装"
 [void](Click-Native $gh '下一步(N) >'); [void](Click-Native $gh '安装(I)')
 $desktop = [System.Windows.Automation.AutomationElement]::RootElement
 $byPid = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::ProcessIdProperty), $gui.Id
@@ -156,7 +159,7 @@ Log "G after_uninstall: $(State) process_gone=$($bg.HasExited) leftover_procs=$(
 Log "H settings_kept_by_default=$(Test-Path (Join-Path $cfg 'settings.txt'))"
 $re = Start-Process $Setup -ArgumentList '/S' -PassThru; $re.WaitForExit(60000) | Out-Null
 $ui = Start-Process (Join-Path $dir 'uninstall.exe') -PassThru
-$uh = WaitWin '安截 Anshot 0.2.0 卸载'
+$uh = WaitWin "安截 Anshot $Ver 卸载"
 # The uninstaller is driven with its own commands (IDOK = Next / Uninstall / Close).
 [void][Q]::SetForegroundWindow($uh); Start-Sleep -Milliseconds 300
 [void][Q]::PostMessage($uh, 0x0111, [IntPtr]1, [IntPtr]::Zero); Start-Sleep -Seconds 2

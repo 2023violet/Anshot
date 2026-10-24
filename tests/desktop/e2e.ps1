@@ -576,7 +576,8 @@ Log ("PICKER settings=" + ((Get-Content (Join-Path $env:ANSHOT_SETTINGS_DIR 'set
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
 Start-Sleep -Milliseconds 500
-function HistoryFiles { @(Get-ChildItem $env:ANSHOT_HISTORY_DIR -Filter 'sr-*.png' -ErrorAction SilentlyContinue) }
+# 0.2.0 wrote sr-*.png; current builds write anshot-*.png (history.rs PREFIX)
+function HistoryFiles { @(Get-ChildItem $env:ANSHOT_HISTORY_DIR -Filter '*.png' -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'anshot-*' -or $_.Name -like 'sr-*' }) }
 function PinWindows($p) { [E]::Visible([uint32]$p.Id, 'Anshot 钉图') }
 
 # ---- 26. history keeps exactly the copied bytes; pin and delete from the history dialog ----
