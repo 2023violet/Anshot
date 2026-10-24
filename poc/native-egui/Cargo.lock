@@ -209,6 +209,7 @@ dependencies = [
 name = "anshot-platform-windows"
 version = "0.1.0"
 dependencies = [
+ "windows",
  "windows-sys 0.61.2",
 ]
 

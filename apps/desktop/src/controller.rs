@@ -685,6 +685,13 @@ impl Controller {
         ok
     }
 
+    /// The current source and scene, for rendering the exact export image elsewhere
+    /// (text recognition); changes nothing.
+    pub fn ocr_snapshot(&self) -> Option<(Vec<u8>, anshot_render::Scene)> {
+        let e = self.editor.as_ref()?;
+        Some((e.source_bytes()?.to_vec(), e.scene()))
+    }
+
     // ---- delivery: render on a worker, then deliver the exact rendered PNG ----
     pub fn begin_delivery(&mut self, kind: Delivery) -> Result<RenderWork, EditError> {
         if self.busy.is_some() { return Err(EditError::OperationPending); }

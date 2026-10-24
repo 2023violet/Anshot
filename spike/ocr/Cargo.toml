@@ -1,0 +1,24 @@
+[package]
+name = "ocr-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone feasibility spike: not part of the root product workspace.
+[workspace]
+
+[dependencies]
+windows = { version = "=0.62.2", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+    "Win32_System_WinRT",
+] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1

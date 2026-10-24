@@ -47,7 +47,7 @@ export component PinWindow inherits Window {
             accessible-role: groupbox; accessible-label: "钉图菜单";
             TouchArea { }
             col := VerticalLayout { x: 6px; y: 6px; width: parent.width - 12px; spacing: 2px;
-                for item in [{t: "复制  Ctrl+C", k: "copy"}, {t: "另存为…  Ctrl+S", k: "save"}, {t: "在编辑器中打开", k: "edit"},
+                for item in [{t: "复制  Ctrl+C", k: "copy"}, {t: "另存为…  Ctrl+S", k: "save"}, {t: "在编辑器中打开", k: "edit"}, {t: "识别文字", k: "ocr"},
                              {t: "不透明 100%", k: "opacity-100"}, {t: "不透明 75%", k: "opacity-75"}, {t: "不透明 50%", k: "opacity-50"},
                              {t: "关闭  Esc", k: "close"}]: Rectangle {
                     height: 26px; border-radius: 6px; background: ma.has-hover ? Theme.bg-hover : transparent;

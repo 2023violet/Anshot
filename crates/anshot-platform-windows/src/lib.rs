@@ -17,6 +17,21 @@ pub fn read_clipboard_image(_png_limit:usize,_dib_limit:usize)->std::io::Result<
 }
 
 #[cfg(windows)]
+mod ocr;
+#[cfg(windows)]
+pub use ocr::{available as ocr_available, recognize as ocr_recognize, OcrError, OcrLine};
+#[cfg(not(windows))]
+#[derive(Debug,Clone,PartialEq,Eq)]
+pub enum OcrError { LanguageMissing, TooLarge, Failed(String) }
+#[cfg(not(windows))]
+#[derive(Debug,Clone,PartialEq)]
+pub struct OcrLine { pub text:String, pub x:f32, pub y:f32, pub h:f32 }
+#[cfg(not(windows))]
+pub fn ocr_available()->bool{false}
+#[cfg(not(windows))]
+pub fn ocr_recognize(_rgba:&[u8],_w:u32,_h:u32)->Result<Vec<OcrLine>,OcrError>{Err(OcrError::LanguageMissing)}
+
+#[cfg(windows)]
 mod autostart;
 #[cfg(windows)]
 pub use autostart::{autostart,set_autostart};

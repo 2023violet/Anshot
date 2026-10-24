@@ -1,6 +1,7 @@
 // S0 tray (02 U05) and the standalone S4 toast shown after the editor closes.
 import { Theme } from "theme.slint";
-import { Pill } from "widgets.slint";
+import { Pill, ActionButton } from "widgets.slint";
+import { TextEdit } from "std-widgets.slint";
 
 export component Tray inherits SystemTrayIcon {
     icon: @image-url("../assets/icon-32.png");
@@ -50,6 +51,35 @@ export component CountdownWindow inherits Window {
                 Rectangle { width: 52px; height: 28px; border-radius: 6px; background: ta.has-hover ? Theme.bg-hover : transparent;
                     Text { text: "取消"; font-size: 13px; color: Theme.ink; }
                     ta := TouchArea { clicked => { root.cancel(); } accessible-role: button; accessible-label: "取消"; } } }
+        }
+    }
+}
+
+// Recognised text (Windows' own OCR, offline). Editable, never saved; the user copies it.
+export component OcrWindow inherits Window {
+    title: "Anshot 识别文字";
+    always-on-top: true;
+    preferred-width: 460px; preferred-height: 340px;
+    min-width: 320px; min-height: 220px;
+    background: Theme.bg-card;
+    default-font-family: Theme.font-ui;
+    in property <bool> busy;
+    in property <string> error;
+    in-out property <string> text;
+    callback copy-all(string);
+    callback dismiss();
+    forward-focus: edit;
+    VerticalLayout { padding: 16px; spacing: 10px;
+        HorizontalLayout { spacing: 8px;
+            Text { text: root.busy ? "正在识别…" : root.error != "" ? "未能识别" : "识别结果"; font-size: 15px; font-weight: 600; color: Theme.ink; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+        }
+        if root.error != "": Text { text: root.error; color: Theme.error; font-size: 13px; wrap: word-wrap; }
+        edit := TextEdit { text <=> root.text; enabled: !root.busy; font-size: 14px; vertical-stretch: 1; }
+        Text { text: "由 Windows 自带的文字识别在本机完成，不联网。结果可能有错字，请核对后再用；被遮挡的内容不会被识别。"; color: Theme.mute; font-size: 12px; wrap: word-wrap; }
+        HorizontalLayout { spacing: 8px; alignment: end;
+            ActionButton { label: "关闭"; key: "Esc"; kind: 0; clicked => { root.dismiss(); } }
+            ActionButton { label: "复制全部"; key: ""; kind: 1; enabled: !root.busy && root.text != ""; clicked => { root.copy-all(root.text); } }
         }
     }
 }

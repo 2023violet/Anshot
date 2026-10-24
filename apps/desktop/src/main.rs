@@ -84,6 +84,9 @@ struct App {
     long: Option<LongShot>,
     /// A delayed capture counting down: its window, the tick timer, seconds left.
     countdown: Option<(CountdownWindow, slint::Timer, u32)>,
+    /// The text recognition window (reused) and the run it waits for.
+    ocr_win: Option<OcrWindow>,
+    ocr_seq: u64,
 }
 
 struct LongShot {
@@ -458,6 +461,58 @@ impl App {
         });
     }
 
+    // ---- text recognition (Windows' own OCR, offline) ----
+    /// Recognise the text in `img` on a worker thread and show it in the OCR window.
+    fn start_ocr(&mut self, img: RgbaImage) { self.run_ocr(move || recognize_text(img)); }
+    /// Editor: recognise the image exactly as it would be exported (redactions applied).
+    fn ocr_document(&mut self) {
+        let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
+        self.run_ocr(move || {
+            let png = anshot_render::render_png(&source, &scene).map_err(|_| "无法生成图片，请重试。".to_string())?;
+            let img = anshot_core::decode_source(&png).map_err(|_| "无法生成图片，请重试。".to_string())?;
+            recognize_text(img)
+        });
+    }
+    /// Show the OCR window as busy, run `job` on a worker thread, then show its text or error.
+    fn run_ocr(&mut self, job: impl FnOnce() -> Result<String, String> + Send + 'static) {
+        self.ocr_seq += 1;
+        let seq = self.ocr_seq;
+        let win = match self.ocr_win.as_ref() {
+            Some(w) => w.clone_strong(),
+            None => {
+                let Ok(w) = OcrWindow::new() else { return };
+                w.on_copy_all(|t| { with(|a| match platform::write_text(t.as_str()) {
+                    Ok(()) => a.system_toast("done", "已复制文字", &format!("{} 个字符", t.chars().count())),
+                    Err(e) => a.system_toast("error", "复制失败", &e),
+                }); });
+                w.on_dismiss(|| { with(|a| if let Some(w) = a.ocr_win.as_ref() { let _ = w.hide(); }); });
+                self.ocr_win = Some(w.clone_strong());
+                w
+            }
+        };
+        win.set_busy(true);
+        win.set_error("".into());
+        win.set_text("".into());
+        let _ = win.show();
+        // Recognised text is on screen: keep this window out of later captures.
+        if let Some(h) = hwnd_of(win.window()) { anshot_platform_windows::exclude_from_capture(h); }
+        std::thread::spawn(move || {
+            let result = job();
+            let _ = slint::invoke_from_event_loop(move || {
+                with(|a| {
+                    if a.ocr_seq != seq { return; }
+                    let Some(w) = a.ocr_win.as_ref() else { return };
+                    w.set_busy(false);
+                    match result {
+                        Ok(t) if t.trim().is_empty() => w.set_error("没有识别到文字。".into()),
+                        Ok(t) => w.set_text(t.into()),
+                        Err(e) => w.set_error(e.into()),
+                    }
+                });
+            });
+        });
+    }
+
     // ---- delayed capture ----
     fn start_countdown(&mut self) {
         if self.countdown.is_some() || self.session.is_some() || self.long.is_some() { return; }
@@ -560,6 +615,15 @@ impl App {
     fn overlay_action(&mut self, action: &str) {
         match action {
             "pin" => self.pin_selection(),
+            "ocr" => {
+                let Some(s) = self.session.as_ref() else { return };
+                let area = s.confirm_area();
+                let pixels = area.and_then(|r| s.crop(r));
+                if area.is_some() { self.last_region = area; }
+                self.end_capture();
+                if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+                if let Some(img) = pixels { self.start_ocr(img); }
+            }
             "long" => self.start_long_shot(),
             "copy" => self.finish_capture(Some(Delivery::Copy)),
             "save" => self.finish_capture(Some(Delivery::Save)),
@@ -1129,6 +1193,7 @@ fn command(cmd: &str) {
                     "zoom-out" => { let c = canvas_centre(&a.ctl); a.ctl.zoom_by(0.8, c); }
                     "settings" => a.open_settings(),
                     "history" => a.open_history(),
+                    "ocr" => a.ocr_document(),
                     "pin" => a.pin_document(),
                     c if c.starts_with("keep-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_LIMITS.get(i)) {
                         a.settings.history_limit = n; a.persist();
@@ -1166,7 +1231,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1245,6 +1310,7 @@ fn main() -> Result<(), slint::PlatformError> {
         if ctrl && !other && !dialog_open {
             let c = text.chars().next().map(|c| if (c as u32) < 27 && c as u32 > 0 { (b'a' + c as u8 - 1) as char } else { c.to_ascii_lowercase() });
             match c {
+                Some('o') if shift => { command("ocr"); return true; }
                 Some('o') => { command("open"); return true; }
                 Some('v') => { command("paste"); return true; }
                 Some('s') => { command("save"); return true; }
@@ -1321,6 +1387,7 @@ fn pin_action(id: u64, act: &str) {
     let Some(img) = with(|a| a.pin(id).map(|p| p.img.clone())).flatten() else { return };
     match act {
         "close" => { with(|a| a.close_pin(id)); }
+        "ocr" => { with(|a| a.start_ocr(img)); }
         "edit" => { with(|a| a.show_editor()); spawn_open(capture::encode_png(img), Some("钉图.png".into())); }
         "copy" => {
             let dims = img.dimensions();
@@ -1386,6 +1453,22 @@ fn history_command(cmd: &str) {
 }
 
 /// One pooled overlay window for monitor `i`, with its callbacks wired.
+/// Small UI text is recognised far better slightly enlarged (spike/ocr: 92 % -> 99 % at
+/// 100 % scale), so regions are upscaled 1.5x in Rust first when that stays affordable.
+fn recognize_text(img: RgbaImage) -> Result<String, String> {
+    let (w, h) = img.dimensions();
+    let img = if u64::from(w) * u64::from(h) <= 4_000_000 && w.max(h) * 3 / 2 <= 9_000 {
+        image::imageops::resize(&img, w * 3 / 2, h * 3 / 2, image::imageops::FilterType::Triangle)
+    } else { img };
+    let (w, h) = img.dimensions();
+    match anshot_platform_windows::ocr_recognize(img.as_raw(), w, h) {
+        Ok(lines) => Ok(lines.into_iter().map(|l| l.text).collect::<Vec<_>>().join("\n")),
+        Err(anshot_platform_windows::OcrError::LanguageMissing) => Err("这台电脑没有可用的文字识别语言。请在 Windows 设置 → 时间和语言 → 语言 中添加“中文(简体)”，安装完成后再试。".into()),
+        Err(anshot_platform_windows::OcrError::TooLarge) => Err("区域太大，无法识别；请框选小一些的区域。".into()),
+        Err(anshot_platform_windows::OcrError::Failed(_)) => Err("识别失败，请重试。".into()),
+    }
+}
+
 /// The native window handle behind a Slint window (once it is shown).
 fn hwnd_of(w: &slint::Window) -> Option<isize> {
     use slint::winit_030::{winit::raw_window_handle::{HasWindowHandle, RawWindowHandle}, WinitWindowAccessor};

@@ -811,6 +811,53 @@ Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 500
 if (-not $app.HasExited) { $app.Kill() }
 [System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
 
+# ---- 32. text recognition: from a selection, and from the editor where a mosaic hides the phone number ----
+function OcrText {
+    $h = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $d) {
+        $h = [E]::TitleAny('Anshot 识别文字')
+        if ($h -ne [IntPtr]::Zero) {
+            $names = UiaNames ([pscustomobject]@{ H = $h })
+            if ($names -contains '识别结果' -or $names -contains '未能识别') { break }
+        }
+        Start-Sleep -Milliseconds 300
+    }
+    if ($h -eq [IntPtr]::Zero) { return '' }
+    $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+    $edit = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, ([System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)))
+    if (-not $edit) { return '' }
+    $vp = $null
+    if ($edit.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { return $vp.Current.Value }
+    $edit.Current.Name
+}
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+$ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
+# the first and third bubbles (left column)
+ScreenDrag ($fx + 10) ($fy + 55) ($fx + 330) ($fy + 310)
+Start-Sleep -Milliseconds 300
+Log "OCR start=$(Invoke-Uia ([pscustomobject]@{ H = $ovh }) '识别文字')"
+$t1 = OcrText
+[System.IO.File]::WriteAllText((Join-Path $Out 'ocr-selection.txt'), $t1, (New-Object System.Text.UTF8Encoding $false))
+Log ("OCR selection=" + (python (Join-Path $PSScriptRoot 'check_ocr.py') (Join-Path $Out 'ocr-selection.txt') '您好，请提供订单号和注册手机号，我帮您查询退款进度。收到。退款已于今天14:05原路退回，预计1–3个工作日到账。如需凭证，可在“我的→订单→退款详情”查看。' 0.85))
+$oh = [E]::TitleAny('Anshot 识别文字')
+Log "OCR excluded_from_capture_flag_window=$($oh -ne [IntPtr]::Zero)"
+Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 500
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+# editor: mosaic over the phone number, then Ctrl+Shift+O reads the export image
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x4D                                     # M: safe mosaic
+Drag $w ($io.X + 505) ($io.Y + 140) ($io.X + 598) ($io.Y + 165)
+Key 0x4F -Ctrl -Shift                        # Ctrl+Shift+O
+$t2 = OcrText
+[System.IO.File]::WriteAllText((Join-Path $Out 'ocr-editor.txt'), $t2, (New-Object System.Text.UTF8Encoding $false))
+Log ("OCR editor=" + (python (Join-Path $PSScriptRoot 'check_ocr.py') (Join-Path $Out 'ocr-editor.txt') '客服·小林您好，请提供订单号和注册手机号，我帮您查询退款进度。订单号2026101908812，手机收到。退款已于今天14:05原路退回，预计1–3个工作日到账。如需凭证，可在“我的→订单→退款详情”查看。好的，谢谢！' 0.75 '13800138000' '138 0013 8000' '0013'))
+if (-not $w.P.HasExited) { $w.P.Kill() }
+
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }
