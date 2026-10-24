@@ -397,3 +397,18 @@ fn shape_pairs_convert_and_custom_colour_applies() {
     drag(&mut c, (11.0, 25.0), (11.0, 25.0));
     assert_eq!((c.style.color, c.custom), (CUSTOM_INK, [1, 2, 3, 255]));
 }
+
+#[test]
+fn redactions_are_padded_and_clamped_when_the_setting_is_on() {
+    let mut c = opened(400, 200);
+    c.pad = 4;
+    drag(&mut c, (10.0, 20.0), (60.0, 50.0));
+    assert_eq!(editor(&c).masks()[0].region, Region::new(6, 16, 64, 54));
+    c.tool = Tool::Mosaic;
+    drag(&mut c, (1.0, 150.0), (398.0, 199.0));
+    assert_eq!(editor(&c).masks()[1].region, Region::new(0, 146, 400, 200), "kept inside the image");
+    // Annotations are never padded.
+    c.tool = Tool::Rect;
+    drag(&mut c, (100.0, 60.0), (150.0, 90.0));
+    assert!(matches!(editor(&c).annotations()[0].annotation.shape, anshot_render::Shape::Rect { region, .. } if region == Region::new(100, 60, 150, 90)));
+}

@@ -20,7 +20,22 @@ pub struct Settings {
     pub delay_secs: u32,
     /// Draw the mouse pointer into captures.
     pub include_cursor: bool,
+    /// New redaction boxes are drawn `REDACT_PAD` px larger on each side than dragged.
+    pub pad_redactions: bool,
+    /// A stronger notice when an image without any redaction is copied or saved.
+    pub warn_unredacted: bool,
+    /// Copies stay out of the Windows clipboard history and cloud clipboard.
+    pub clipboard_private: bool,
+    /// History entries older than this many days are removed (0 = keep).
+    pub history_days: u32,
+    /// Empty the history when Anshot quits.
+    pub clear_on_exit: bool,
 }
+
+/// Choices offered for `history_days` (0 = keep until the count limit removes them).
+pub const HISTORY_DAYS: [u32; 4] = [0, 30, 7, 1];
+/// Padding (source px) added around new redactions when `pad_redactions` is on.
+pub const REDACT_PAD: i64 = 4;
 
 /// Choices offered for `delay_secs`.
 pub const DELAYS: [u32; 3] = [3, 5, 10];
@@ -31,7 +46,8 @@ pub const HISTORY_LIMITS: [usize; 4] = [0, 20, 50, 200];
 pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
-    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false } }
+    fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false,
+        pad_redactions: true, warn_unredacted: true, clipboard_private: true, history_days: 0, clear_on_exit: false } }
 }
 
 impl Settings {
@@ -49,6 +65,11 @@ impl Settings {
                 ("delay", v) => if let Some(n) = v.parse().ok().filter(|n| DELAYS.contains(n)) { s.delay_secs = n; },
                 ("include_cursor", "true") => s.include_cursor = true,
                 ("include_cursor", "false") => s.include_cursor = false,
+                ("pad_redactions", v) => if let Ok(b) = v.parse() { s.pad_redactions = b; },
+                ("warn_unredacted", v) => if let Ok(b) = v.parse() { s.warn_unredacted = b; },
+                ("clipboard_private", v) => if let Ok(b) = v.parse() { s.clipboard_private = b; },
+                ("clear_on_exit", v) => if let Ok(b) = v.parse() { s.clear_on_exit = b; },
+                ("history_days", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_DAYS.contains(n)) { s.history_days = n; },
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
             }
@@ -57,8 +78,9 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\n", self.hotkey.label(), self.hide_after_copy,
-            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor)
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\n", self.hotkey.label(), self.hide_after_copy,
+            self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor,
+            self.pad_redactions, self.warn_unredacted, self.clipboard_private, self.history_days, self.clear_on_exit)
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -86,11 +108,12 @@ mod tests {
     use super::*;
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
-        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true };
+        let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true,
+            pad_redactions: false, warn_unredacted: false, clipboard_private: false, history_days: 7, clear_on_exit: true };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\n");
         assert_eq!(odd, Settings::default());
     }
 }

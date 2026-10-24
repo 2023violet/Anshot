@@ -3,8 +3,8 @@
 #![forbid(unsafe_code)]
 use anshot_core::{decode_generated_png, dib_to_png, MAX_DIB_BYTES, MAX_INPUT_BYTES};
 use anshot_platform_windows::{read_clipboard_image, save_new, ClipboardImageFormat};
-use std::borrow::Cow;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub fn pick_image() -> Option<PathBuf> {
     rfd::FileDialog::new().set_title("打开图片").add_filter("图片", &["png", "jpg", "jpeg"]).pick_file()
@@ -44,18 +44,30 @@ pub fn read_clipboard() -> Result<Vec<u8>, String> {
     }
 }
 
+/// Privacy setting: keep copies out of the Windows clipboard history and cloud clipboard.
+static CLIPBOARD_PRIVATE: AtomicBool = AtomicBool::new(true);
+pub fn set_clipboard_private(on: bool) { CLIPBOARD_PRIVATE.store(on, Ordering::Relaxed); }
+fn clipboard_set(c: &mut arboard::Clipboard) -> arboard::Set<'_> {
+    let set = c.set();
+    #[cfg(windows)]
+    let set = { use arboard::SetExtWindows; if CLIPBOARD_PRIVATE.load(Ordering::Relaxed) { set.exclude_from_history().exclude_from_cloud() } else { set } };
+    set
+}
+
+/// The exact exported PNG plus a CF_DIBV5 of the same pixels, written in one clipboard
+/// session (arboard 3.6/3.7 ignore the history / cloud exclusions for images).
 pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
     let pixels = decode_generated_png(png, dims).map_err(|_| "生成的图片未通过校验，未写入剪贴板".to_string())?;
-    let data = arboard::ImageData { width: pixels.width() as usize, height: pixels.height() as usize, bytes: Cow::Owned(pixels.into_raw()) };
-    let busy = |_| "剪贴板正被其他程序占用，请稍后重试".to_string();
-    let mut clipboard = arboard::Clipboard::new().map_err(busy)?;
-    clipboard.set_image(data).map_err(busy)
+    let dib = anshot_core::rgba_to_dibv5(&pixels);
+    anshot_platform_windows::write_clipboard_image(png, &dib, CLIPBOARD_PRIVATE.load(Ordering::Relaxed))
+        .map_err(|_| "剪贴板正被其他程序占用，请稍后重试".to_string())
 }
 
 /// Plain text (a colour value, recognised text) to the clipboard.
 pub fn write_text(text: &str) -> Result<(), String> {
     let busy = |_| "剪贴板正被其他程序占用，请稍后重试".to_string();
-    arboard::Clipboard::new().map_err(busy)?.set_text(text.to_owned()).map_err(busy)
+    let mut clipboard = arboard::Clipboard::new().map_err(busy)?;
+    clipboard_set(&mut clipboard).text(text.to_owned()).map_err(busy)
 }
 
 /// The dialog may already have asked "replace?"; Anshot never overwrites, so an

@@ -73,6 +73,12 @@ export component AppWindow inherits Window {
     in property <bool> autostart;
     in property <int> delay-index;
     in property <bool> include-cursor;
+    in-out property <int> settings-tab;
+    in property <int> history-days-index;
+    in property <bool> clear-on-exit;
+    in property <bool> pad-redactions: true;
+    in property <bool> warn-unredacted: true;
+    in property <bool> clipboard-private: true;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
     in property <bool> tiny;   // canvas width < 720
 
@@ -360,7 +366,7 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 470px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
+                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 480px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? "关闭确认" : root.dialog == "about" ? "关于" : root.dialog == "settings" ? "设置" : root.dialog == "color" ? "自定义颜色" : root.dialog == "history" ? "截图历史" : "替换确认";
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
@@ -374,39 +380,69 @@ export component AppWindow inherits Window {
                         ActionButton { label: "好"; key: "Enter"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog == "settings": VerticalLayout { padding: 24px; spacing: 12px;
-                    Text { text: "设置"; font-size: 15px; font-weight: 600; color: Theme.ink; }
                     HorizontalLayout { spacing: 12px;
-                        Label { text: "截图快捷键"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["Ctrl+Shift+A", "Ctrl+Alt+A", "Ctrl+Shift+X", "PrtSc"]; selected: root.hotkey-index; picked(i) => { root.command("hotkey-" + i); } } }
+                        Text { text: "设置"; font-size: 15px; font-weight: 600; color: Theme.ink; vertical-alignment: center; }
+                        Rectangle { horizontal-stretch: 1; }
+                        VerticalLayout { alignment: center; Segmented { options: ["常规", "隐私"]; selected: root.settings-tab; picked(i) => { root.settings-tab = i; } } }
                     }
-                    if !root.hotkey-active: Text { text: "当前快捷键未能注册（可能被其他程序占用），请换一个"; color: Theme.error; font-size: 12px; }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "复制之后"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["收起编辑窗", "保留编辑窗"]; selected: root.hide-after-copy ? 0 : 1; picked(i) => { root.command(i == 0 ? "copy-hide" : "copy-stay"); } } }
+                    if root.settings-tab == 0: VerticalLayout { spacing: 12px;
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "截图快捷键"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["Ctrl+Shift+A", "Ctrl+Alt+A", "Ctrl+Shift+X", "PrtSc"]; selected: root.hotkey-index; picked(i) => { root.command("hotkey-" + i); } } }
+                        }
+                        if !root.hotkey-active: Text { text: "当前快捷键未能注册（可能被其他程序占用），请换一个"; color: Theme.error; font-size: 12px; }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "复制之后"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["收起编辑窗", "保留编辑窗"]; selected: root.hide-after-copy ? 0 : 1; picked(i) => { root.command(i == 0 ? "copy-hide" : "copy-stay"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "延时截图"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["3 秒", "5 秒", "10 秒"]; selected: root.delay-index; picked(i) => { root.command("delay-" + i); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "鼠标指针"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["不截入", "截入图片"]; selected: root.include-cursor ? 1 : 0; picked(i) => { root.command(i == 1 ? "cursor-on" : "cursor-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "开机启动"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["不启动", "登录后在托盘待命"]; selected: root.autostart ? 1 : 0; picked(i) => { root.command(i == 1 ? "autostart-on" : "autostart-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "默认保存位置"; width: 84px; }
+                            Text { text: root.save-dir == "" ? "上次使用的位置" : root.save-dir; color: Theme.body; font-size: 12px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                            ActionButton { label: "选择…"; key: ""; kind: 0; clicked => { root.command("save-dir"); } }
+                            if root.save-dir != "": ActionButton { label: "清除"; key: ""; kind: 2; clicked => { root.command("save-dir-clear"); } }
+                        }
+                        Text { text: "设置保存在本机（%APPDATA%\\Anshot）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
                     }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "延时截图"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["3 秒", "5 秒", "10 秒"]; selected: root.delay-index; picked(i) => { root.command("delay-" + i); } } }
+                    if root.settings-tab == 1: VerticalLayout { spacing: 12px;
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "截图历史"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["不保存", "20 张", "50 张", "200 张"]; selected: root.history-limit-index; picked(i) => { root.command("keep-" + i); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "历史保留"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["一直保留", "30 天", "7 天", "1 天"]; selected: root.history-days-index; picked(i) => { root.command("days-" + i); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "退出时"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["保留历史", "清空历史"]; selected: root.clear-on-exit ? 1 : 0; picked(i) => { root.command(i == 1 ? "exit-clear" : "exit-keep"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "遮挡范围"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["四周多盖 4 像素", "与拖出的框一致"]; selected: root.pad-redactions ? 0 : 1; picked(i) => { root.command(i == 0 ? "pad-on" : "pad-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "未遮挡提醒"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["提醒", "不提醒"]; selected: root.warn-unredacted ? 0 : 1; picked(i) => { root.command(i == 0 ? "warn-on" : "warn-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: "剪贴板"; width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: ["不进剪贴板历史和云同步", "允许"]; selected: root.clipboard-private ? 0 : 1; picked(i) => { root.command(i == 0 ? "clip-private" : "clip-open"); } } }
+                        }
+                        Text { text: "历史存在本机 %LOCALAPPDATA%\\Anshot\\history，未加密。多盖几像素能减少被遮文字的边缘和长度信息，但不能完全隐藏长度。"; color: Theme.mute; font-size: 12px; wrap: word-wrap; }
                     }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "鼠标指针"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["不截入", "截入图片"]; selected: root.include-cursor ? 1 : 0; picked(i) => { root.command(i == 1 ? "cursor-on" : "cursor-off"); } } }
-                    }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "开机启动"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["不启动", "登录后在托盘待命"]; selected: root.autostart ? 1 : 0; picked(i) => { root.command(i == 1 ? "autostart-on" : "autostart-off"); } } }
-                    }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "截图历史"; width: 84px; }
-                        VerticalLayout { alignment: center; Segmented { options: ["不保存", "20 张", "50 张", "200 张"]; selected: root.history-limit-index; picked(i) => { root.command("keep-" + i); } } }
-                    }
-                    HorizontalLayout { spacing: 12px;
-                        Label { text: "默认保存位置"; width: 84px; }
-                        Text { text: root.save-dir == "" ? "上次使用的位置" : root.save-dir; color: Theme.body; font-size: 12px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                        ActionButton { label: "选择…"; key: ""; kind: 0; clicked => { root.command("save-dir"); } }
-                        if root.save-dir != "": ActionButton { label: "清除"; key: ""; kind: 2; clicked => { root.command("save-dir-clear"); } }
-                    }
-                    Text { text: "设置保存在本机（%APPDATA%\\Anshot）；开机启动只写入当前用户的启动项。"; color: Theme.mute; font-size: 12px; }
+                    Rectangle { vertical-stretch: 1; }
                     HorizontalLayout { alignment: end; ActionButton { label: "完成"; key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog == "color": VerticalLayout { padding: 24px; spacing: 12px; alignment: start;

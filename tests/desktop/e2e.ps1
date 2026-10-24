@@ -858,6 +858,81 @@ $t2 = OcrText
 Log ("OCR editor=" + (python (Join-Path $PSScriptRoot 'check_ocr.py') (Join-Path $Out 'ocr-editor.txt') '客服·小林您好，请提供订单号和注册手机号，我帮您查询退款进度。订单号2026101908812，手机收到。退款已于今天14:05原路退回，预计1–3个工作日到账。如需凭证，可在“我的→订单→退款详情”查看。好的，谢谢！' 0.75 '13800138000' '138 0013 8000' '0013'))
 if (-not $w.P.HasExited) { $w.P.Kill() }
 
+# ---- 33. privacy aids: padded redaction, the no-redaction warning, private clipboard, history age and exit, pins out of the shot ----
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+$mosaic = @('3A3934', '4B4A44', '5D5B54', '6F6D65')
+function Hex($c) { '{0:X2}{1:X2}{2:X2}' -f $c.R, $c.G, $c.B }
+# padded mosaic: a pixel 2 px left of the dragged box is mosaic grey in the copy
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x4D
+Drag $w ($io.X + 506) ($io.Y + 141) ($io.X + 595) ($io.Y + 162)
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+$fmts = @([System.Windows.Forms.Clipboard]::GetDataObject().GetFormats())
+$cb = [System.Windows.Forms.Clipboard]::GetImage()
+if ($cb) { $edge = Hex ($cb.GetPixel(504, 150)); $inside = Hex ($cb.GetPixel(550, 150)); $far = Hex ($cb.GetPixel(498, 150)); $cb.Dispose() }
+Log "PRIVACY pad edge=$edge in_mosaic=$($mosaic -contains $edge) inside_mosaic=$($mosaic -contains $inside) beyond_pad=$far not_mosaic=$(-not ($mosaic -contains $far))"
+Log "PRIVACY clipboard_flags history_off=$($fmts -contains 'CanIncludeInClipboardHistory') cloud_off=$($fmts -contains 'CanUploadToCloudClipboard')"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+# no redaction: the copy warns
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1200
+Log ("PRIVACY unredacted_warning=" + (((UiaNames $w) | Where-Object { $_ -like '*图中没有遮挡*' }) -join ' | '))
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+# history age: an entry 3 days old is gone after a start with history_days=1
+New-Item -ItemType Directory -Force $env:ANSHOT_HISTORY_DIR | Out-Null
+$oldMs = [long]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - 3 * 86400000)
+$old = Join-Path $env:ANSHOT_HISTORY_DIR ('anshot-{0:D13}-000.png' -f $oldMs)
+Copy-Item (Resolve-Path $Image).Path $old
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nhistory_days=1"
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+Log "PRIVACY history_age old_removed=$(-not (Test-Path $old))"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+# clear on exit: a resident instance owns the tray; a second, editor-only instance copies (history written), then exits normally
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nclear_on_exit=true"
+$res = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Drag $w ($io.X + 506) ($io.Y + 141) ($io.X + 595) ($io.Y + 162)
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+$before = (HistoryFiles).Count
+[void][E]::PostMessage($w.H, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)      # WM_CLOSE: the second instance quits
+Start-Sleep -Milliseconds 800
+$names = @(); try { $names = UiaNames $w } catch { }   # the window may already be gone
+if ($names -contains '不保存，直接关闭') { Log "PRIVACY exit_dialog=$(Invoke-Uia $w '不保存，直接关闭')" }
+$exited = $w.P.WaitForExit(8000)
+Log "PRIVACY clear_on_exit before=$before exited=$exited after=$((HistoryFiles).Count)"
+if (-not $w.P.HasExited) { $w.P.Kill() }
+if (-not $res.HasExited) { $res.Kill() }
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
+Start-Sleep -Milliseconds 500
+# a pin over the region is not in the next capture (pins step aside while the screen is frozen)
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$((Resolve-Path $Image).Path)`"", '-X', $fx, '-Y', $fy) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
+ScreenDrag ($fx + 20) ($fy + 60) ($fx + 220) ($fy + 120)
+Key 0x54 -Ctrl; Start-Sleep -Milliseconds 1200            # pin the first bubble where it is
+$pins = PinWindows $app
+# move the pin over the lower bubbles (it now covers other synthetic pixels)
+$pr = New-Object E+RECT; [void][E]::GetWindowRect($pins[0], [ref]$pr)
+ScreenDrag ($pr.L + 50) ($pr.T + 30) ($pr.L + 50) ($pr.T + 30 + 220)
+[void][E]::GetWindowRect($pins[0], [ref]$pr)
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1500
+ScreenDrag ($fx + 10) ($fy + 200) ($fx + 400) ($fy + 420)
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "PRIVACY pin_moved_to=$($pr.L - $fx),$($pr.T - $fy) pin_shown_again=$((PinWindows $app).Count) copy=$(ClipSave 'clipboard-under-pin.png')"
+Log ("PRIVACY pin_not_in_shot=" + (python (Join-Path $PSScriptRoot 'check_png.py') crop (Resolve-Path $Image).Path 10 200 (Join-Path $Out 'clipboard-under-pin.png')))
+Stop-Process -Id $fixture.Id -Force
+if (-not $app.HasExited) { $app.Kill() }
+Start-Sleep -Milliseconds 500
+
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }

@@ -9,8 +9,10 @@ pub struct ClipboardImage {pub format:ClipboardImageFormat,pub bytes:Vec<u8>}
 #[cfg(windows)]
 mod clipboard;
 #[cfg(windows)]
-pub use clipboard::read_clipboard_image;
+pub use clipboard::{read_clipboard_image,write_clipboard_image};
 
+#[cfg(not(windows))]
+pub fn write_clipboard_image(_png:&[u8],_dibv5:&[u8],_private:bool)->std::io::Result<()>{Err(std::io::ErrorKind::Unsupported.into())}
 #[cfg(not(windows))]
 pub fn read_clipboard_image(_png_limit:usize,_dib_limit:usize)->std::io::Result<ClipboardImage>{
     Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"Windows clipboard adapter requires Windows"))

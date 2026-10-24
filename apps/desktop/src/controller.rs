@@ -62,6 +62,8 @@ pub enum Hit { Grip(u64, Grip), Mask(u64), Ann(u64), Empty }
 enum Draft { Redact(Region, RedactStyle), Ann(Annotation) }
 
 pub struct Controller {
+    /// Source px added on each side of new redactions (privacy setting; 0 = exact).
+    pub pad: i64,
     pub editor: Option<Editor>,
     pub tool: Tool,
     pub style: Style,
@@ -87,7 +89,7 @@ pub struct Controller {
 
 impl Default for Controller {
     fn default() -> Self {
-        Self { editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
+        Self { pad: 0, editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
             delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255] }
     }
 }
@@ -375,9 +377,16 @@ impl Controller {
         let area = (r.x1 - r.x0) * (r.y1 - r.y0);
         let color = self.ink();
         let (s, c) = (self.src(start)?, self.src(current)?);
+        // Redactions cover a little more than dragged: the edges of covered glyphs and the
+        // exact width of the hidden string leak less (the length still shows roughly).
+        let padded = || {
+            let (w, h) = self.editor.as_ref().map_or((0, 0), |e| e.dimensions());
+            let p = self.pad;
+            anshot_core::Region::new((r.x0 - p).max(0), (r.y0 - p).max(0), (r.x1 + p).min(i64::from(w)), (r.y1 + p).min(i64::from(h)))
+        };
         match self.tool {
-            Tool::Redact if area > 0 => Some(Draft::Redact(r, RedactStyle::Solid(SOLIDS[self.style.solid]))),
-            Tool::Mosaic if area > 0 => Some(Draft::Redact(r, RedactStyle::SafeMosaic)),
+            Tool::Redact if area > 0 => Some(Draft::Redact(padded(), RedactStyle::Solid(SOLIDS[self.style.solid]))),
+            Tool::Mosaic if area > 0 => Some(Draft::Redact(padded(), RedactStyle::SafeMosaic)),
             Tool::Rect if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Rect { region: r, width: WIDTHS[self.style.width] }, color })),
             Tool::Highlight if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Highlight { region: r }, color })),
             Tool::Ellipse if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Ellipse { region: r, width: WIDTHS[self.style.width] }, color })),

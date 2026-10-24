@@ -87,6 +87,9 @@ struct App {
     /// The text recognition window (reused) and the run it waits for.
     ocr_win: Option<OcrWindow>,
     ocr_seq: u64,
+    /// Pins (ids) and the OCR window hidden while the screen is frozen; shown again after.
+    hidden_for_capture: Vec<u64>,
+    ocr_hidden: bool,
 }
 
 struct LongShot {
@@ -329,6 +332,13 @@ impl App {
         let n = self.ctl.redaction_count();
         let (w, h) = self.ctl.editor.as_ref().map_or((0, 0), |e| e.output_dimensions());
         match (kind, outcome) {
+            (Delivery::Copy, Ok(())) if n == 0 && self.settings.warn_unredacted => {
+                // Nothing is covered: say so plainly (the copy already happened; nothing is blocked).
+                let detail = format!("{w} × {h} · 如有手机号、地址等，请先遮挡再分享");
+                if matches!(std::mem::replace(&mut self.after_copy, AfterCopy::Stay), AfterCopy::Quit) { let _ = slint::quit_event_loop(); return; }
+                if self.ui().is_some_and(|ui| ui.window().is_visible()) { self.toast("warn", "已复制 · 图中没有遮挡", &detail, None); }
+                else { self.system_toast("warn", "已复制 · 图中没有遮挡", &detail); }
+            }
             (Delivery::Copy, Ok(())) => {
                 let detail = if n == 0 { format!("{w} × {h} · 未遮挡任何内容") } else { format!("{w} × {h} · 已遮挡 {n} 处") };
                 match std::mem::replace(&mut self.after_copy, AfterCopy::Stay) {
@@ -341,6 +351,7 @@ impl App {
                     AfterCopy::Stay => self.toast("done", "已复制到剪贴板", &detail, None),
                 }
             }
+            (Delivery::Save, Ok(())) if n == 0 && self.settings.warn_unredacted => { self.after_copy = AfterCopy::Stay; self.toast("warn", "已保存 · 图中没有遮挡", &name.unwrap_or_default(), None) }
             (Delivery::Save, Ok(())) => { self.after_copy = AfterCopy::Stay; self.toast("done", "已保存", &name.unwrap_or_default(), None) }
             (Delivery::Copy, Err(e)) => {
                 self.after_copy = AfterCopy::Stay;
@@ -447,6 +458,7 @@ impl App {
         // The toast must not take keyboard focus (e.g. from a pin the user is working with).
         let focus = anshot_platform_windows::foreground_window();
         let _ = t.show();
+        if let Some(h) = hwnd_of(t.window()) { anshot_platform_windows::exclude_from_capture(h); }
         // The window system shows it on a later frame: hand focus back after that.
         slint::Timer::single_shot(Duration::from_millis(60), move || anshot_platform_windows::restore_foreground(focus));
         if let Some(m) = anshot_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
@@ -494,8 +506,6 @@ impl App {
         win.set_error("".into());
         win.set_text("".into());
         let _ = win.show();
-        // Recognised text is on screen: keep this window out of later captures.
-        if let Some(h) = hwnd_of(win.window()) { anshot_platform_windows::exclude_from_capture(h); }
         std::thread::spawn(move || {
             let result = job();
             let _ = slint::invoke_from_event_loop(move || {
@@ -552,7 +562,13 @@ impl App {
         // hide, then wait for the compositor to present the desktop without it.
         let visible = self.ui().is_some_and(|ui| ui.window().is_visible());
         self.restore_editor = visible;
-        if !visible { self.freeze_screen(); return; }
+        // Pins and the OCR window stay visible to other programs (screen sharing), so they are
+        // not excluded from capture; they step aside while Anshot freezes the screen instead.
+        self.hidden_for_capture = self.pins.iter().filter(|p| p.win.window().is_visible()).map(|p| p.id).collect();
+        for p in &self.pins { if self.hidden_for_capture.contains(&p.id) { let _ = p.win.hide(); } }
+        self.ocr_hidden = self.ocr_win.as_ref().is_some_and(|w| w.window().is_visible());
+        if let (true, Some(w)) = (self.ocr_hidden, self.ocr_win.as_ref()) { let _ = w.hide(); }
+        if !visible && self.hidden_for_capture.is_empty() && !self.ocr_hidden { self.freeze_screen(); return; }
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
         self.capture_pending = true;
         slint::Timer::single_shot(Duration::from_millis(16), || {
@@ -729,6 +745,8 @@ impl App {
     }
     fn end_capture(&mut self) {
         self.cursor_timer.stop();
+        for id in std::mem::take(&mut self.hidden_for_capture) { if let Some(p) = self.pins.iter().find(|p| p.id == id) { let _ = p.win.show(); } }
+        if std::mem::take(&mut self.ocr_hidden) { if let Some(w) = self.ocr_win.as_ref() { let _ = w.show(); } }
         for (win, _) in self.overlays.drain(..) {
             let _ = win.hide();
             // Do not keep frozen screen pixels around between captures.
@@ -793,6 +811,7 @@ impl App {
         panel.window().set_position(slint::PhysicalPosition::new(px, py));
         let _ = panel.show();
         panel.window().set_position(slint::PhysicalPosition::new(px, py));
+        if let Some(h) = hwnd_of(panel.window()) { anshot_platform_windows::exclude_from_capture(h); }
         let timer = slint::Timer::default();
         timer.start(slint::TimerMode::Repeated, Duration::from_millis(120), || { with(|a| a.poll_long_shot()); });
         self.long = Some(LongShot { region, stitcher: None, panel, timer });
@@ -988,7 +1007,19 @@ impl App {
         ui.set_autostart(matches!(anshot_platform_windows::autostart(), Ok(Some(_))));
         ui.set_delay_index(settings::DELAYS.iter().position(|n| *n == s.delay_secs).unwrap_or(0) as i32);
         ui.set_include_cursor(s.include_cursor);
+        ui.set_history_days_index(settings::HISTORY_DAYS.iter().position(|n| *n == s.history_days).unwrap_or(0) as i32);
+        ui.set_clear_on_exit(s.clear_on_exit);
+        ui.set_pad_redactions(s.pad_redactions);
+        ui.set_warn_unredacted(s.warn_unredacted);
+        ui.set_clipboard_private(s.clipboard_private);
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); t.set_delay_secs(s.delay_secs as i32); }
+    }
+    /// Settings that act outside the UI: redaction padding, the clipboard flags, the
+    /// history's age limit.
+    fn apply_privacy(&mut self) {
+        self.ctl.pad = if self.settings.pad_redactions { settings::REDACT_PAD } else { 0 };
+        platform::set_clipboard_private(self.settings.clipboard_private);
+        if let Some(h) = self.history() { h.prune_age(self.settings.history_days, history::now_millis()); }
     }
     fn open_settings(&mut self) {
         // Never replace a pending close/replace prompt (the tray bypasses command gating).
@@ -1123,7 +1154,8 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
-    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-");
+    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
+        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1201,6 +1233,15 @@ fn command(cmd: &str) {
                     } }
                     c if c.starts_with("hotkey-") => { if let Ok(i) = c[7..].parse::<usize>() { a.set_hotkey(i); } }
                     c if c.starts_with("delay-") => { if let Some(&n) = c[6..].parse::<usize>().ok().and_then(|i| settings::DELAYS.get(i)) { a.settings.delay_secs = n; a.persist(); a.push_settings(); } }
+                    c if c.starts_with("days-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_DAYS.get(i)) { a.settings.history_days = n; a.persist(); a.apply_privacy(); a.push_settings(); } }
+                    "exit-clear" => { a.settings.clear_on_exit = true; a.persist(); a.push_settings(); }
+                    "exit-keep" => { a.settings.clear_on_exit = false; a.persist(); a.push_settings(); }
+                    "pad-on" => { a.settings.pad_redactions = true; a.persist(); a.apply_privacy(); a.push_settings(); }
+                    "pad-off" => { a.settings.pad_redactions = false; a.persist(); a.apply_privacy(); a.push_settings(); }
+                    "warn-on" => { a.settings.warn_unredacted = true; a.persist(); a.push_settings(); }
+                    "warn-off" => { a.settings.warn_unredacted = false; a.persist(); a.push_settings(); }
+                    "clip-private" => { a.settings.clipboard_private = true; a.persist(); a.apply_privacy(); a.push_settings(); }
+                    "clip-open" => { a.settings.clipboard_private = false; a.persist(); a.apply_privacy(); a.push_settings(); }
                     "cursor-on" => { a.settings.include_cursor = true; a.persist(); a.push_settings(); }
                     "cursor-off" => { a.settings.include_cursor = false; a.persist(); a.push_settings(); }
                     "copy-hide" => { a.settings.hide_after_copy = true; a.persist(); }
@@ -1231,7 +1272,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1344,11 +1385,14 @@ fn main() -> Result<(), slint::PlatformError> {
     let delayed = args.iter().any(|a| a == "--delayed-capture");
     if let Some(path) = args.into_iter().find(|a| a != "--background" && a != "--delayed-capture").map(PathBuf::from) { open_path(path); }
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
-    with(|a| { a.push_settings(); a.refresh(); });
+    with(|a| { a.apply_privacy(); a.push_settings(); a.refresh(); });
     let resident = with(|a| a.resident).unwrap_or(false);
     if !(background && resident) { ui.show()?; }
     if delayed && resident { slint::Timer::single_shot(Duration::from_millis(300), || { with(|a| a.start_countdown()); }); }
-    slint::run_event_loop_until_quit()
+    let result = slint::run_event_loop_until_quit();
+    // Privacy setting: nothing from this run stays in the history.
+    with(|a| if a.settings.clear_on_exit { if let Some(h) = a.history() { h.clear(); } });
+    result
 }
 
 fn tool_name(t: Tool) -> &'static str {

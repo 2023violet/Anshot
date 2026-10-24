@@ -63,6 +63,12 @@ impl History {
         }
     }
     pub fn clear(&self) { self.prune(0); }
+    /// Remove entries older than `days` days (0 = keep), judged by the time in the name.
+    pub fn prune_age(&self, days: u32, now_ms: u64) {
+        if days == 0 { return; }
+        let cutoff = now_ms.saturating_sub(u64::from(days) * 86_400_000);
+        for e in self.list().into_iter().filter(|e| e.millis < cutoff) { let _ = std::fs::remove_file(&e.path); }
+    }
     pub fn remove(&self, e: &Entry) { if self.list().contains(e) { let _ = std::fs::remove_file(&e.path); } }
 
     /// Bounded read; the bytes still go through Core intake before use.
@@ -109,6 +115,26 @@ mod tests {
         assert!(dir.join("keep-me.png").exists(), "never touches files it did not write");
         std::fs::remove_dir_all(&dir).unwrap();
     }
+    #[test]
+    fn entries_older_than_the_age_limit_are_removed() {
+        let dir = tmp("age");
+        let h = History::at(dir.clone());
+        std::fs::create_dir_all(&dir).unwrap();
+        let now = 1_800_000_000_000u64;
+        for (i, days) in [0u64, 2, 8, 40].iter().enumerate() {
+            std::fs::write(dir.join(format!("anshot-{:013}-{i:03}.png", now - days * 86_400_000 - 1)), [i as u8]).unwrap();
+        }
+        h.prune_age(0, now);
+        assert_eq!(h.list().len(), 4, "0 = keep");
+        h.prune_age(30, now);
+        assert_eq!(h.list().len(), 3);
+        h.prune_age(7, now);
+        assert_eq!(h.list().len(), 2);
+        h.prune_age(1, now);
+        assert_eq!(h.list().len(), 1);
+        h.clear();
+    }
+
     #[test]
     fn missing_folder_is_empty_and_labels_are_stable() {
         assert!(History::at(tmp("none")).list().is_empty());

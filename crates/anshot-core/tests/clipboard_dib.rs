@@ -58,3 +58,14 @@ fn dib32(header:u32,alpha:bool)->Vec<u8>{
         let mut b=dib32(124,true);put32(&mut b,at,value);assert!(dib_to_png(&b).is_err(),"at={at}");
     }
 }
+
+#[test]
+fn rgba_round_trips_through_the_dibv5_anshot_writes() {
+    let img = image::RgbaImage::from_fn(7, 5, |x, y| image::Rgba([(x * 30) as u8, (y * 40) as u8, 99, if x == 0 { 128 } else { 255 }]));
+    let dib = anshot_core::rgba_to_dibv5(&img);
+    assert_eq!(dib.len(), 124 + 7 * 5 * 4);
+    let png = anshot_core::dib_to_png(&dib).unwrap();
+    let back = anshot_core::decode_source(&png).unwrap();
+    assert_eq!(back.dimensions(), (7, 5));
+    assert!(back == img, "pixels and alpha survive the round trip");
+}

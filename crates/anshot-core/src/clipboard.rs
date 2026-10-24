@@ -6,6 +6,29 @@ use std::io::Cursor;
 
 pub const MAX_DIB_BYTES:usize=MAX_PIXELS as usize*4+124;
 
+/// Straight RGBA pixels as a packed CF_DIBV5 (124-byte BITMAPV5HEADER, 32 bpp BI_BITFIELDS
+/// with an alpha mask, sRGB, bottom-up rows), the second image format Anshot places on the
+/// clipboard next to its PNG. The inverse of what [`dib_to_png`] accepts.
+pub fn rgba_to_dibv5(img:&RgbaImage)->Vec<u8>{
+    let (w,h)=img.dimensions();
+    let mut out=Vec::with_capacity(124+w as usize*h as usize*4);
+    let put=|v:&mut Vec<u8>,x:u32|v.extend_from_slice(&x.to_le_bytes());
+    put(&mut out,124);put(&mut out,w);put(&mut out,h);              // size, width, height (bottom-up)
+    out.extend_from_slice(&1u16.to_le_bytes());out.extend_from_slice(&32u16.to_le_bytes()); // planes, bits
+    put(&mut out,3);put(&mut out,w*h*4);                              // BI_BITFIELDS, image size
+    put(&mut out,2835);put(&mut out,2835);put(&mut out,0);put(&mut out,0); // 72 dpi, no palette
+    put(&mut out,0x00ff0000);put(&mut out,0x0000ff00);put(&mut out,0x000000ff);put(&mut out,0xff000000);
+    put(&mut out,0x73524742);                                         // LCS_sRGB
+    out.extend_from_slice(&[0u8;36]);                                 // endpoints (unused for sRGB)
+    put(&mut out,0);put(&mut out,0);put(&mut out,0);                  // gamma
+    put(&mut out,4);put(&mut out,0);put(&mut out,0);put(&mut out,0);  // LCS_GM_IMAGES, no profile, reserved
+    debug_assert_eq!(out.len(),124);
+    for y in (0..h).rev(){
+        for x in 0..w{let [r,g,b,a]=img.get_pixel(x,y).0;out.extend_from_slice(&[b,g,r,a]);}
+    }
+    out
+}
+
 /// Normalize supported clipboard DIB pixels into a fresh source PNG. This is
 /// intake, not a reviewed/redacted export; delivery still requires Editor review.
 pub fn dib_to_png(input:&[u8])->Result<Vec<u8>,String>{

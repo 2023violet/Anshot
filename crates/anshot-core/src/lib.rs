@@ -10,7 +10,7 @@ pub const MAX_GENERATED_PNG_BYTES: usize = 128 * 1024 * 1024;
 pub const COVER: Rgba<u8> = Rgba([17, 24, 39, 255]);
 
 mod clipboard;
-pub use clipboard::{dib_to_png,MAX_DIB_BYTES};
+pub use clipboard::{dib_to_png,rgba_to_dibv5,MAX_DIB_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Region {

@@ -56,6 +56,60 @@ pub fn read_clipboard_image(png_limit:usize,dib_limit:usize)->io::Result<Clipboa
     Err(io::Error::new(io::ErrorKind::NotFound,"No supported image on clipboard; copy an image or open a PNG/JPEG file"))
 }
 
+/// Copy `bytes` into a new movable global block and hand it to the open clipboard.
+/// SAFETY: the clipboard must be open (and emptied) by this thread.
+unsafe fn set_global(format:u32,bytes:&[u8])->io::Result<()>{
+    use windows_sys::Win32::{Foundation::{GlobalFree,HANDLE},System::{DataExchange::SetClipboardData,Memory::{GlobalAlloc,GMEM_MOVEABLE}}};
+    // SAFETY: plain allocation; freed below unless the clipboard takes ownership.
+    let h=unsafe{GlobalAlloc(GMEM_MOVEABLE,bytes.len().max(1))};
+    if h.is_null(){return Err(io::Error::last_os_error());}
+    // SAFETY: fresh allocation of at least bytes.len(); unlocked before handing over.
+    let p=unsafe{GlobalLock(h)};
+    if p.is_null(){unsafe{GlobalFree(h);}return Err(io::Error::last_os_error());}
+    unsafe{std::ptr::copy_nonoverlapping(bytes.as_ptr(),p.cast::<u8>(),bytes.len());GlobalUnlock(h);}
+    // SAFETY: on success the system owns the block; on failure it is still ours to free.
+    if unsafe{SetClipboardData(format,h as HANDLE)}.is_null(){unsafe{GlobalFree(h);}return Err(io::Error::last_os_error());}
+    Ok(())
+}
+
+/// UTF-16, NUL-terminated registration of a named clipboard format.
+fn register(name:&str)->u32{
+    let w:Vec<u16>=name.encode_utf16().chain(Some(0)).collect();
+    // SAFETY: NUL-terminated UTF-16 name owned for the call.
+    unsafe{RegisterClipboardFormatW(w.as_ptr())}
+}
+
+/// Put an exported image on the clipboard as "PNG" and CF_DIBV5 in one session. With
+/// `private`, the same session marks it with the documented zero-DWORD formats that keep
+/// it out of Windows clipboard history and the cloud clipboard (they must be set before
+/// the clipboard is closed, or history has already taken the item).
+pub fn write_clipboard_image(png:&[u8],dibv5:&[u8],private:bool)->io::Result<()>{
+    use windows_sys::Win32::System::DataExchange::EmptyClipboard;
+    let png_format=register("PNG");
+    if png_format==0{return Err(io::Error::last_os_error());}
+    // Another program may hold the clipboard for a moment.
+    let mut opened=false;
+    for _ in 0..10 {
+        // SAFETY: open on this thread, closed by the guard below on every path.
+        if unsafe{OpenClipboard(std::ptr::null_mut())}!=0{opened=true;break;}
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    if !opened{return Err(io::Error::last_os_error());}
+    let _clipboard=OpenedClipboard;
+    // SAFETY: clipboard is open on this thread.
+    if unsafe{EmptyClipboard()}==0{return Err(io::Error::last_os_error());}
+    // SAFETY: clipboard open and emptied by this thread for all three calls.
+    unsafe{set_global(png_format,png)}?;
+    unsafe{set_global(17,dibv5)}?;
+    if private {
+        for name in ["CanIncludeInClipboardHistory","CanUploadToCloudClipboard"] {
+            let f=register(name);
+            if f!=0 { unsafe{set_global(f,&0u32.to_ne_bytes())}?; }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
