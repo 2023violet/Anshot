@@ -59,7 +59,7 @@ if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Get-ChildItem $env:ANSHOT_SETTINGS_DIR
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
 # An explicit verdict line for a check: grep the log for "=FAIL".
-function Verdict([string] $name, [bool] $ok) { Log "VERDICT $name=$(if ($ok) { PASS } else { FAIL })" }
+function Verdict([string] $name, [bool] $ok) { Log "VERDICT $name=$(if ($ok) { 'PASS' } else { 'FAIL' })" }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
 
 function Launch([string[]] $argv) {
