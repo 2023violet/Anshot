@@ -112,7 +112,7 @@ All machine checks were run by the development agent with real OS mouse and keyb
 - install / upgrade / uninstall;
 - a 1-hour run of repeated captures.
 
-Measured numbers (0.3.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.1 MB, program 33.5 MB; start-up 472–583 ms; hotkey to overlay 52–55 ms from the tray; opening a 6000×4000 image 839 ms, copying it 1040 ms, peak memory 562 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth (3 copies had the wrong size, cause not yet known; see the QA report).
+Measured numbers (0.3.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.1 MB, program 33.5 MB; start-up 472–583 ms; hotkey to overlay 52–55 ms from the tray; opening a 6000×4000 image 839 ms, copying it 1040 ms, peak memory 562 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth.
 
 See the [QA report](ui-design/07_UI_QA_REPORT.md) (Chinese).
 
