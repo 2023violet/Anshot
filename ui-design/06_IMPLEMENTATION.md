@@ -152,3 +152,14 @@
 - M6 发布前最终审查修复（32c8b8c）、静默安装中止修复（6ed3e71）、全量复测证据（8466af6）。
 最终构建：exe `4f44de13e128ffb2376ccd044cb807522d49588f74bf68cbd8363a7c551e0450`，setup `c992c04a20a8d9739e10532106b7e7e67e5554ab13870ac8dc31e0b2d1ab44da`，zip `5f4dda3eded37493b7120091f0f429a975f21e24cf165bc75bda613a03b95adb`。测试结果见 07 §8。
 
+
+## B8 — 0.3.0 截图辅助、离线 OCR、隐私辅助、中英界面（代理确认，2026-10-27）
+按用户 2026-10-24 批准的 0.3.0 计划（M0–M6）实施，每个里程碑单独提交：
+- M0（a2295cc、0dee025）e2e 第 26 部分改按 `anshot-*` / `sr-*` 统计历史；安装 QA 从安装包文件名读版本；长截图难例夹具（侧栏不动 + 固定页头页脚，`scroll_window.ps1 -Side/-Header/-Footer`），`stitch.rs` 先判断“只有一栏在滚动”再匹配，只拼接滚动的一栏。
+- M1（a12aec9）`capture.rs`：`lock`（Shift 正方形 / 比例）、`pixel()` 取色、`restore()` 重复上次区域（只在内存）、`resize_to()` / `set_ratio()`；倒计时窗与 `--delayed-capture`；`screen.rs` 的 `capture_ex` / `draw_cursor`（GetCursorInfo + DrawIconEx）。
+- M2（9888309）先做可行性验证（`spike/ocr/`，门槛与结果见 `docs/decisions/ADR_0_3_OCR.md`），再接入 `platform-windows/ocr.rs`（Windows.Media.Ocr，`windows =0.62.2`）；识别窗只显示文字，不落盘，同一时间一个任务。
+- M3（e2dd26f）遮挡外扩 4 px、未遮挡提醒、历史天数与退出清空（`history.rs::prune_age`）；倒计时 / 提示 / 长截图控制条 `WDA_EXCLUDEFROMCAPTURE`，钉图与识别窗在冻结时让开；自写剪贴板写入（core `rgba_to_dibv5` + platform `write_clipboard_image`），因为 arboard 3.6.1 / 3.7.0 对图片忽略“不进剪贴板历史”。
+- M4（06fa0a2）render 新增 `Shape::Spotlight` / `Shape::Magnify` 与冻结金样本 `scene-v3`；控制器 S / Z 工具、Alt+滚轮。
+- M5（d59a54e）`@tr()` + 内置翻译包（`lang/en_US/LC_MESSAGES/anshot-desktop.po`，297 条），Rust 侧 `i18n.rs` 的 `t()` / `tf()`；单测检查覆盖与占位符一致。
+- M6（ca00794、66692fe、57efc86、c0dbe3d）版本 0.3.0；代理安全审查与代码审查的修复；e2e 31–35 输出明确的 `VERDICT` 行；`soak.ps1`。
+最终构建（代码为 66692fe85827c059b095e4dee649e07c74cf840f，打包时工作区干净；之后的 57efc86、c0dbe3d 只改测试脚本）：exe `a429a4e1f89dfc333afc80d3840545b19dd3efac3a67405eb0ae109f26103de0`（35,128,320 字节），setup `4fba047cd12e8c93d06d747ca2b925d2dd59ba1e3a2b2cecc09196314d4a1d9e`（16,893,609 字节），zip `66832ed8d6aa0a7a55c3a0ccbb5682170baf2f03d897599af54f14d890760ced`。测试结果见 07 §9。

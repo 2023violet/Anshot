@@ -1,0 +1,67 @@
+EXE sha256=a429a4e1f89dfc333afc80d3840545b19dd3efac3a67405eb0ae109f26103de0 path=Anshot.exe
+SAMPLE min=0 iter=0 ws_mb=78.5 private_mb=44.4 handles=400
+SAMPLE min=1 iter=12 ws_mb=228.1 private_mb=156.7 handles=468
+SAMPLE min=2 iter=24 ws_mb=229.0 private_mb=156.7 handles=466
+SAMPLE min=3 iter=36 ws_mb=229.5 private_mb=157.1 handles=462
+FAILED iter=37 clipboard=1920x1040
+SAMPLE min=4 iter=48 ws_mb=228.7 private_mb=156.3 handles=462
+SAMPLE min=5 iter=60 ws_mb=229.0 private_mb=156.6 handles=462
+SAMPLE min=6 iter=72 ws_mb=228.9 private_mb=156.4 handles=470
+SAMPLE min=7 iter=84 ws_mb=229.1 private_mb=156.4 handles=470
+SAMPLE min=8 iter=96 ws_mb=229.0 private_mb=156.3 handles=462
+SAMPLE min=9 iter=108 ws_mb=229.1 private_mb=156.3 handles=462
+SAMPLE min=10 iter=120 ws_mb=229.4 private_mb=156.6 handles=462
+SAMPLE min=11 iter=132 ws_mb=229.5 private_mb=156.6 handles=462
+FAILED iter=140 clipboard=1920x1040
+SAMPLE min=12 iter=144 ws_mb=230.6 private_mb=157.7 handles=460
+SAMPLE min=13 iter=156 ws_mb=230.6 private_mb=157.8 handles=460
+SAMPLE min=14 iter=168 ws_mb=230.8 private_mb=157.9 handles=460
+SAMPLE min=15 iter=180 ws_mb=230.8 private_mb=157.9 handles=460
+SAMPLE min=16 iter=192 ws_mb=230.9 private_mb=158.0 handles=460
+SAMPLE min=17 iter=204 ws_mb=231.0 private_mb=157.9 handles=460
+SAMPLE min=18 iter=216 ws_mb=230.9 private_mb=157.9 handles=460
+SAMPLE min=19 iter=228 ws_mb=230.8 private_mb=157.7 handles=460
+SAMPLE min=20 iter=240 ws_mb=231.0 private_mb=157.9 handles=460
+SAMPLE min=21 iter=252 ws_mb=230.8 private_mb=157.6 handles=460
+SAMPLE min=22 iter=264 ws_mb=231.1 private_mb=157.9 handles=460
+SAMPLE min=23 iter=276 ws_mb=230.9 private_mb=157.7 handles=460
+SAMPLE min=24 iter=288 ws_mb=231.2 private_mb=157.9 handles=460
+SAMPLE min=25 iter=300 ws_mb=231.0 private_mb=157.7 handles=460
+SAMPLE min=26 iter=312 ws_mb=227.0 private_mb=157.7 handles=460
+SAMPLE min=27 iter=324 ws_mb=227.2 private_mb=157.9 handles=460
+SAMPLE min=28 iter=336 ws_mb=227.2 private_mb=157.8 handles=460
+SAMPLE min=29 iter=348 ws_mb=227.1 private_mb=157.7 handles=460
+SAMPLE min=30 iter=360 ws_mb=227.3 private_mb=157.9 handles=460
+SAMPLE min=31 iter=372 ws_mb=205.2 private_mb=157.9 handles=460
+SAMPLE min=32 iter=384 ws_mb=205.2 private_mb=157.9 handles=460
+SAMPLE min=33 iter=396 ws_mb=205.3 private_mb=158.0 handles=460
+SAMPLE min=34 iter=408 ws_mb=205.2 private_mb=157.7 handles=460
+SAMPLE min=35 iter=420 ws_mb=205.3 private_mb=157.9 handles=460
+SAMPLE min=36 iter=432 ws_mb=204.7 private_mb=157.7 handles=460
+SAMPLE min=37 iter=444 ws_mb=205.0 private_mb=158.0 handles=460
+SAMPLE min=38 iter=456 ws_mb=204.9 private_mb=157.8 handles=460
+SAMPLE min=39 iter=468 ws_mb=204.8 private_mb=157.6 handles=460
+FAILED iter=478 clipboard=1920x1040
+SAMPLE min=40 iter=480 ws_mb=203.7 private_mb=157.3 handles=460
+SAMPLE min=41 iter=492 ws_mb=203.1 private_mb=156.8 handles=460
+SAMPLE min=42 iter=504 ws_mb=203.4 private_mb=157.0 handles=460
+SAMPLE min=43 iter=516 ws_mb=203.6 private_mb=157.0 handles=460
+SAMPLE min=44 iter=528 ws_mb=203.8 private_mb=157.3 handles=460
+SAMPLE min=45 iter=540 ws_mb=204.1 private_mb=157.6 handles=460
+SAMPLE min=46 iter=552 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=47 iter=564 ws_mb=203.8 private_mb=157.3 handles=460
+SAMPLE min=48 iter=576 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=49 iter=588 ws_mb=203.9 private_mb=157.3 handles=460
+SAMPLE min=50 iter=600 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=51 iter=612 ws_mb=203.4 private_mb=156.8 handles=460
+SAMPLE min=52 iter=624 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=53 iter=636 ws_mb=203.4 private_mb=156.8 handles=460
+SAMPLE min=54 iter=648 ws_mb=203.7 private_mb=157.2 handles=460
+SAMPLE min=55 iter=660 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=56 iter=672 ws_mb=203.7 private_mb=157.2 handles=460
+SAMPLE min=57 iter=684 ws_mb=203.6 private_mb=157.2 handles=460
+SAMPLE min=58 iter=696 ws_mb=203.7 private_mb=157.1 handles=460
+SAMPLE min=59 iter=708 ws_mb=203.7 private_mb=157.2 handles=460
+SAMPLE end iter=720 ws_mb=203.7 private_mb=157.1 handles=460
+SOAK minutes=60 iterations=720 copies_ok=717 copies_failed=3 crashes=0
+VERDICT soak=FAIL

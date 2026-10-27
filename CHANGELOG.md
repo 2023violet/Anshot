@@ -19,6 +19,7 @@
 ### 修复 / Fixed
 - 图片复制时请求的“不进剪贴板历史”标记此前被 arboard 忽略；改为在同一次剪贴板会话里写入 PNG、CF_DIBV5 与标记。/ The clipboard-history opt-out was ignored for images by arboard; images are now written in one clipboard session with the documented flags.
 - e2e 第 26 部分按旧前缀统计历史文件，改名后该检查实际未生效，已修正。/ e2e part 26 counted history files by the old prefix after the rename; fixed.
+- 代理安全与代码审查（非人工审查）发现的问题已修复：剪贴板先写隐私标记、任何失败都清空剪贴板；截图失败时恢复让开的钉图与识别窗；手动截图取消正在进行的倒计时；精确尺寸不跳到另一块显示器；竖直 Shift 拖动也是正方形；识别文字同一时间只跑一个；历史天数在每次写入后也清理，“退出时清空”在启动时也执行；裁剪掉的遮挡不再算作“已遮挡”；小窗口里设置可滚动。/ Agent security and code review findings (not human review) fixed.
 
 
 ## 0.2.0 — 2026-10-21（首个公开版本 / first public release）

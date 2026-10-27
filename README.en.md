@@ -4,7 +4,7 @@
 
 **Screenshot, annotate, redact, share on Windows — what you cover is really gone from the export.**
 
-> Version 0.2.0, the first public release, **not code-signed**. All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
+> Version 0.3.0, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
 > "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese).
 
 Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover private parts with a solid block or a **safe mosaic**, then copy or save in one key. Covered areas are replaced by pixels that carry **no information from the original**, and the export is a freshly encoded PNG without source metadata. What the canvas shows is exactly what is exported.
@@ -21,14 +21,14 @@ From [Releases](https://github.com/2023violet/Anshot/releases):
 
 | File | What it is |
 |---|---|
-| `Anshot-0.2.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
-| `Anshot-0.2.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
+| `Anshot-0.3.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
+| `Anshot-0.3.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
 | `SHA256SUMS.txt` / `release-metadata.json` | Checksums and build facts (commit, toolchain, an explicit "unsigned" statement) |
 
 **About "Windows protected your PC".** The app is not signed with a paid certificate, so SmartScreen may block the first start. Make sure the file comes from this repository's Releases and that its checksum matches, then choose "More info → Run anyway":
 
 ```powershell
-Get-FileHash .\Anshot-0.2.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
+Get-FileHash .\Anshot-0.3.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 ```
 
 **Upgrade.** Run the newer installer over the old one; it closes a running copy first.
@@ -107,9 +107,12 @@ Architecture (Rust trust boundary). The UI only sends intents and shows what Rus
 
 All machine checks were run by the development agent with real OS mouse and keyboard input:
 - unit tests and frozen goldens;
-- 30+ end-to-end cases, with the clipboard read back by another process and compared pixel by pixel;
+- 35 groups of end-to-end cases, with the clipboard read back by another process and compared pixel by pixel;
 - Chinese IME input and performance;
-- install / upgrade / uninstall.
+- install / upgrade / uninstall;
+- a 1-hour run of repeated captures.
+
+Measured numbers (0.3.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.1 MB, program 33.5 MB; start-up 472–583 ms; hotkey to overlay 52–55 ms from the tray; opening a 6000×4000 image 839 ms, copying it 1040 ms, peak memory 562 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth (3 copies had the wrong size, cause not yet known; see the QA report).
 
 See the [QA report](ui-design/07_UI_QA_REPORT.md) (Chinese).
 

@@ -87,6 +87,21 @@
 
 ---
 
+## 5. v0.3 增补状态（2026-10-27，代理起草，**待用户确认**）
+0.3 的新状态没有再做 HTML 原型，直接以原生实现的实际截图作为高保真依据（全部由 PrintWindow 截取本程序窗口，内容为合成图）。组件规格见 [04 修订记录 v1.1](../04_DESIGN.md)。
+
+| ID | 界面 | 状态 | 依据 |
+|---|---|---|---|
+| H30 | S2 | 聚光灯 + 放大镜标注（选中放大镜） | [21-spotlight-magnifier.png](../../tests/desktop/evidence/v030/21-spotlight-magnifier.png) |
+| H31 | S2 | 英文界面，未遮挡提醒胶囊“Nothing redacted” | [22-english-editor.png](../../tests/desktop/evidence/v030/22-english-editor.png) |
+| H32 | 设置 | 常规页（语言、延时、鼠标指针），中文 | [13-settings.png](../../tests/desktop/evidence/v030/13-settings.png) |
+| H33 | 设置 | 常规页，英文 | [23-english-settings-general.png](../../tests/desktop/evidence/v030/23-english-settings-general.png) |
+| H34 | 设置 | 隐私页，英文（最长英文文案） | [24-english-settings-privacy.png](../../tests/desktop/evidence/v030/24-english-settings-privacy.png) |
+| H35 | 截图层 | 放大镜取色读数、尺寸面板、重复区域按钮 | 只有 e2e 功能与像素验证；**没有截图**：截图层显示的是真实桌面的冻结帧，按证据隐私规则不截 |
+| H36 | 倒计时窗 / 识别文字窗 | 倒计时、识别中、结果、无识别语言 | 只有 e2e 功能验证（UIA 读出文字）；**没有截图**，NOT_VERIFIED（视觉） |
+
+已知视觉问题（代理观察）：H30 中放大框贴着聚光灯区域时，两者描边挨得很近，可读性一般；放大框不能单独移动（07 §9.2 L7）。
+
 ## Gate 05 检查
 - [x] 关键页面在真实数据密度下可读、可操作（原型使用合成聊天截图）
 - [x] 覆盖加载、空、错误、禁用、成功、焦点等关键状态（§1 H01–H22）
