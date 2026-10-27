@@ -4,6 +4,7 @@
 //! never written here; pins and history re-copies are not recorded.
 //! `ANSHOT_HISTORY_DIR` overrides the folder (tests).
 #![forbid(unsafe_code)]
+use crate::i18n::{t, tf};
 use anshot_core::MAX_INPUT_BYTES;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,11 +29,11 @@ impl History {
 
     /// Store a delivered PNG, then keep only the newest `limit` entries.
     pub fn add(&self, png: &[u8], limit: usize) -> Result<PathBuf, String> {
-        if png.len() > MAX_INPUT_BYTES { return Err("图片过大，未加入历史".into()); }
+        if png.len() > MAX_INPUT_BYTES { return Err(t("图片过大，未加入历史").into()); }
         std::fs::create_dir_all(&self.dir).map_err(|e| crate::messages::write_file(e.kind()))?;
         let ms = now_millis();
         let path = (0..1000).map(|n| self.dir.join(format!("{PREFIX}{ms:013}-{n:03}.png"))).find(|p| !p.exists())
-            .ok_or("历史文件名冲突")?;
+            .ok_or(t("历史文件名冲突"))?;
         anshot_platform_windows::save_new(&path, png).map_err(|e| crate::messages::write_file(e.kind()))?;
         self.prune(limit);
         Ok(path)
@@ -81,10 +82,10 @@ impl History {
 pub fn label(millis: u64, now: u64) -> String {
     let s = now.saturating_sub(millis) / 1000;
     match s {
-        0..=59 => "刚刚".into(),
-        60..=3599 => format!("{} 分钟前", s / 60),
-        3600..=86_399 => format!("{} 小时前", s / 3600),
-        _ => format!("{} 天前", s / 86_400),
+        0..=59 => t("刚刚").into(),
+        60..=3599 => tf("{} 分钟前", &[&(s / 60)]),
+        3600..=86_399 => tf("{} 小时前", &[&(s / 3600)]),
+        _ => tf("{} 天前", &[&(s / 86_400)]),
     }
 }
 

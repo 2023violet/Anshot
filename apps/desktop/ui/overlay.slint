@@ -8,7 +8,7 @@ export struct Box { x: length, y: length, w: length, h: length }
 export component CaptureOverlay inherits Window {
     no-frame: true;
     always-on-top: true;
-    title: "Anshot 截图";
+    title: @tr("Anshot 截图");
     background: black;
     default-font-family: Theme.font-ui;
 
@@ -102,17 +102,17 @@ export component CaptureOverlay inherits Window {
             x: max(8px, min(lit.x + lit.w - self.bw, parent.width - self.bw - 8px));
             y: self.below ? lit.y + lit.h + 8px : self.above ? lit.y - 52px : lit.y + lit.h - 52px;
             width: self.bw; height: 44px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-            accessible-role: groupbox; accessible-label: "截图操作";
+            accessible-role: groupbox; accessible-label: @tr("截图操作");
             TouchArea { } // keep clicks on the bar from starting a new selection
             row := HorizontalLayout { x: 6px; spacing: 6px; alignment: center;
-                VerticalLayout { alignment: center; ActionButton { label: "取消"; key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "尺寸"; key: ""; kind: 0; clicked => { root.size-open = !root.size-open; } } }
-                VerticalLayout { alignment: center; ActionButton { label: "长截图"; key: ""; kind: 0; clicked => { root.action("long"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "识别文字"; key: ""; kind: 0; clicked => { root.action("ocr"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "钉图"; key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "编辑"; key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "保存"; key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: "复制"; key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("取消"); key: "Esc"; kind: 2; clicked => { root.action("cancel"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("尺寸"); key: ""; kind: 0; clicked => { root.size-open = !root.size-open; } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("长截图"); key: ""; kind: 0; clicked => { root.action("long"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("识别文字"); key: ""; kind: 0; clicked => { root.action("ocr"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("钉图"); key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("编辑"); key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("保存"); key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("复制"); key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }
             }
         }
 
@@ -124,26 +124,26 @@ export component CaptureOverlay inherits Window {
             property <length> ty: lit.y + lit.h + 8px + 44px <= parent.height ? lit.y + lit.h + 8px : lit.y - 8px - 44px >= 0 ? lit.y - 52px : lit.y + lit.h - 52px;
             y: self.ty + 96px <= parent.height ? self.ty + 52px : self.ty - 52px;
             width: self.pw; height: 44px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-            accessible-role: groupbox; accessible-label: "选区尺寸";
+            accessible-role: groupbox; accessible-label: @tr("选区尺寸");
             TouchArea { }
             srow := HorizontalLayout { x: 8px; spacing: 6px; alignment: center;
                 for r in ["1:1", "4:3", "16:9"]: VerticalLayout { alignment: center;
                     ActionButton { label: r; key: ""; kind: 0; clicked => { root.action("ratio:" + r); } } }
                 Rectangle { width: 1px; height: 22px; background: Theme.line; }
                 VerticalLayout { alignment: center; Rectangle { width: 64px; height: 28px; border-radius: 6px; border-width: 1px; border-color: Theme.line-strong; background: Theme.bg-soft;
-                    win := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: "宽"; } } }
+                    win := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: @tr("宽"); } } }
                 Text { text: "×"; vertical-alignment: center; color: Theme.mute; }
                 VerticalLayout { alignment: center; Rectangle { width: 64px; height: 28px; border-radius: 6px; border-width: 1px; border-color: Theme.line-strong; background: Theme.bg-soft;
-                    hin := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: "高";
+                    hin := TextInput { x: 8px; width: parent.width - 16px; vertical-alignment: center; font-family: Theme.font-mono; font-size: 12px; color: Theme.ink; input-type: number; accessible-label: @tr("高");
                         accepted => { root.action("size:" + win.text + "x" + hin.text); keys.focus(); } } } }
-                VerticalLayout { alignment: center; ActionButton { label: "应用"; key: ""; kind: 1; clicked => { root.action("size:" + win.text + "x" + hin.text); keys.focus(); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("应用"); key: ""; kind: 1; clicked => { root.action("size:" + win.text + "x" + hin.text); keys.focus(); } } }
             }
         }
 
         if root.show-magnifier: Rectangle {
             x: min(root.cursor-x + 20px, parent.width - 136px); y: min(root.cursor-y + 20px, parent.height - 160px);
             width: 120px; height: 144px; border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong; clip: true;
-            accessible-role: text; accessible-label: "放大镜 " + root.mag-text;
+            accessible-role: text; accessible-label: @tr("放大镜 {}", root.mag-text);
             Image { x: 1px; y: 1px; width: 118px; height: 118px; source: root.shot; image-rendering: pixelated;
                 source-clip-x: root.mag-x; source-clip-y: root.mag-y; source-clip-width: 15; source-clip-height: 15; accessible-role: none; }
             Rectangle { x: 59px; y: 1px; width: 1px; height: 118px; background: Theme.brand; }
@@ -156,12 +156,12 @@ export component CaptureOverlay inherits Window {
             width: hl.preferred-width + 24px; height: 32px; border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
             hl := HorizontalLayout { padding-left: 12px; spacing: 8px; alignment: center;
                 Text { text: root.notice != "" ? root.notice
-                        : root.has-selection ? "Ctrl+C 复制 · Enter 编辑 · Shift 锁定比例 · Shift+C 复制颜色"
-                        : root.has-last ? "拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · R 重复上次区域"
-                        : "拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · Shift+C 复制颜色";
+                        : root.has-selection ? @tr("Ctrl+C 复制 · Enter 编辑 · Shift 锁定比例 · Shift+C 复制颜色")
+                        : root.has-last ? @tr("拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · R 重复上次区域")
+                        : @tr("拖拽选区 · 单击选窗口 · Enter 截当前屏幕 · Shift+C 复制颜色");
                     font-size: 12px; color: Theme.ink; vertical-alignment: center; }
                 VerticalLayout { alignment: center; Keycap { label: "Esc"; } }
-                Text { text: "取消"; font-size: 12px; color: Theme.mute; vertical-alignment: center; }
+                Text { text: @tr("取消"); font-size: 12px; color: Theme.mute; vertical-alignment: center; }
             }
         }
     }

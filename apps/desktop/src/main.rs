@@ -3,6 +3,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // Slint's generated code needs `unsafe`; our own modules each `forbid` it.
 #![deny(unsafe_code)]
+use crate::i18n::{t, tf};
 
 mod canvas;
 mod capture;
@@ -10,6 +11,7 @@ mod color;
 mod controller;
 mod display;
 mod history;
+mod i18n;
 mod messages;
 mod platform;
 mod settings;
@@ -216,7 +218,7 @@ impl App {
             }
             None => ui.set_text_editing(false),
         }
-        let title = ctl.source_name.clone().unwrap_or_else(|| "未命名".into());
+        let title = ctl.source_name.clone().unwrap_or_else(|| t("未命名").into());
         ui.set_doc_title(if ctl.has_unsaved_edits() { format!("● {title}") } else { title }.into());
     }
 
@@ -249,7 +251,7 @@ impl App {
     fn source_ready(&mut self, decoded: Decoded, name: Option<String>, then: Option<Delivery>) {
         self.ctl.opening = false;
         match decoded {
-            Err(e) => { self.show_editor(); self.toast("error", "无法打开", &e, None) }
+            Err(e) => { self.show_editor(); self.toast("error", t("无法打开"), &e, None) }
             Ok((candidate, preview)) => {
                 if self.ctl.has_unsaved_edits() {
                     self.ctl.cancel_drag();
@@ -266,7 +268,7 @@ impl App {
     fn apply_source(&mut self, candidate: SourceCandidate, preview: RgbaImage, name: Option<String>, then: Option<Delivery>) {
         if let Err(e) = self.ctl.accept_source(candidate, name) {
             self.show_editor();
-            self.toast("error", "无法打开", &messages::intake(&e), None);
+            self.toast("error", t("无法打开"), &messages::intake(&e), None);
             return;
         }
         self.after_copy = AfterCopy::Stay;
@@ -293,10 +295,10 @@ impl App {
                 });
                 true
             }
-            Err(EditError::NoEffectiveMask) => { self.toast("warn", "还没有遮挡", "先用遮挡工具框住要隐藏的内容", None); false }
-            Err(EditError::OperationPending) => { self.toast("warn", "正在处理", "请等上一次复制或保存完成", None); false }
-            Err(EditError::GestureInProgress) => { self.toast("warn", "正在拖动", "请先松开鼠标或按 Esc", None); false }
-            Err(e) => { self.toast("error", "无法开始", &messages::edit(&e), None); false }
+            Err(EditError::NoEffectiveMask) => { self.toast("warn", t("还没有遮挡"), t("先用遮挡工具框住要隐藏的内容"), None); false }
+            Err(EditError::OperationPending) => { self.toast("warn", t("正在处理"), t("请等上一次复制或保存完成"), None); false }
+            Err(EditError::GestureInProgress) => { self.toast("warn", t("正在拖动"), t("请先松开鼠标或按 Esc"), None); false }
+            Err(e) => { self.toast("error", t("无法开始"), &messages::edit(&e), None); false }
         };
         self.refresh();
         started
@@ -320,7 +322,7 @@ impl App {
             }
             Err(Notice::Changed) => {
                 self.after_copy = AfterCopy::Stay;
-                self.toast("warn", "内容已变化", "请重新复制或保存", None);
+                self.toast("warn", t("内容已变化"), t("请重新复制或保存"), None);
             }
             Err(Notice::Failed { title, detail }) => {
                 self.after_copy = AfterCopy::Stay;
@@ -336,30 +338,30 @@ impl App {
         match (kind, outcome) {
             (Delivery::Copy, Ok(())) if n == 0 && self.settings.warn_unredacted => {
                 // Nothing is covered: say so plainly (the copy already happened; nothing is blocked).
-                let detail = format!("{w} × {h} · 如有手机号、地址等，请先遮挡再分享");
+                let detail = tf("{} × {} · 如有手机号、地址等，请先遮挡再分享", &[&w, &h]);
                 if matches!(std::mem::replace(&mut self.after_copy, AfterCopy::Stay), AfterCopy::Quit) { let _ = slint::quit_event_loop(); return; }
-                if self.ui().is_some_and(|ui| ui.window().is_visible()) { self.toast("warn", "已复制 · 图中没有遮挡", &detail, None); }
-                else { self.system_toast("warn", "已复制 · 图中没有遮挡", &detail); }
+                if self.ui().is_some_and(|ui| ui.window().is_visible()) { self.toast("warn", t("已复制 · 图中没有遮挡"), &detail, None); }
+                else { self.system_toast("warn", t("已复制 · 图中没有遮挡"), &detail); }
             }
             (Delivery::Copy, Ok(())) => {
-                let detail = if n == 0 { format!("{w} × {h} · 未遮挡任何内容") } else { format!("{w} × {h} · 已遮挡 {n} 处") };
+                let detail = if n == 0 { tf("{} × {} · 未遮挡任何内容", &[&w, &h]) } else { tf("{} × {} · 已遮挡 {} 处", &[&w, &h, &n]) };
                 match std::mem::replace(&mut self.after_copy, AfterCopy::Stay) {
                     AfterCopy::Quit => { let _ = slint::quit_event_loop(); }
                     // 02 U07: a successful copy ends the task; the editor steps aside.
-                    _ if self.resident && self.settings.hide_after_copy => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
-                    AfterCopy::Close if self.resident => { self.close_editor(false); self.system_toast("done", "已复制到剪贴板", &detail); }
+                    _ if self.resident && self.settings.hide_after_copy => { self.close_editor(false); self.system_toast("done", t("已复制到剪贴板"), &detail); }
+                    AfterCopy::Close if self.resident => { self.close_editor(false); self.system_toast("done", t("已复制到剪贴板"), &detail); }
                     AfterCopy::Close => { let _ = slint::quit_event_loop(); }
-                    AfterCopy::Stay if !self.ui().is_some_and(|ui| ui.window().is_visible()) => self.system_toast("done", "已复制到剪贴板", &detail),
-                    AfterCopy::Stay => self.toast("done", "已复制到剪贴板", &detail, None),
+                    AfterCopy::Stay if !self.ui().is_some_and(|ui| ui.window().is_visible()) => self.system_toast("done", t("已复制到剪贴板"), &detail),
+                    AfterCopy::Stay => self.toast("done", t("已复制到剪贴板"), &detail, None),
                 }
             }
-            (Delivery::Save, Ok(())) if n == 0 && self.settings.warn_unredacted => { self.after_copy = AfterCopy::Stay; self.toast("warn", "已保存 · 图中没有遮挡", &name.unwrap_or_default(), None) }
-            (Delivery::Save, Ok(())) => { self.after_copy = AfterCopy::Stay; self.toast("done", "已保存", &name.unwrap_or_default(), None) }
+            (Delivery::Save, Ok(())) if n == 0 && self.settings.warn_unredacted => { self.after_copy = AfterCopy::Stay; self.toast("warn", t("已保存 · 图中没有遮挡"), &name.unwrap_or_default(), None) }
+            (Delivery::Save, Ok(())) => { self.after_copy = AfterCopy::Stay; self.toast("done", t("已保存"), &name.unwrap_or_default(), None) }
             (Delivery::Copy, Err(e)) => {
                 self.after_copy = AfterCopy::Stay;
-                self.toast("error", "复制失败", &e, Some(("重试", ToastAction::Retry(Delivery::Copy))));
+                self.toast("error", t("复制失败"), &e, Some((t("重试"), ToastAction::Retry(Delivery::Copy))));
             }
-            (Delivery::Save, Err(e)) => { self.after_copy = AfterCopy::Stay; self.toast("error", "保存失败", &e, None) }
+            (Delivery::Save, Err(e)) => { self.after_copy = AfterCopy::Stay; self.toast("error", t("保存失败"), &e, None) }
         }
     }
 
@@ -482,8 +484,8 @@ impl App {
     fn ocr_document(&mut self) {
         let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
         self.run_ocr(move || {
-            let png = anshot_render::render_png(&source, &scene).map_err(|_| "无法生成图片，请重试。".to_string())?;
-            let img = anshot_core::decode_source(&png).map_err(|_| "无法生成图片，请重试。".to_string())?;
+            let png = anshot_render::render_png(&source, &scene).map_err(|_| t("无法生成图片，请重试。").to_string())?;
+            let img = anshot_core::decode_source(&png).map_err(|_| t("无法生成图片，请重试。").to_string())?;
             recognize_text(img)
         });
     }
@@ -495,9 +497,9 @@ impl App {
             Some(w) => w.clone_strong(),
             None => {
                 let Ok(w) = OcrWindow::new() else { return };
-                w.on_copy_all(|t| { with(|a| match platform::write_text(t.as_str()) {
-                    Ok(()) => a.system_toast("done", "已复制文字", &format!("{} 个字符", t.chars().count())),
-                    Err(e) => a.system_toast("error", "复制失败", &e),
+                w.on_copy_all(|text| { with(|a| match platform::write_text(text.as_str()) {
+                    Ok(()) => a.system_toast("done", t("已复制文字"), &tf("{} 个字符", &[&text.chars().count()])),
+                    Err(e) => a.system_toast("error", t("复制失败"), &e),
                 }); });
                 w.on_dismiss(|| { with(|a| if let Some(w) = a.ocr_win.as_ref() { let _ = w.hide(); }); });
                 self.ocr_win = Some(w.clone_strong());
@@ -516,8 +518,8 @@ impl App {
                     let Some(w) = a.ocr_win.as_ref() else { return };
                     w.set_busy(false);
                     match result {
-                        Ok(t) if t.trim().is_empty() => w.set_error("没有识别到文字。".into()),
-                        Ok(t) => w.set_text(t.into()),
+                        Ok(text) if text.trim().is_empty() => w.set_error(t("没有识别到文字。").into()),
+                        Ok(text) => w.set_text(text.into()),
                         Err(e) => w.set_error(e.into()),
                     }
                 });
@@ -581,20 +583,20 @@ impl App {
     fn freeze_screen(&mut self) {
         let monitors = match anshot_platform_windows::monitors() {
             Ok(m) => m,
-            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法读取显示器信息，请重试", None); return; }
+            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
         };
         let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
         let frozen = match anshot_platform_windows::capture_ex(area, self.settings.include_cursor) {
             Ok(c) => c,
-            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "系统拒绝读取屏幕（锁屏或安全桌面时无法截图）", None); return; }
+            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
         };
         let session = capture::Session::new(frozen, monitors.clone(), anshot_platform_windows::visible_windows());
         let mut overlays = Vec::new();
         for (i, m) in monitors.iter().copied().enumerate() {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
-            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "显示器区域无效", None); return; };
+            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("显示器区域无效"), None); return; };
             if self.overlay_pool.len() <= i {
-                let Some(win) = new_overlay(i) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", "无法截图", "无法创建截图窗口", None); return; };
+                let Some(win) = new_overlay(i) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法创建截图窗口"), None); return; };
                 self.overlay_pool.push(win);
             }
             let win = self.overlay_pool[i].clone_strong();
@@ -655,7 +657,7 @@ impl App {
                 let px = self.last_cursor.and_then(|(x, y)| self.session.as_ref().and_then(|s| s.pixel(x, y)));
                 if let Some([r, g, b, _]) = px {
                     let hex = format!("#{r:02X}{g:02X}{b:02X}");
-                    let msg = match platform::write_text(&hex) { Ok(()) => format!("已复制颜色 {hex}"), Err(e) => e };
+                    let msg = match platform::write_text(&hex) { Ok(()) => tf("已复制颜色 {}", &[&hex]), Err(e) => e };
                     self.overlay_notice(&msg);
                 }
             }
@@ -670,7 +672,7 @@ impl App {
                     let mut it = r.split(['x', '×', 'X', '*']);
                     matches!((it.next().and_then(num), it.next().and_then(num)), (Some(w), Some(h)) if s.resize_to(w, h))
                 } else { return };
-                if !ok { self.overlay_notice("尺寸无效：请填写 1 以上的整数宽高"); }
+                if !ok { self.overlay_notice(t("尺寸无效：请填写 1 以上的整数宽高")); }
                 self.refresh_overlays();
             }
         }
@@ -789,7 +791,7 @@ impl App {
         if u64::from(region.w.unsigned_abs()) * u64::from(region.h.unsigned_abs()) > anshot_core::MAX_PIXELS / 2 {
             self.end_capture();
             if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
-            self.system_toast("warn", "选区太大，无法长截图", "请框选要滚动的那一部分");
+            self.system_toast("warn", t("选区太大，无法长截图"), t("请框选要滚动的那一部分"));
             return;
         }
         let (pw, ph) = ((300.0 * k) as i32, (96.0 * k) as i32);
@@ -804,7 +806,7 @@ impl App {
         self.end_capture();
         let Some((px, py)) = spot else {
             if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
-            self.system_toast("warn", "无法开始长截图", "请把选区缩小一些，给控制条留出位置");
+            self.system_toast("warn", t("无法开始长截图"), t("请把选区缩小一些，给控制条留出位置"));
             return;
         };
         let Ok(panel) = LongShotPanel::new() else { return };
@@ -864,15 +866,15 @@ impl App {
             }
             let (w, h) = img.dimensions();
             let _ = slint::invoke_from_event_loop(move || {
-                if h < full_h { with(|a| a.toast("warn", "长截图已截短", &format!("超过 25 MB 上限，保留前 {h} 像素高"), None)); }
-                spawn_open(png, Some(format!("长截图 {w}×{h}.png")));
+                if h < full_h { with(|a| a.toast("warn", t("长截图已截短"), &tf("超过 25 MB 上限，保留前 {} 像素高", &[&h]), None)); }
+                spawn_open(png, Some(tf("长截图 {}×{}.png", &[&w, &h])));
             });
         });
     }
 
     // ---- pins ----
     fn open_pin(&mut self, img: RgbaImage, at: Option<(i32, i32)>) {
-        let Ok(win) = PinWindow::new() else { self.toast("error", "无法钉图", "无法创建窗口", None); return };
+        let Ok(win) = PinWindow::new() else { self.toast("error", t("无法钉图"), t("无法创建窗口"), None); return };
         let id = self.next_pin;
         self.next_pin += 1;
         win.set_img(to_image(&img));
@@ -920,7 +922,7 @@ impl App {
             let img = anshot_render::render_png(&src, &scene).ok().and_then(|png| anshot_core::decode_source(&png).ok());
             let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
                 Some(img) => a.open_pin(img, None),
-                None => a.toast("error", "无法钉图", "生成图片失败", None),
+                None => a.toast("error", t("无法钉图"), t("生成图片失败"), None),
             }); });
         });
     }
@@ -978,7 +980,7 @@ impl App {
         // Leave the state borrow before starting the shared intake pipeline.
         slint::Timer::single_shot(Duration::ZERO, move || {
             let (w, h) = pixels.dimensions();
-            spawn_open_then(capture::encode_png(pixels), Some(format!("截图 {w}×{h}.png")), then);
+            spawn_open_then(capture::encode_png(pixels), Some(tf("截图 {}×{}.png", &[&w, &h])), then);
         });
     }
 
@@ -991,7 +993,7 @@ impl App {
         }) {
             Ok(h) => { self.hotkey = Some(h); self.push_settings(); true }
             Err(_) => {
-                self.toast("warn", &format!("快捷键 {} 被其他程序占用", key.label()), "可在设置中换一个，或从托盘图标截图", None);
+                self.toast("warn", &tf("快捷键 {} 被其他程序占用", &[&key.label()]), t("可在设置中换一个，或从托盘图标截图"), None);
                 self.push_settings();
                 false
             }
@@ -1014,6 +1016,7 @@ impl App {
         ui.set_pad_redactions(s.pad_redactions);
         ui.set_warn_unredacted(s.warn_unredacted);
         ui.set_clipboard_private(s.clipboard_private);
+        ui.set_language_index(settings::LANGUAGES.iter().position(|l| *l == s.language).unwrap_or(0) as i32);
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); t.set_delay_secs(s.delay_secs as i32); }
     }
     /// Settings that act outside the UI: redaction padding, the clipboard flags, the
@@ -1031,7 +1034,7 @@ impl App {
         if let Some(ui) = self.ui() { ui.set_dialog("settings".into()); }
     }
     fn persist(&mut self) {
-        if let Err(e) = self.settings.save() { self.toast("error", "设置未能保存", &e, None); }
+        if let Err(e) = self.settings.save() { self.toast("error", t("设置未能保存"), &e, None); }
         self.push_settings();
     }
     fn set_hotkey(&mut self, i: usize) {
@@ -1048,9 +1051,9 @@ impl App {
     /// Start at login (per-user Run entry). The tray process starts hidden.
     fn set_autostart(&mut self, on: bool) {
         let cmd = on.then(autostart_command).flatten();
-        if on && cmd.is_none() { self.toast("error", "无法设置开机启动", "找不到程序路径", None); self.push_settings(); return; }
+        if on && cmd.is_none() { self.toast("error", t("无法设置开机启动"), t("找不到程序路径"), None); self.push_settings(); return; }
         if anshot_platform_windows::set_autostart(cmd.as_deref()).is_err() {
-            self.toast("error", "无法设置开机启动", "系统拒绝写入当前用户的启动项", None);
+            self.toast("error", t("无法设置开机启动"), t("系统拒绝写入当前用户的启动项"), None);
         }
         self.push_settings();
     }
@@ -1106,7 +1109,7 @@ fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: O
     let started = with(|a| {
         if a.ctl.opening {
             if then.is_some() { a.show_editor(); }
-            a.toast("warn", "正在打开上一张图片", "请稍后再试", None);
+            a.toast("warn", t("正在打开上一张图片"), t("请稍后再试"), None);
             return false;
         }
         a.ctl.opening = true;
@@ -1140,8 +1143,8 @@ fn open_path(path: PathBuf) {
 fn suggested_name() -> String {
     with(|a| a.ctl.source_name.clone()).flatten()
         .and_then(|n| n.rsplit_once('.').map(|(stem, _)| stem.to_string()))
-        .map(|stem| format!("{stem}_已遮挡.png"))
-        .unwrap_or_else(|| "安截_已遮挡.png".into())
+        .map(|stem| tf("{}_已遮挡.png", &[&stem]))
+        .unwrap_or_else(|| t("安截_已遮挡.png").into())
 }
 
 thread_local! { static PICKING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
@@ -1157,7 +1160,7 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
     let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
-        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-");
+        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1178,7 +1181,7 @@ fn command(cmd: &str) {
     match cmd {
         // Blocking dialogs and clipboard reads run outside the state borrow.
         "open" => { if let Some(p) = picker(platform::pick_image) { open_path(p); } }
-        "paste" => spawn_open(platform::read_clipboard(), Some("剪贴板图片.png".into())),
+        "paste" => spawn_open(platform::read_clipboard(), Some(t("剪贴板图片.png").into())),
         // The app never connects anywhere: the default browser opens the release page.
         "check-update" => { let _ = std::process::Command::new("explorer").arg(RELEASES_URL).spawn(); }
         "capture" => { with(|a| a.begin_capture()); }
@@ -1238,6 +1241,7 @@ fn command(cmd: &str) {
                     c if c.starts_with("hotkey-") => { if let Ok(i) = c[7..].parse::<usize>() { a.set_hotkey(i); } }
                     c if c.starts_with("delay-") => { if let Some(&n) = c[6..].parse::<usize>().ok().and_then(|i| settings::DELAYS.get(i)) { a.settings.delay_secs = n; a.persist(); a.push_settings(); } }
                     c if c.starts_with("days-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_DAYS.get(i)) { a.settings.history_days = n; a.persist(); a.apply_privacy(); a.push_settings(); } }
+                    c if c.starts_with("lang-") => { if let Some(l) = c[5..].parse::<usize>().ok().and_then(|i| settings::LANGUAGES.get(i)) { a.settings.language = (*l).into(); a.persist(); apply_language(&a.settings.language); a.push_settings(); a.refresh(); } }
                     "exit-clear" => { a.settings.clear_on_exit = true; a.persist(); a.push_settings(); }
                     "exit-keep" => { a.settings.clear_on_exit = false; a.persist(); a.push_settings(); }
                     "pad-on" => { a.settings.pad_redactions = true; a.persist(); a.apply_privacy(); a.push_settings(); }
@@ -1390,7 +1394,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let delayed = args.iter().any(|a| a == "--delayed-capture");
     if let Some(path) = args.into_iter().find(|a| a != "--background" && a != "--delayed-capture").map(PathBuf::from) { open_path(path); }
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
-    with(|a| { a.apply_privacy(); a.push_settings(); a.refresh(); });
+    with(|a| { apply_language(&a.settings.language); a.apply_privacy(); a.push_settings(); a.refresh(); });
     let resident = with(|a| a.resident).unwrap_or(false);
     if !(background && resident) { ui.show()?; }
     if delayed && resident { slint::Timer::single_shot(Duration::from_millis(300), || { with(|a| a.start_countdown()); }); }
@@ -1437,19 +1441,19 @@ fn pin_action(id: u64, act: &str) {
     match act {
         "close" => { with(|a| a.close_pin(id)); }
         "ocr" => { with(|a| a.start_ocr(img)); }
-        "edit" => { with(|a| a.show_editor()); spawn_open(capture::encode_png(img), Some("钉图.png".into())); }
+        "edit" => { with(|a| a.show_editor()); spawn_open(capture::encode_png(img), Some(t("钉图.png").into())); }
         "copy" => {
             let dims = img.dimensions();
             // Pins are a viewing aid: their copies are not editor deliveries and stay out of the history.
             let result = capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, dims));
             with(|a| match result {
-                Ok(()) => a.system_toast("done", "已复制到剪贴板", &format!("{} × {}", dims.0, dims.1)),
-                Err(e) => a.system_toast("error", "复制失败", &e),
+                Ok(()) => a.system_toast("done", t("已复制到剪贴板"), &format!("{} × {}", dims.0, dims.1)),
+                Err(e) => a.system_toast("error", t("复制失败"), &e),
             });
         }
         "save" => {
             let dir = with(|a| a.settings.save_dir.clone()).flatten();
-            let Some(path) = picker(|| platform::pick_save_path("钉图.png", dir.as_deref())) else { return };
+            let Some(path) = picker(|| platform::pick_save_path(t("钉图.png"), dir.as_deref())) else { return };
             let path = platform::free_path(&path);
             let dims = img.dimensions();
             // Same check as every export: the bytes must reopen as a clean generated PNG first.
@@ -1457,8 +1461,8 @@ fn pin_action(id: u64, act: &str) {
                 .and_then(|png| anshot_core::decode_generated_png(&png, dims).map(|_| png))
                 .and_then(|png| platform::write_file(&path, &png));
             with(|a| match result {
-                Ok(()) => a.system_toast("done", "已保存", &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
-                Err(e) => a.system_toast("error", "保存失败", &e),
+                Ok(()) => a.system_toast("done", t("已保存"), &path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
+                Err(e) => a.system_toast("error", t("保存失败"), &e),
             });
         }
         o if o.starts_with("opacity-") => {
@@ -1485,16 +1489,16 @@ fn history_command(cmd: &str) {
     match kind {
         "history-delete-" => { h.remove(&e); with(|a| a.open_history()); }
         _ => {
-            let bytes = match h.read(&e) { Ok(b) => b, Err(err) => { with(|a| a.toast("error", "无法读取历史", &err, None)); return; } };
+            let bytes = match h.read(&e) { Ok(b) => b, Err(err) => { with(|a| a.toast("error", t("无法读取历史"), &err, None)); return; } };
             match kind {
-                "history-open-" => { with(|a| if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); }); spawn_open(Ok(bytes), Some("历史截图.png".into())); }
+                "history-open-" => { with(|a| if let Some(ui) = a.ui() { ui.set_dialog(SharedString::new()); }); spawn_open(Ok(bytes), Some(t("历史截图.png").into())); }
                 "history-copy-" => {
                     let result = anshot_core::decode_source(&bytes).and_then(|img| { let d = img.dimensions(); capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, d)) });
-                    with(|a| match result { Ok(()) => a.toast("done", "已复制到剪贴板", "来自截图历史", None), Err(err) => a.toast("error", "复制失败", &err, None) });
+                    with(|a| match result { Ok(()) => a.toast("done", t("已复制到剪贴板"), t("来自截图历史"), None), Err(err) => a.toast("error", t("复制失败"), &err, None) });
                 }
                 _ => {
                     let img = anshot_core::decode_source(&bytes);
-                    with(|a| match img { Ok(img) => a.open_pin(img, None), Err(_) => a.toast("error", "无法钉图", "历史文件已损坏", None) });
+                    with(|a| match img { Ok(img) => a.open_pin(img, None), Err(_) => a.toast("error", t("无法钉图"), t("历史文件已损坏"), None) });
                 }
             }
         }
@@ -1502,6 +1506,13 @@ fn history_command(cmd: &str) {
 }
 
 /// One pooled overlay window for monitor `i`, with its callbacks wired.
+/// Switch Slint's bundled translation and the Rust-side strings together.
+fn apply_language(setting: &str) {
+    let en = i18n::wants_english(setting, anshot_platform_windows::ui_language_is_chinese());
+    i18n::set_english(en);
+    let _ = slint::select_bundled_translation(if en { i18n::SLINT_EN } else { "" });
+}
+
 /// Small UI text is recognised far better slightly enlarged (spike/ocr: 92 % -> 99 % at
 /// 100 % scale), so regions are upscaled 1.5x in Rust first when that stays affordable.
 fn recognize_text(img: RgbaImage) -> Result<String, String> {
@@ -1512,9 +1523,9 @@ fn recognize_text(img: RgbaImage) -> Result<String, String> {
     let (w, h) = img.dimensions();
     match anshot_platform_windows::ocr_recognize(img.as_raw(), w, h) {
         Ok(lines) => Ok(lines.into_iter().map(|l| l.text).collect::<Vec<_>>().join("\n")),
-        Err(anshot_platform_windows::OcrError::LanguageMissing) => Err("这台电脑没有可用的文字识别语言。请在 Windows 设置 → 时间和语言 → 语言 中添加“中文(简体)”，安装完成后再试。".into()),
-        Err(anshot_platform_windows::OcrError::TooLarge) => Err("区域太大，无法识别；请框选小一些的区域。".into()),
-        Err(anshot_platform_windows::OcrError::Failed(_)) => Err("识别失败，请重试。".into()),
+        Err(anshot_platform_windows::OcrError::LanguageMissing) => Err(t("这台电脑没有可用的文字识别语言。请在 Windows 设置 → 时间和语言 → 语言 中添加“中文(简体)”，安装完成后再试。").into()),
+        Err(anshot_platform_windows::OcrError::TooLarge) => Err(t("区域太大，无法识别；请框选小一些的区域。").into()),
+        Err(anshot_platform_windows::OcrError::Failed(_)) => Err(t("识别失败，请重试。").into()),
     }
 }
 

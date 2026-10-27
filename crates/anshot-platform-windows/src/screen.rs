@@ -67,6 +67,13 @@ pub fn restore_foreground(hwnd: isize) {
     unsafe { windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(hwnd as _) };
 }
 
+/// Whether the Windows display language of this user is Chinese (any variant).
+pub fn ui_language_is_chinese() -> bool {
+    // SAFETY: plain query, no pointers.
+    let lang = unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() };
+    lang & 0x3ff == 0x04 // LANG_CHINESE
+}
+
 /// Whether a Shift key is held right now (for Shift-constrained drawing).
 pub fn shift_down() -> bool {
     // SAFETY: plain query of the calling thread's keyboard state; no pointers.

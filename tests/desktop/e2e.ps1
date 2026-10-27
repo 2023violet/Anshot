@@ -953,6 +953,31 @@ if (-not $w.P.HasExited) { $w.P.Kill() }
 [System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
 Start-Sleep -Milliseconds 500
 
+# ---- 35. English UI: the editor, the settings tabs and the capture overlay read in English ----
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nlanguage=en"
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$names = UiaNames $w
+Log ("ENGLISH editor=" + (@('Copy', 'Save', 'Spotlight S', 'Magnifier Z', 'Safe mosaic M', 'Nothing redacted') | ForEach-Object { "$_=$($names -contains $_)" }) -join ' ')
+Log ("ENGLISH chinese_left=" + (@($names | Where-Object { $_ -match '[一-鿿]' -and $_ -notmatch '中文|客服' }) -join ' | '))
+Shot $w '22-english-editor.png'
+Key 0xBC -Ctrl; Start-Sleep -Milliseconds 800                  # Ctrl+, settings
+Shot $w '23-english-settings-general.png'
+Log "ENGLISH settings_privacy_tab=$(Invoke-Uia $w 'Privacy')"
+Start-Sleep -Milliseconds 400
+Shot $w '24-english-settings-privacy.png'
+Key 0x1B
+if (-not $w.P.HasExited) { $w.P.Kill() }
+Start-Sleep -Milliseconds 500
+$app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
+Key 0x41 -Ctrl -Shift
+$ovh = @(); foreach ($try in 1..20) { Start-Sleep -Milliseconds 200; $ovh = @([E]::Visible([uint32]$app.Id, 'Anshot capture')); if ($ovh.Count) { break }; if ($try -eq 10) { Key 0x41 -Ctrl -Shift } }
+Log "ENGLISH overlay_title=$($ovh.Count -gt 0) hint=$(((UiaNames ([pscustomobject]@{ H = $ovh[0] })) | Where-Object { $_ -like 'Drag to select*' }) -join '')"
+Key 0x1B
+if (-not $app.HasExited) { $app.Kill() }
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
+Start-Sleep -Milliseconds 500
+
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }

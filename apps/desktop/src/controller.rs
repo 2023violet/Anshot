@@ -1,6 +1,7 @@
 //! UI-independent controller: turns pointer/keyboard intents into Editor
 //! commands and drives the render -> delivery handshake. No Slint types here.
 #![forbid(unsafe_code)]
+use crate::i18n::t;
 use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF, MAX_ZOOM, MIN_ZOOM};
 use anshot_core::Region;
 use anshot_editor::{
@@ -771,7 +772,7 @@ impl Controller {
         if !self.busy.as_ref().is_some_and(|(_, k)| k.ticket() == from.ticket()) { return Err(Notice::Ignored); }
         let Some((kind, key)) = self.busy.take() else { return Err(Notice::Ignored) };
         let Some(e) = self.editor.as_mut() else { return Err(Notice::Changed) };
-        let fail = |detail: String| Notice::Failed { title: "无法生成图片".into(), detail };
+        let fail = |detail: String| Notice::Failed { title: t("无法生成图片").into(), detail };
         let result = match result {
             Ok(r) => r,
             Err(err) => { e.cancel_review(&key); return Err(fail(crate::messages::edit(&err))); }
@@ -785,9 +786,9 @@ impl Controller {
     }
     /// Hand the exact rendered bytes to the platform writer and record the outcome.
     pub fn deliver(&mut self, ticket: Ticket, write: impl FnOnce(&[u8], (u32, u32)) -> Result<(), String>) -> Result<(), String> {
-        let e = self.editor.as_mut().ok_or("文档已关闭")?;
+        let e = self.editor.as_mut().ok_or(t("文档已关闭"))?;
         let dims = e.output_dimensions();
-        let Some(bytes) = e.bytes_for(ticket) else { e.finish(ticket, false); return Err("内容已变化".into()) };
+        let Some(bytes) = e.bytes_for(ticket) else { e.finish(ticket, false); return Err(t("内容已变化").into()) };
         let outcome = write(bytes, dims);
         if e.finish(ticket, outcome.is_ok()) && outcome.is_ok() { self.delivered = Some(e.stamp()); }
         outcome

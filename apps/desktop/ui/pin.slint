@@ -5,7 +5,7 @@ import { Theme } from "theme.slint";
 export component PinWindow inherits Window {
     no-frame: true;
     always-on-top: true;
-    title: "Anshot 钉图";
+    title: @tr("Anshot 钉图");
     background: transparent;
     default-font-family: Theme.font-ui;
 
@@ -28,7 +28,7 @@ export component PinWindow inherits Window {
             reject
         }
         Image { width: parent.width; height: parent.height; source: root.img; image-fit: fill; opacity: root.level;
-            accessible-role: image; accessible-label: "钉图 " + root.zoom-text; }
+            accessible-role: image; accessible-label: @tr("钉图 {}", root.zoom-text); }
         Rectangle { border-width: 1px; border-color: Theme.brand; }
         TouchArea {
             mouse-cursor: move;
@@ -44,12 +44,12 @@ export component PinWindow inherits Window {
             x: min(8px, parent.width - self.width); y: min(8px, parent.height - self.height);
             width: 150px; height: col.preferred-height + 12px;
             border-radius: 10px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-            accessible-role: groupbox; accessible-label: "钉图菜单";
+            accessible-role: groupbox; accessible-label: @tr("钉图菜单");
             TouchArea { }
             col := VerticalLayout { x: 6px; y: 6px; width: parent.width - 12px; spacing: 2px;
-                for item in [{t: "复制  Ctrl+C", k: "copy"}, {t: "另存为…  Ctrl+S", k: "save"}, {t: "在编辑器中打开", k: "edit"}, {t: "识别文字", k: "ocr"},
-                             {t: "不透明 100%", k: "opacity-100"}, {t: "不透明 75%", k: "opacity-75"}, {t: "不透明 50%", k: "opacity-50"},
-                             {t: "关闭  Esc", k: "close"}]: Rectangle {
+                for item in [{t: @tr("复制  Ctrl+C"), k: "copy"}, {t: @tr("另存为…  Ctrl+S"), k: "save"}, {t: @tr("在编辑器中打开"), k: "edit"}, {t: @tr("识别文字"), k: "ocr"},
+                             {t: @tr("不透明 100%"), k: "opacity-100"}, {t: @tr("不透明 75%"), k: "opacity-75"}, {t: @tr("不透明 50%"), k: "opacity-50"},
+                             {t: @tr("关闭  Esc"), k: "close"}]: Rectangle {
                     height: 26px; border-radius: 6px; background: ma.has-hover ? Theme.bg-hover : transparent;
                     accessible-role: button; accessible-label: item.t; accessible-action-default => { root.menu-open = false; root.act(item.k); }
                     ma := TouchArea { clicked => { root.menu-open = false; root.act(item.k); } }

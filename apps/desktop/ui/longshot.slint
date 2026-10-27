@@ -7,7 +7,7 @@ import { ActionButton } from "widgets.slint";
 export component LongShotPanel inherits Window {
     no-frame: true;
     always-on-top: true;
-    title: "Anshot 长截图";
+    title: @tr("Anshot 长截图");
     width: 300px; height: 96px;
     background: transparent;
     default-font-family: Theme.font-ui;
@@ -20,15 +20,15 @@ export component LongShotPanel inherits Window {
 
     Rectangle {
         border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-        accessible-role: groupbox; accessible-label: "长截图 已拼接 " + root.stitched-height + " 像素";
+        accessible-role: groupbox; accessible-label: @tr("长截图 已拼接 {} 像素", root.stitched-height);
         VerticalLayout { padding: 12px; spacing: 6px;
-            Text { text: root.state == "full" ? "已到长度上限，点“完成”" : "长截图：慢慢向下滚动刚才选的区域"; font-size: 13px; font-weight: 500; color: Theme.ink; }
-            Text { text: root.state == "lost" ? "滚动太快，没接上——请往回滚一点"
-                    : (root.narrowed ? "仅拼接滚动的一栏 · " : "") + "已拼接 " + root.stitched-height + " 像素高";
+            Text { text: root.state == "full" ? @tr("已到长度上限，点“完成”") : @tr("长截图：慢慢向下滚动刚才选的区域"); font-size: 13px; font-weight: 500; color: Theme.ink; }
+            Text { text: root.state == "lost" ? @tr("滚动太快，没接上——请往回滚一点")
+                    : (root.narrowed ? @tr("仅拼接滚动的一栏 · ") : "") + @tr("已拼接 {} 像素高", root.stitched-height);
                 font-size: 12px; color: root.state == "lost" ? Theme.error : Theme.mute; }
             HorizontalLayout { spacing: 8px; alignment: end;
-                ActionButton { label: "取消"; key: ""; kind: 0; clicked => { root.cancel(); } }
-                ActionButton { label: "完成"; key: ""; kind: 1; clicked => { root.finish(); } }
+                ActionButton { label: @tr("取消"); key: ""; kind: 0; clicked => { root.cancel(); } }
+                ActionButton { label: @tr("完成"); key: ""; kind: 1; clicked => { root.finish(); } }
             }
         }
     }

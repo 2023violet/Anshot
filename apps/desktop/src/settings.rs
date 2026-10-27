@@ -3,6 +3,7 @@
 //! Stored as `key=value` lines in `%APPDATA%\Anshot\settings.txt`
 //! (`ANSHOT_SETTINGS_DIR` overrides the folder, used by tests).
 #![forbid(unsafe_code)]
+use crate::i18n::t;
 use anshot_platform_windows::Hotkey;
 use std::path::PathBuf;
 
@@ -30,7 +31,12 @@ pub struct Settings {
     pub history_days: u32,
     /// Empty the history when Anshot quits.
     pub clear_on_exit: bool,
+    /// UI language: "auto" (follow Windows), "zh" or "en".
+    pub language: String,
 }
+
+/// Choices offered for `language`.
+pub const LANGUAGES: [&str; 3] = ["auto", "zh", "en"];
 
 /// Choices offered for `history_days` (0 = keep until the count limit removes them).
 pub const HISTORY_DAYS: [u32; 4] = [0, 30, 7, 1];
@@ -47,7 +53,7 @@ pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
     fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false,
-        pad_redactions: true, warn_unredacted: true, clipboard_private: true, history_days: 0, clear_on_exit: false } }
+        pad_redactions: true, warn_unredacted: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into() } }
 }
 
 impl Settings {
@@ -69,6 +75,7 @@ impl Settings {
                 ("warn_unredacted", v) => if let Ok(b) = v.parse() { s.warn_unredacted = b; },
                 ("clipboard_private", v) => if let Ok(b) = v.parse() { s.clipboard_private = b; },
                 ("clear_on_exit", v) => if let Ok(b) = v.parse() { s.clear_on_exit = b; },
+                ("language", v) => if LANGUAGES.contains(&v) { s.language = v.into(); },
                 ("history_days", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_DAYS.contains(n)) { s.history_days = n; },
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
@@ -78,9 +85,9 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\n", self.hotkey.label(), self.hide_after_copy,
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\n", self.hotkey.label(), self.hide_after_copy,
             self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor,
-            self.pad_redactions, self.warn_unredacted, self.clipboard_private, self.history_days, self.clear_on_exit)
+            self.pad_redactions, self.warn_unredacted, self.clipboard_private, self.history_days, self.clear_on_exit, self.language)
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -97,7 +104,7 @@ impl Settings {
         Self::file().and_then(|f| std::fs::read_to_string(f).ok()).map(|t| Self::parse(&t)).unwrap_or_default()
     }
     pub fn save(&self) -> Result<(), String> {
-        let f = Self::file().ok_or("找不到设置目录")?;
+        let f = Self::file().ok_or(t("找不到设置目录"))?;
         if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| crate::messages::write_file(e.kind()))?; }
         std::fs::write(f, self.render()).map_err(|e| crate::messages::write_file(e.kind()))
     }
@@ -109,11 +116,11 @@ mod tests {
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
         let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true,
-            pad_redactions: false, warn_unredacted: false, clipboard_private: false, history_days: 7, clear_on_exit: true };
+            pad_redactions: false, warn_unredacted: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into() };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\nlanguage=fr\n");
         assert_eq!(odd, Settings::default());
     }
 }

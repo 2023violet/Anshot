@@ -1,46 +1,47 @@
 //! OS boundaries: file dialogs, clipboard image in/out, new-file save.
 //! Writers receive only Rust-generated PNG bytes from a live Editor ticket.
 #![forbid(unsafe_code)]
+use crate::i18n::t;
 use anshot_core::{decode_generated_png, dib_to_png, MAX_DIB_BYTES, MAX_INPUT_BYTES};
 use anshot_platform_windows::{read_clipboard_image, save_new, ClipboardImageFormat};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub fn pick_image() -> Option<PathBuf> {
-    rfd::FileDialog::new().set_title("打开图片").add_filter("图片", &["png", "jpg", "jpeg"]).pick_file()
+    rfd::FileDialog::new().set_title(t("打开图片")).add_filter(t("图片"), &["png", "jpg", "jpeg"]).pick_file()
 }
 
 pub fn pick_save_path(suggested: &str, dir: Option<&Path>) -> Option<PathBuf> {
-    let mut d = rfd::FileDialog::new().set_title("另存为新 PNG").add_filter("PNG 图片", &["png"]).set_file_name(suggested);
+    let mut d = rfd::FileDialog::new().set_title(t("另存为新 PNG")).add_filter(t("PNG 图片"), &["png"]).set_file_name(suggested);
     if let Some(dir) = dir.filter(|d| d.is_dir()) { d = d.set_directory(dir); }
     d.save_file()
 }
 
 pub fn pick_folder() -> Option<PathBuf> {
-    rfd::FileDialog::new().set_title("选择默认保存文件夹").pick_folder()
+    rfd::FileDialog::new().set_title(t("选择默认保存文件夹")).pick_folder()
 }
 
 /// Bounded read of a user-chosen file; Core re-validates size and format.
 pub fn read_image_file(path: &Path) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let err = |e: std::io::Error| crate::messages::read_file(e.kind());
-    if std::fs::symlink_metadata(path).map_err(err)?.file_type().is_symlink() { return Err("不支持打开快捷链接，请选择图片文件本身".into()); }
+    if std::fs::symlink_metadata(path).map_err(err)?.file_type().is_symlink() { return Err(t("不支持打开快捷链接，请选择图片文件本身").into()); }
     let file = std::fs::File::open(path).map_err(err)?;
-    if !file.metadata().map_err(err)?.is_file() { return Err("这不是一个文件".into()); }
+    if !file.metadata().map_err(err)?.is_file() { return Err(t("这不是一个文件").into()); }
     // Read at most one byte past the limit from the opened handle: a file that grows
     // after the check is still bounded.
     let mut bytes = Vec::new();
     file.take(MAX_INPUT_BYTES as u64 + 1).read_to_end(&mut bytes).map_err(err)?;
-    if bytes.len() > MAX_INPUT_BYTES { return Err("文件超过 25 MB".into()); }
+    if bytes.len() > MAX_INPUT_BYTES { return Err(t("文件超过 25 MB").into()); }
     Ok(bytes)
 }
 
 /// Clipboard image as PNG/JPEG-compatible bytes for Core intake.
 pub fn read_clipboard() -> Result<Vec<u8>, String> {
-    let img = read_clipboard_image(MAX_INPUT_BYTES, MAX_DIB_BYTES).map_err(|_| "剪贴板里没有图片，先复制一张图片再粘贴".to_string())?;
+    let img = read_clipboard_image(MAX_INPUT_BYTES, MAX_DIB_BYTES).map_err(|_| t("剪贴板里没有图片，先复制一张图片再粘贴").to_string())?;
     match img.format {
         ClipboardImageFormat::Png => Ok(img.bytes),
-        ClipboardImageFormat::Dib => dib_to_png(&img.bytes).map_err(|_| "剪贴板里的图片无法读取".to_string()),
+        ClipboardImageFormat::Dib => dib_to_png(&img.bytes).map_err(|_| t("剪贴板里的图片无法读取").to_string()),
     }
 }
 
@@ -57,15 +58,15 @@ fn clipboard_set(c: &mut arboard::Clipboard) -> arboard::Set<'_> {
 /// The exact exported PNG plus a CF_DIBV5 of the same pixels, written in one clipboard
 /// session (arboard 3.6/3.7 ignore the history / cloud exclusions for images).
 pub fn write_clipboard(png: &[u8], dims: (u32, u32)) -> Result<(), String> {
-    let pixels = decode_generated_png(png, dims).map_err(|_| "生成的图片未通过校验，未写入剪贴板".to_string())?;
+    let pixels = decode_generated_png(png, dims).map_err(|_| t("生成的图片未通过校验，未写入剪贴板").to_string())?;
     let dib = anshot_core::rgba_to_dibv5(&pixels);
     anshot_platform_windows::write_clipboard_image(png, &dib, CLIPBOARD_PRIVATE.load(Ordering::Relaxed))
-        .map_err(|_| "剪贴板正被其他程序占用，请稍后重试".to_string())
+        .map_err(|_| t("剪贴板正被其他程序占用，请稍后重试").to_string())
 }
 
 /// Plain text (a colour value, recognised text) to the clipboard.
 pub fn write_text(text: &str) -> Result<(), String> {
-    let busy = |_| "剪贴板正被其他程序占用，请稍后重试".to_string();
+    let busy = |_| t("剪贴板正被其他程序占用，请稍后重试").to_string();
     let mut clipboard = arboard::Clipboard::new().map_err(busy)?;
     clipboard_set(&mut clipboard).text(text.to_owned()).map_err(busy)
 }
