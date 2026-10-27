@@ -1,6 +1,7 @@
 """B3 clipboard check: safe mosaic + arrow + text on the synthetic shot.
 
-Usage: python tests/desktop/compare_b3.py <source.png> <clipboard.png>
+Usage: python tests/desktop/compare_b3.py <source.png> <clipboard.png> [pad]
+`pad` widens the mosaic box on every side (0.3 pads new redactions by 4 px by default).
 Checks (source px): mosaic region (374,143)-(476,163) only uses the safe palette;
 the arrow box and text box contain red ink pixels; every other pixel equals the source.
 """
@@ -22,6 +23,8 @@ def inside(b, x, y):
 def main() -> int:
     src = Image.open(sys.argv[1]).convert("RGB")
     clip = Image.open(sys.argv[2]).convert("RGB")
+    pad = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    mosaic = (MOSAIC[0] - pad, MOSAIC[1] - pad, MOSAIC[2] + pad, MOSAIC[3] + pad)
     if src.size != clip.size:
         print(f"SIZE_MISMATCH {src.size} {clip.size}")
         return 1
@@ -31,7 +34,7 @@ def main() -> int:
     for y in range(h):
         for x in range(w):
             p = cp[x, y]
-            if inside(MOSAIC, x, y):
+            if inside(mosaic, x, y):
                 off_palette += p not in PALETTE
             elif inside(ARROW, x, y) or inside(TEXT, x, y):
                 red_arrow += inside(ARROW, x, y) and p == RED

@@ -117,7 +117,9 @@ $sh = New-Object -ComObject WScript.Shell; $sh.SendKeys('^,'); Start-Sleep -Mill
 Log "D autostart_on=$(Invoke-Uia $main '登录后在托盘待命') run_value=$(RunValue)"
 
 # D2. change a setting through the app, so user data exists to be kept or removed later
-Log "D2 keep_200=$(Invoke-Uia $main '200 张') settings_file=$(Test-Path (Join-Path $cfg 'settings.txt'))"
+# (0.3: the history limit sits on the Privacy tab of Settings.)
+$tab = Invoke-Uia $main '隐私'; Start-Sleep -Milliseconds 400
+Log "D2 privacy_tab=$tab keep_200=$(Invoke-Uia $main '200 张') settings_file=$(Test-Path (Join-Path $cfg 'settings.txt'))"
 
 # E. upgrade (silent reinstall) while the app is running: the installer closes it and replaces files
 $up = Start-Process $Setup -ArgumentList '/S' -PassThru; $up.WaitForExit(60000) | Out-Null
