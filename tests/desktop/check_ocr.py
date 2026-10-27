@@ -25,7 +25,8 @@ def main(path, expected, min_acc, forbidden):
     got = open(path, encoding='utf-8').read()
     g, e = squash(got), squash(expected)
     acc = 1 - dist(g, e) / max(1, len(e))
-    leaked = [f for f in forbidden if squash(f) in g]
+    # A partial leak counts too: any 4 consecutive characters of a hidden string.
+    leaked = [f for f in forbidden if any(squash(f)[i:i + 4] in g for i in range(max(1, len(squash(f)) - 3)))]
     if leaked:
         return f'FAIL redacted text recognised: {leaked}'
     if acc < min_acc:

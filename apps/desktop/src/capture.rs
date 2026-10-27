@@ -89,7 +89,9 @@ impl Session {
                 self.selection = match grab {
                     Grab::New if self.lock => {
                         let side = dx.abs().max(dy.abs());
-                        self.clamp(span(p, (p.0 + side * dx.signum(), p.1 + side * dy.signum())), p)
+                        // A straight vertical / horizontal drag still makes a square (signum(0) is 0).
+                        let sign = |d: i32| if d < 0 { -1 } else { 1 };
+                        self.clamp(span(p, (p.0 + side * sign(dx), p.1 + side * sign(dy))), p)
                     }
                     Grab::New => self.clamp(span(p, (x, y)), p),
                     Grab::Edge { rect: r, left, right, top, bottom } if self.lock && (left || right) && (top || bottom) => {
@@ -158,9 +160,12 @@ impl Session {
         let Some(r) = self.selection else { return false };
         if w < 1 || h < 1 { return false; }
         let Some(m) = self.monitor_at(r.x + r.w / 2, r.y + r.h / 2) else { return false };
-        let (w, h) = (w.min(m.bounds.w), h.min(m.bounds.h));
-        self.selection = self.shifted(ScreenRect { x: r.x, y: r.y, w, h }, 0, 0);
-        self.selection.is_some()
+        // Stay on the monitor the selection is on (its new centre may fall on another one).
+        let b = m.bounds;
+        let (w, h) = (w.min(b.w), h.min(b.h));
+        let (x, y) = (r.x.clamp(b.x, b.x + b.w - w), r.y.clamp(b.y, b.y + b.h - h));
+        self.selection = Some(ScreenRect { x, y, w, h });
+        true
     }
     /// Change to the ratio `rw:rh` about the centre, keeping the width unless that is too tall.
     pub fn set_ratio(&mut self, rw: i32, rh: i32) -> bool {
@@ -278,6 +283,21 @@ mod tests {
         s.lock = true;
         s.pointer_down(50, 30); s.pointer_move(70, 31); s.pointer_up(70, 31);
         assert_eq!(s.selection, Some(ScreenRect { x: 10, y: 10, w: 60, h: 30 }), "2:1 kept");
+    }
+
+    #[test]
+    fn exact_size_never_jumps_to_another_monitor() {
+        let monitors = vec![mon(0, 0, 100, 60, true), mon(100, 0, 100, 40, false)];
+        let area = union(&monitors).unwrap();
+        let rgba = vec![0u8; (area.w * area.h * 4) as usize];
+        let mut s = Session::new(Capture { area, rgba }, monitors, Vec::new());
+        assert!(s.restore(ScreenRect { x: 80, y: 10, w: 10, h: 10 }));
+        assert!(s.resize_to(60, 30), "centre would land on the right monitor");
+        assert_eq!(s.selection, Some(ScreenRect { x: 40, y: 10, w: 60, h: 30 }));
+        s.lock = true;
+        s.selection = None;
+        s.pointer_down(10, 5); s.pointer_move(10, 25); s.pointer_up(10, 25);
+        assert_eq!(s.selection, Some(ScreenRect { x: 10, y: 5, w: 20, h: 20 }), "vertical Shift drag is a square");
     }
 
     #[test]

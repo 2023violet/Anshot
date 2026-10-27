@@ -370,7 +370,7 @@ export component AppWindow inherits Window {
             background: Theme.scrim;
             TouchArea { }
             Rectangle {
-                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? 480px : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
+                width: root.dialog == "history" ? min(780px, parent.width - 32px) : min(460px, parent.width - 32px); height: root.dialog == "about" ? 356px : root.dialog == "settings" ? min(480px, parent.height - 32px) : root.dialog == "history" ? min(560px, parent.height - 32px) : root.dialog == "color" ? (root.recent-colors.length > 0 ? 318px : 284px) : 170px;
                 border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                 accessible-role: groupbox; accessible-label: root.dialog == "close" ? @tr("关闭确认") : root.dialog == "about" ? @tr("关于") : root.dialog == "settings" ? @tr("设置") : root.dialog == "color" ? @tr("自定义颜色") : root.dialog == "history" ? @tr("截图历史") : @tr("替换确认");
                 if root.dialog == "about": VerticalLayout { padding: 24px; spacing: 6px;
@@ -389,6 +389,8 @@ export component AppWindow inherits Window {
                         Rectangle { horizontal-stretch: 1; }
                         VerticalLayout { alignment: center; Segmented { options: [@tr("常规"), @tr("隐私")]; selected: root.settings-tab; picked(i) => { root.settings-tab = i; } } }
                     }
+                    ScrollView { vertical-stretch: 1;
+                    VerticalLayout { padding-right: 6px;
                     if root.settings-tab == 0: VerticalLayout { spacing: 12px;
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("界面语言"); width: 84px; }
@@ -452,6 +454,7 @@ export component AppWindow inherits Window {
                         Text { text: @tr("历史存在本机 %LOCALAPPDATA%\\Anshot\\history，未加密。多盖几像素能减少被遮文字的边缘和长度信息，但不能完全隐藏长度。"); color: Theme.mute; font-size: 12px; wrap: word-wrap; }
                     }
                     Rectangle { vertical-stretch: 1; }
+                    } }
                     HorizontalLayout { alignment: end; ActionButton { label: @tr("完成"); key: "Esc"; kind: 1; clicked => { root.dialog-choice("cancel"); } } }
                 }
                 if root.dialog == "color": VerticalLayout { padding: 24px; spacing: 12px; alignment: start;

@@ -26,7 +26,12 @@ def main(src, got, ox, oy, ix, iy):
     # mosaic itself plus its enlarged copy in the callout (callout >= 4x the mosaic area).
     grey = sum(1 for p in b.getdata() if p in MOSAIC)
     src_grey = sum(1 for p in a.getdata() if p in MOSAIC)
-    return f'SPOTLIGHT_PASS mosaic_px={grey} source_mosaic_px={src_grey}'
+    # The mosaic itself sits at (506..595, 141..162); everything else that is mosaic grey is
+    # the callout's enlarged copy, which must be about 4x the mosaic (at least 3x).
+    own = sum(1 for y in range(141, 162) for x in range(506, 595) if b.getpixel((x, y)) in MOSAIC)
+    if src_grey or own == 0 or grey - own < 3 * own:
+        return f'FAIL callout: mosaic_px={grey} own={own} source_mosaic_px={src_grey}'
+    return f'SPOTLIGHT_PASS mosaic_px={grey} own={own} callout={grey - own}'
 
 
 if __name__ == '__main__':

@@ -98,7 +98,8 @@ impl Drop for Bitmap { fn drop(&mut self) {
 } }
 
 /// Keep one of our own windows out of every screen capture (ours and other programs'):
-/// pins, toasts, the countdown and the long-screenshot panel. Windows 10 2004 or later;
+/// toasts, the countdown and the long-screenshot panel (pins are not excluded; they step
+/// aside while Anshot freezes the screen). Windows 10 2004 or later;
 /// returns false where unsupported. This is a cooperative flag, not a security boundary.
 pub fn exclude_from_capture(hwnd: isize) -> bool {
     use windows_sys::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE};

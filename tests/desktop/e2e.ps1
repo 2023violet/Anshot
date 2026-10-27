@@ -58,6 +58,8 @@ if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Get-ChildItem $env:ANSHOT_SETTINGS_DIR | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
 $log = [System.Collections.Generic.List[string]]::new()
 function Log($s) { $log.Add($s); $s }
+# An explicit verdict line for a check: grep the log for "=FAIL".
+function Verdict([string] $name, [bool] $ok) { Log "VERDICT $name=$(if ($ok) { PASS } else { FAIL })" }
 Log ("EXE sha256=" + (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower() + " path=" + (Split-Path $Exe -Leaf))
 
 function Launch([string[]] $argv) {
@@ -744,18 +746,21 @@ $want = '#{0:X2}{1:X2}{2:X2}' -f $px.R, $px.G, $px.B
 $mag = (UiaNames ([pscustomobject]@{ H = $ovh })) | Where-Object { $_ -like '放大镜*' } | Select-Object -First 1
 [System.Windows.Forms.Clipboard]::Clear()
 Key 0x43 -Shift; Start-Sleep -Milliseconds 500
-Log "AIDS color want=$want magnifier=$mag clip=$([System.Windows.Forms.Clipboard]::GetText())"
+$clipText = [System.Windows.Forms.Clipboard]::GetText()
+Log "AIDS color want=$want magnifier=$mag clip=$clipText"
+Verdict "color" (($mag -like "*$want*") -and ($clipText -eq $want))
 # Shift held while dragging: a square
 [E]::keybd_event(0x10, 0, 0, [IntPtr]::Zero)
 ScreenDrag ($fx + 50) ($fy + 50) ($fx + 250) ($fy + 130)
 [E]::keybd_event(0x10, 0, 2, [IntPtr]::Zero); Start-Sleep -Milliseconds 300
-Log "AIDS square=$(SizeText $ovh)"
+$sq = SizeText $ovh; Log "AIDS square=$sq"; Verdict "shift_square" ($sq -eq "200 × 200")
 # size panel: 16:9 about the centre, then an exact 300 × 150
-Log "AIDS panel=$(UiaClick $ovh '尺寸') ratio=$(UiaClick $ovh '16:9') after_ratio=$(SizeText $ovh)"
+$pOk = UiaClick $ovh '尺寸'; $rOk = UiaClick $ovh '16:9'; $ar = SizeText $ovh
+Log "AIDS panel=$pOk ratio=$rOk after_ratio=$ar"; Verdict "ratio_16_9" ($ar -eq "200 × 112")
 [void](UiaClick $ovh '宽'); Typed '300'
 [void](UiaClick $ovh '高'); Typed '150'; Key 0x0D
 Start-Sleep -Milliseconds 300
-Log "AIDS exact=$(SizeText $ovh)"
+$ex = SizeText $ovh; Log "AIDS exact=$ex"; Verdict "exact_size" ($ex -eq "300 × 150")
 [System.Windows.Forms.Clipboard]::Clear()
 Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
 Log "AIDS exact_copy=$(ClipSave 'clipboard-exact-size.png')"
@@ -763,7 +768,7 @@ Log "AIDS exact_copy=$(ClipSave 'clipboard-exact-size.png')"
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
 $ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
 Key 0x52; Start-Sleep -Milliseconds 300
-Log "AIDS repeat=$(SizeText $ovh)"
+$rp = SizeText $ovh; Log "AIDS repeat=$rp"; Verdict "repeat_region" ($rp -eq "300 × 150")
 [System.Windows.Forms.Clipboard]::Clear()
 Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
 Log "AIDS repeat_copy=$(ClipSave 'clipboard-repeat.png')"
@@ -794,7 +799,9 @@ $ov0 = ([E]::Visible([uint32]$app.Id, 'Anshot 截图')).Count
 $cdr = New-Object E+RECT; [void][E]::GetWindowRect($cdh, [ref]$cdr)
 Start-Sleep -Milliseconds 2500
 $ovs = [E]::Visible([uint32]$app.Id, 'Anshot 截图')
-Log "AIDS delay countdown=$($cdh -ne [IntPtr]::Zero) overlay_during=$ov0 overlay_after=$($ovs.Count) countdown_gone=$([E]::TitleAny('Anshot 延时截图') -eq [IntPtr]::Zero)"
+$gone = [E]::TitleAny('Anshot 延时截图') -eq [IntPtr]::Zero
+Log "AIDS delay countdown=$($cdh -ne [IntPtr]::Zero) overlay_during=$ov0 overlay_after=$($ovs.Count) countdown_gone=$gone"
+Verdict "delayed_capture" (($cdh -ne [IntPtr]::Zero) -and $ov0 -eq 0 -and $ovs.Count -gt 0 -and $gone)
 # The countdown sat in the corner while the screen was frozen: the frozen picture must not contain it.
 if ($ovs.Count -gt 0) {
     ScreenDrag ($cdr.L - 20) ($cdr.T - 20) ($cdr.R + 20) ($cdr.B + 20)
@@ -843,7 +850,7 @@ $t1 = OcrText
 [System.IO.File]::WriteAllText((Join-Path $Out 'ocr-selection.txt'), $t1, (New-Object System.Text.UTF8Encoding $false))
 Log ("OCR selection=" + (python (Join-Path $PSScriptRoot 'check_ocr.py') (Join-Path $Out 'ocr-selection.txt') '您好，请提供订单号和注册手机号，我帮您查询退款进度。收到。退款已于今天14:05原路退回，预计1–3个工作日到账。如需凭证，可在“我的→订单→退款详情”查看。' 0.85))
 $oh = [E]::TitleAny('Anshot 识别文字')
-Log "OCR excluded_from_capture_flag_window=$($oh -ne [IntPtr]::Zero)"
+Log "OCR window_shown=$($oh -ne [IntPtr]::Zero)"
 Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 500
 if (-not $app.HasExited) { $app.Kill() }
 Start-Sleep -Milliseconds 500
@@ -873,14 +880,17 @@ $fmts = @([System.Windows.Forms.Clipboard]::GetDataObject().GetFormats())
 $cb = [System.Windows.Forms.Clipboard]::GetImage()
 if ($cb) { $edge = Hex ($cb.GetPixel(504, 150)); $inside = Hex ($cb.GetPixel(550, 150)); $far = Hex ($cb.GetPixel(498, 150)); $cb.Dispose() }
 Log "PRIVACY pad edge=$edge in_mosaic=$($mosaic -contains $edge) inside_mosaic=$($mosaic -contains $inside) beyond_pad=$far not_mosaic=$(-not ($mosaic -contains $far))"
+Verdict "redaction_padding" (($mosaic -contains $edge) -and ($mosaic -contains $inside) -and -not ($mosaic -contains $far))
 Log "PRIVACY clipboard_flags history_off=$($fmts -contains 'CanIncludeInClipboardHistory') cloud_off=$($fmts -contains 'CanUploadToCloudClipboard')"
+Verdict "clipboard_private" (($fmts -contains 'CanIncludeInClipboardHistory') -and ($fmts -contains 'CanUploadToCloudClipboard'))
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
 # no redaction: the copy warns
 Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') 'hide_after_copy=false'
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1200
-Log ("PRIVACY unredacted_warning=" + (((UiaNames $w) | Where-Object { $_ -like '*图中没有遮挡*' }) -join ' | '))
+$warn = ((UiaNames $w) | Where-Object { $_ -like '*图中没有遮挡*' }) -join ' | '
+Log "PRIVACY unredacted_warning=$warn"; Verdict "unredacted_warning" ($warn -ne '')
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
 # history age: an entry 3 days old is gone after a start with history_days=1
@@ -890,7 +900,7 @@ $old = Join-Path $env:ANSHOT_HISTORY_DIR ('anshot-{0:D13}-000.png' -f $oldMs)
 Copy-Item (Resolve-Path $Image).Path $old
 Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nhistory_days=1"
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
-Log "PRIVACY history_age old_removed=$(-not (Test-Path $old))"
+$aged = -not (Test-Path $old); Log "PRIVACY history_age old_removed=$aged"; Verdict "history_age" $aged
 if (-not $w.P.HasExited) { $w.P.Kill() }
 Start-Sleep -Milliseconds 500
 # clear on exit: a resident instance owns the tray; a second, editor-only instance copies (history written), then exits normally
@@ -906,7 +916,7 @@ Start-Sleep -Milliseconds 800
 $names = @(); try { $names = UiaNames $w } catch { }   # the window may already be gone
 if ($names -contains '不保存，直接关闭') { Log "PRIVACY exit_dialog=$(Invoke-Uia $w '不保存，直接关闭')" }
 $exited = $w.P.WaitForExit(8000)
-Log "PRIVACY clear_on_exit before=$before exited=$exited after=$((HistoryFiles).Count)"
+$after = (HistoryFiles).Count; Log "PRIVACY clear_on_exit before=$before exited=$exited after=$after"; Verdict "clear_on_exit" ($before -gt 0 -and $exited -and $after -eq 0)
 if (-not $w.P.HasExited) { $w.P.Kill() }
 if (-not $res.HasExited) { $res.Kill() }
 [System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
@@ -958,8 +968,11 @@ New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
 Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`nlanguage=en"
 $w = Launch @("`"$((Resolve-Path $Image).Path)`"")
 $names = UiaNames $w
-Log ("ENGLISH editor=" + (@('Copy', 'Save', 'Spotlight S', 'Magnifier Z', 'Safe mosaic M', 'Nothing redacted') | ForEach-Object { "$_=$($names -contains $_)" }) -join ' ')
-Log ("ENGLISH chinese_left=" + (@($names | Where-Object { $_ -match '[一-鿿]' -and $_ -notmatch '中文|客服' }) -join ' | '))
+$want = @('Copy', 'Save', 'Spotlight S', 'Magnifier Z', 'Safe mosaic M', 'Nothing redacted')
+Log ("ENGLISH editor=" + ($want | ForEach-Object { "$_=$($names -contains $_)" }) -join ' ')
+$left = @($names | Where-Object { $_ -match '[一-鿿]' -and $_ -notmatch '中文|客服' })
+Log ("ENGLISH chinese_left=" + ($left -join ' | '))
+Verdict "english_editor" ((@($want | Where-Object { $names -notcontains $_ }).Count -eq 0) -and $left.Count -eq 0)
 Shot $w '22-english-editor.png'
 Key 0xBC -Ctrl; Start-Sleep -Milliseconds 800                  # Ctrl+, settings
 Shot $w '23-english-settings-general.png'
@@ -972,7 +985,8 @@ Start-Sleep -Milliseconds 500
 $app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
 Key 0x41 -Ctrl -Shift
 $ovh = @(); foreach ($try in 1..20) { Start-Sleep -Milliseconds 200; $ovh = @([E]::Visible([uint32]$app.Id, 'Anshot capture')); if ($ovh.Count) { break }; if ($try -eq 10) { Key 0x41 -Ctrl -Shift } }
-Log "ENGLISH overlay_title=$($ovh.Count -gt 0) hint=$(((UiaNames ([pscustomobject]@{ H = $ovh[0] })) | Where-Object { $_ -like 'Drag to select*' }) -join '')"
+$hint = if ($ovh.Count) { ((UiaNames ([pscustomobject]@{ H = $ovh[0] })) | Where-Object { $_ -like 'Drag to select*' }) -join '' } else { '' }
+Log "ENGLISH overlay_title=$($ovh.Count -gt 0) hint=$hint"; Verdict "english_overlay" ($ovh.Count -gt 0 -and $hint -ne '')
 Key 0x1B
 if (-not $app.HasExited) { $app.Kill() }
 [System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))

@@ -195,7 +195,7 @@ pub fn render_into(img: &mut RgbaImage, scene: &Scene, scale: f32) {
     }
     // 3. Magnifiers copy the picture as it is now (redactions included), enlarged.
     let mags: Vec<(Region, (f32, f32), f32)> = scene.annotations.iter().filter_map(|a| match &a.shape {
-        Shape::Magnify { region, center, zoom, .. } => Some((*region, *center, *zoom)),
+        Shape::Magnify { region, center, zoom, .. } if center.0.is_finite() && center.1.is_finite() && zoom.is_finite() && *zoom > 0.0 => Some((*region, *center, *zoom)),
         _ => None,
     }).collect();
     if !mags.is_empty() {

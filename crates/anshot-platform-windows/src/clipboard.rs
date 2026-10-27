@@ -81,8 +81,8 @@ fn register(name:&str)->u32{
 
 /// Put an exported image on the clipboard as "PNG" and CF_DIBV5 in one session. With
 /// `private`, the same session marks it with the documented zero-DWORD formats that keep
-/// it out of Windows clipboard history and the cloud clipboard (they must be set before
-/// the clipboard is closed, or history has already taken the item).
+/// it out of Windows clipboard history and the cloud clipboard. The markers go first and
+/// any failure empties the clipboard again, so history never sees an unmarked image.
 pub fn write_clipboard_image(png:&[u8],dibv5:&[u8],private:bool)->io::Result<()>{
     use windows_sys::Win32::System::DataExchange::EmptyClipboard;
     let png_format=register("PNG");
@@ -98,14 +98,25 @@ pub fn write_clipboard_image(png:&[u8],dibv5:&[u8],private:bool)->io::Result<()>
     let _clipboard=OpenedClipboard;
     // SAFETY: clipboard is open on this thread.
     if unsafe{EmptyClipboard()}==0{return Err(io::Error::last_os_error());}
-    // SAFETY: clipboard open and emptied by this thread for all three calls.
-    unsafe{set_global(png_format,png)}?;
-    unsafe{set_global(17,dibv5)}?;
-    if private {
-        for name in ["CanIncludeInClipboardHistory","CanUploadToCloudClipboard"] {
-            let f=register(name);
-            if f!=0 { unsafe{set_global(f,&0u32.to_ne_bytes())}?; }
+    let fill=||->io::Result<()>{
+        if private {
+            for name in ["CanIncludeInClipboardHistory","CanUploadToCloudClipboard"] {
+                let f=register(name);
+                if f==0{return Err(io::Error::last_os_error());}
+                // SAFETY: clipboard open and emptied by this thread.
+                unsafe{set_global(f,&0u32.to_ne_bytes())}?;
+            }
         }
+        // SAFETY: clipboard open and emptied by this thread.
+        unsafe{set_global(png_format,png)}?;
+        unsafe{set_global(17,dibv5)}?;
+        Ok(())
+    };
+    if let Err(e)=fill(){
+        // Never leave a partial (possibly unmarked) image behind.
+        // SAFETY: clipboard is still open on this thread.
+        unsafe{EmptyClipboard();}
+        return Err(e);
     }
     Ok(())
 }

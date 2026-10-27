@@ -69,6 +69,8 @@ export component OcrWindow inherits Window {
     callback copy-all(string);
     callback dismiss();
     forward-focus: edit;
+    FocusScope {
+    key-pressed(e) => { if e.text == Key.Escape { root.dismiss(); return accept; } reject }
     VerticalLayout { padding: 16px; spacing: 10px;
         HorizontalLayout { spacing: 8px;
             Text { text: root.busy ? @tr("正在识别…") : root.error != "" ? @tr("未能识别") : @tr("识别结果"); font-size: 15px; font-weight: 600; color: Theme.ink; vertical-alignment: center; }
@@ -81,6 +83,7 @@ export component OcrWindow inherits Window {
             ActionButton { label: @tr("关闭"); key: "Esc"; kind: 0; clicked => { root.dismiss(); } }
             ActionButton { label: @tr("复制全部"); key: ""; kind: 1; enabled: !root.busy && root.text != ""; clicked => { root.copy-all(root.text); } }
         }
+    }
     }
 }
 

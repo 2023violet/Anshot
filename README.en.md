@@ -44,14 +44,16 @@ Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, th
 - **Capture.** Use the global hotkey or the tray. Each monitor gets a frozen image of its screen.
   - Drag a region, then adjust it by its edges or move it from the inside.
   - Click to snap to a window, or press Enter for the whole screen. A magnifier shows the pixels under the pointer.
-  - A toolbar next to the selection offers **copy / save / pin / long screenshot / edit**.
-- **Long screenshot.** Choose a region, press "长截图" and scroll slowly; the app stitches the frames locally. Sticky headers and footers are detected, and you're told when scrolling went too fast.
+  - A toolbar next to the selection offers **copy / save / recognise text / pin / long screenshot / edit**; "Size" sets 1:1 / 4:3 / 16:9 or an exact width and height, Shift keeps the ratio, and R repeats the last area.
+  - The magnifier shows the colour under the pointer (Shift+C copies it). Delayed capture (3 / 5 / 10 s) from the tray; the mouse pointer can be included.
+- **Recognise text (offline OCR).** From a selection, the editor (Ctrl+Shift+O) or a pin, using the **text recognition built into Windows**: on this computer, no network, no model download. In the editor it reads the export image, so redacted text is not recognised. Results are editable and copyable, never saved, and can contain mistakes. Needs the matching Windows language installed.
+- **Long screenshot.** Choose a region, press "Long screenshot" and scroll slowly; the app stitches the frames locally. Sticky headers and footers are detected; when only one pane of the area scrolls, only that pane is stitched; you're told when scrolling went too fast.
 - **Pin to desktop.** Keep a capture on top of all windows. Drag it, zoom with the wheel, set its opacity, and right-click to copy or save.
 - **Annotate.**
-  - Shapes and text: arrow, line, frame, ellipse, pen, multi-line text with IME support, auto-numbered steps, highlighter.
+  - Shapes and text: arrow, line, frame, ellipse, pen, multi-line text with IME support, auto-numbered steps, highlighter, **spotlight** (dims the rest) and **magnifier callout** (2x, enlarging the redacted picture). Alt+wheel adjusts the selected number, width or text size.
   - Colour and size: 6 preset colours plus a custom colour (HSV / HEX, recent colours remembered), 3 stroke widths, 5 text sizes.
   - Hold Shift for squares, circles and 45° lines.
-- **Redact.** Solid black or white, or a **safe mosaic** whose colours depend only on position, never on the original. There is deliberately no reversible blur or pixelation.
+- **Redact.** Solid black or white, or a **safe mosaic** whose colours depend only on position, never on the original. There is deliberately no reversible blur or pixelation. By default a redaction covers 4 px more all round (less of the hidden text's edges and length leaks, though the length is not fully hidden), and copying or saving an image with no redaction shows a warning.
 - **Edit.** Select, move, resize from 8 handles, undo / redo, crop with handles, zoom and pan, Tab through objects, nudge with the arrow keys.
 - **Deliver.** Ctrl+C copies. Ctrl+S saves a new PNG and **never overwrites an existing file**: a taken name becomes "name (2).png".
 - **History (Ctrl+H).** Keeps the **images the editor copied or saved**, exactly as they were shared: covered where you covered, unchanged where you did not.
@@ -59,13 +61,10 @@ Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, th
   - Stored **unencrypted** in `%LOCALAPPDATA%\Anshot\history`, and kept on uninstall unless you tick the option to delete it.
   - Frozen full screens, source files and editing state are never written to disk; pin copies are not recorded.
 - **Settings (Ctrl+,).**
-  - Capture hotkey: 4 choices, with a warning if another app already uses it.
-  - Hide or keep the editor after copying.
-  - How many history images to keep.
-  - Default save folder.
-  - Start at login (waits in the tray).
+  - General: language (follow Windows / 中文 / English), capture hotkey (4 choices, with a warning if another app already uses it), hide or keep the editor after copying, delay, include the mouse pointer, start at login (waits in the tray), default save folder.
+  - Privacy: how many history images to keep and for how long (always / 30 / 7 / 1 days), clear the history on exit, the 4 px redaction margin, the no-redaction warning, and whether copies may enter Windows clipboard history and cloud sync (off by default).
 
-Keys: V select · A arrow · L line · R frame · E ellipse · P pen · T text · N number · H highlight · B redact · M safe mosaic · C crop · 1–6 presets · 7 custom colour · Del delete · Ctrl+Z / Y undo / redo · Ctrl+T pin · Ctrl+H history · Ctrl+0 / 1 fit / 100% · Ctrl+, settings.
+Keys: V select · A arrow · L line · R frame · E ellipse · P pen · T text · N number · H highlight · S spotlight · Z magnifier · B redact · M safe mosaic · C crop · 1–6 presets · 7 custom colour · Alt+wheel adjust the selection · Del delete · Ctrl+Z / Y undo / redo · Ctrl+Shift+O recognise text · Ctrl+T pin · Ctrl+H history · Ctrl+0 / 1 fit / 100% · Ctrl+, settings. In the capture overlay: Shift keeps the ratio · Shift+C copies the colour · R repeats the last area.
 
 ## Privacy and security
 

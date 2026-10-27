@@ -133,7 +133,7 @@ fn delivery_writes_the_rendered_png_even_without_redactions() {
     let mut c = opened(64, 48);
     c.tool = Tool::Rect;
     drag(&mut c, (4.0, 4.0), (40.0, 30.0));
-    assert_eq!(c.redaction_count(), 0);
+    assert_eq!(c.redactions_in_output(), 0);
     let work = c.begin_delivery(Delivery::Copy).unwrap();
     let (_, ticket) = c.review_finished(&work.key(), work.run()).unwrap();
     let mut red = 0;

@@ -33,7 +33,7 @@ export component CaptureOverlay inherits Window {
     // A short message shown in the hint bar instead of the usual hint ("已复制颜色 …").
     in property <string> notice;
     // The toolbar's size panel (ratios and an exact W × H) is open.
-    property <bool> size-open;
+    in-out property <bool> size-open;
 
     callback pointer-down(length, length);
     callback pointer-move(length, length);

@@ -92,9 +92,13 @@ struct App {
     /// Pins (ids) and the OCR window hidden while the screen is frozen; shown again after.
     hidden_for_capture: Vec<u64>,
     ocr_hidden: bool,
+    /// A text recognition job is running.
+    ocr_running: bool,
 }
 
 struct LongShot {
+    /// Pins and the OCR window stay hidden while live frames are captured.
+    hidden: (Vec<u64>, bool),
     region: ScreenRect,
     stitcher: Option<stitch::Stitcher>,
     panel: LongShotPanel,
@@ -333,7 +337,7 @@ impl App {
         self.refresh();
     }
     fn after_delivery(&mut self, kind: Delivery, outcome: Result<(), String>, name: Option<String>) {
-        let n = self.ctl.redaction_count();
+        let n = self.ctl.redactions_in_output();
         let (w, h) = self.ctl.editor.as_ref().map_or((0, 0), |e| e.output_dimensions());
         match (kind, outcome) {
             (Delivery::Copy, Ok(())) if n == 0 && self.settings.warn_unredacted => {
@@ -491,6 +495,9 @@ impl App {
     }
     /// Show the OCR window as busy, run `job` on a worker thread, then show its text or error.
     fn run_ocr(&mut self, job: impl FnOnce() -> Result<String, String> + Send + 'static) {
+        // One recognition at a time: repeated requests while it runs are ignored.
+        if self.ocr_running { if let Some(w) = self.ocr_win.as_ref() { let _ = w.show(); } return; }
+        self.ocr_running = true;
         self.ocr_seq += 1;
         let seq = self.ocr_seq;
         let win = match self.ocr_win.as_ref() {
@@ -514,6 +521,7 @@ impl App {
             let result = job();
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| {
+                    a.ocr_running = false;
                     if a.ocr_seq != seq { return; }
                     let Some(w) = a.ocr_win.as_ref() else { return };
                     w.set_busy(false);
@@ -561,6 +569,8 @@ impl App {
     // ---- capture (02 S1) ----
     fn begin_capture(&mut self) {
         if self.session.is_some() || self.capture_pending || self.long.is_some() { return; }
+        // A capture started by hand replaces a delayed one that is still counting down.
+        self.stop_countdown();
         if let Some(t) = self.toast_win.as_ref() { let _ = t.hide(); }
         // Never freeze our own editor into the shot: hide it, let the event loop apply the
         // hide, then wait for the compositor to present the desktop without it.
@@ -583,12 +593,12 @@ impl App {
     fn freeze_screen(&mut self) {
         let monitors = match anshot_platform_windows::monitors() {
             Ok(m) => m,
-            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
+            Err(_) => { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
         };
         let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
         let frozen = match anshot_platform_windows::capture_ex(area, self.settings.include_cursor) {
             Ok(c) => c,
-            Err(_) => { self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
+            Err(_) => { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
         };
         let session = capture::Session::new(frozen, monitors.clone(), anshot_platform_windows::visible_windows());
         let mut overlays = Vec::new();
@@ -601,6 +611,7 @@ impl App {
             }
             let win = self.overlay_pool[i].clone_strong();
             win.set_shot(to_image(&pixels));
+            win.set_size_open(false);
             let place = |w: &CaptureOverlay| {
                 w.window().set_position(slint::PhysicalPosition::new(m.bounds.x, m.bounds.y));
                 w.window().set_size(slint::PhysicalSize::new(m.bounds.w as u32, m.bounds.h as u32));
@@ -749,8 +760,8 @@ impl App {
     }
     fn end_capture(&mut self) {
         self.cursor_timer.stop();
-        for id in std::mem::take(&mut self.hidden_for_capture) { if let Some(p) = self.pins.iter().find(|p| p.id == id) { let _ = p.win.show(); } }
-        if std::mem::take(&mut self.ocr_hidden) { if let Some(w) = self.ocr_win.as_ref() { let _ = w.show(); } }
+        let hidden = (std::mem::take(&mut self.hidden_for_capture), std::mem::take(&mut self.ocr_hidden));
+        self.show_hidden(hidden);
         for (win, _) in self.overlays.drain(..) {
             let _ = win.hide();
             // Do not keep frozen screen pixels around between captures.
@@ -803,8 +814,11 @@ impl App {
             (region.x + region.w - pw, region.y + region.h + gap),
             (region.x + region.w - pw, region.y - gap - ph),
         ].into_iter().find(|&(x, y)| fits(x, y));
+        // Live frames follow: windows hidden for the freeze stay hidden until the long shot ends.
+        let hidden = (std::mem::take(&mut self.hidden_for_capture), std::mem::take(&mut self.ocr_hidden));
         self.end_capture();
         let Some((px, py)) = spot else {
+            self.show_hidden(hidden);
             if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
             self.system_toast("warn", t("无法开始长截图"), t("请把选区缩小一些，给控制条留出位置"));
             return;
@@ -818,7 +832,7 @@ impl App {
         if let Some(h) = hwnd_of(panel.window()) { anshot_platform_windows::exclude_from_capture(h); }
         let timer = slint::Timer::default();
         timer.start(slint::TimerMode::Repeated, Duration::from_millis(120), || { with(|a| a.poll_long_shot()); });
-        self.long = Some(LongShot { region, stitcher: None, panel, timer });
+        self.long = Some(LongShot { hidden, region, stitcher: None, panel, timer });
     }
     fn poll_long_shot(&mut self) {
         let Some(l) = self.long.as_mut() else { return };
@@ -835,10 +849,15 @@ impl App {
         if state == "full" { l.timer.stop(); }
     }
     fn close_long_shot(&mut self) -> Option<LongShot> {
-        let l = self.long.take()?;
+        let mut l = self.long.take()?;
         l.timer.stop();
         let _ = l.panel.hide();
+        self.show_hidden(std::mem::take(&mut l.hidden));
         Some(l)
+    }
+    fn show_hidden(&mut self, (pins, ocr): (Vec<u64>, bool)) {
+        for id in pins { if let Some(p) = self.pins.iter().find(|p| p.id == id) { let _ = p.win.show(); } }
+        if ocr { if let Some(w) = self.ocr_win.as_ref() { let _ = w.show(); } }
     }
     fn cancel_long_shot(&mut self) {
         self.close_long_shot();
@@ -932,7 +951,11 @@ impl App {
     fn record_history(&mut self, png: &[u8]) {
         let limit = self.settings.history_limit;
         if limit == 0 { return; }
-        if let Some(h) = self.history() { let _ = h.add(png, limit); }
+        if let Some(h) = self.history() {
+            let _ = h.add(png, limit);
+            // The tray app can run for weeks: apply the age limit here too, not only at start.
+            h.prune_age(self.settings.history_days, history::now_millis());
+        }
     }
     fn open_history(&mut self) {
         self.show_editor();
@@ -1280,7 +1303,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1394,7 +1417,12 @@ fn main() -> Result<(), slint::PlatformError> {
     let delayed = args.iter().any(|a| a == "--delayed-capture");
     if let Some(path) = args.into_iter().find(|a| a != "--background" && a != "--delayed-capture").map(PathBuf::from) { open_path(path); }
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
-    with(|a| { apply_language(&a.settings.language); a.apply_privacy(); a.push_settings(); a.refresh(); });
+    with(|a| {
+        apply_language(&a.settings.language);
+        // "Clear on exit" also runs at start: a crash, a kill or a log-off may skip the exit path.
+        if a.settings.clear_on_exit && a.resident { if let Some(h) = a.history() { h.clear(); } }
+        a.apply_privacy(); a.push_settings(); a.refresh();
+    });
     let resident = with(|a| a.resident).unwrap_or(false);
     if !(background && resident) { ui.show()?; }
     if delayed && resident { slint::Timer::single_shot(Duration::from_millis(300), || { with(|a| a.start_countdown()); }); }
@@ -1505,7 +1533,6 @@ fn history_command(cmd: &str) {
     }
 }
 
-/// One pooled overlay window for monitor `i`, with its callbacks wired.
 /// Switch Slint's bundled translation and the Rust-side strings together.
 fn apply_language(setting: &str) {
     let en = i18n::wants_english(setting, anshot_platform_windows::ui_language_is_chinese());
@@ -1535,6 +1562,7 @@ fn hwnd_of(w: &slint::Window) -> Option<isize> {
     w.with_winit_window(|ww| match ww.window_handle().ok()?.as_raw() { RawWindowHandle::Win32(h) => Some(h.hwnd.get()), _ => None }).flatten()
 }
 
+/// One pooled overlay window for monitor `i`, with its callbacks wired.
 fn new_overlay(i: usize) -> Option<CaptureOverlay> {
     let win = CaptureOverlay::new().ok()?;
     win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });

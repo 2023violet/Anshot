@@ -11,6 +11,8 @@ pub const MAX_DIB_BYTES:usize=MAX_PIXELS as usize*4+124;
 /// clipboard next to its PNG. The inverse of what [`dib_to_png`] accepts.
 pub fn rgba_to_dibv5(img:&RgbaImage)->Vec<u8>{
     let (w,h)=img.dimensions();
+    // Callers pass decoded exports (<= MAX_PIXELS), so the 32-bit image size cannot overflow.
+    assert!(u64::from(w)*u64::from(h)<=MAX_PIXELS,"DIB larger than the pixel limit");
     let mut out=Vec::with_capacity(124+w as usize*h as usize*4);
     let put=|v:&mut Vec<u8>,x:u32|v.extend_from_slice(&x.to_le_bytes());
     put(&mut out,124);put(&mut out,w);put(&mut out,h);              // size, width, height (bottom-up)

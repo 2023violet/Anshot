@@ -169,7 +169,12 @@ impl Controller {
     pub fn can_deliver(&self) -> bool {
         self.busy.is_none() && self.drag.is_none() && self.text_edit.is_none() && self.editor.is_some()
     }
-    pub fn redaction_count(&self) -> usize { self.editor.as_ref().map_or(0, |e| e.masks().len()) }
+    /// Redactions that end up in the exported image (a crop can leave some outside).
+    pub fn redactions_in_output(&self) -> usize {
+        let Some(e) = self.editor.as_ref() else { return 0 };
+        let Some(c) = e.scene().crop else { return e.masks().len() };
+        e.masks().iter().filter(|m| m.region.x0 < c.x1 && m.region.x1 > c.x0 && m.region.y0 < c.y1 && m.region.y1 > c.y0).count()
+    }
 
     /// Replace (or create) the document. The caller has already confirmed discard.
     pub fn accept_source(&mut self, candidate: SourceCandidate, name: Option<String>) -> Result<(), EditError> {
@@ -753,6 +758,8 @@ impl Controller {
     /// The current source and scene, for rendering the exact export image elsewhere
     /// (text recognition); changes nothing.
     pub fn ocr_snapshot(&self) -> Option<(Vec<u8>, anshot_render::Scene)> {
+        // Not mid-gesture: a redaction still being drawn is not part of the document yet.
+        if self.drag.is_some() || self.text_edit.is_some() { return None; }
         let e = self.editor.as_ref()?;
         Some((e.source_bytes()?.to_vec(), e.scene()))
     }
