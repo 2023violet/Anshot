@@ -50,6 +50,20 @@ pub enum Shape {
     Line { from: (f32, f32), to: (f32, f32), width: f32 },
     /// Freehand stroke through `points` (source px), round joins and caps.
     Pen { points: Vec<(f32, f32)>, width: f32 },
+    /// Everything outside `region` is darkened; several spotlights share one lit area.
+    Spotlight { region: Region },
+    /// A `zoom`x copy of `region` as rendered (redactions and spotlights included, never
+    /// the source pixels) centred at `center`, framed and joined to the region by a line.
+    Magnify { region: Region, center: (f32, f32), zoom: f32, width: f32 },
+}
+
+/// How much of the colour stays outside a spotlight (0 = black).
+pub const SPOTLIGHT_KEEP: f32 = 0.45;
+
+/// The callout rectangle of a magnifier in source px: (left, top, right, bottom).
+pub fn magnify_target(region: &Region, center: (f32, f32), zoom: f32) -> (f32, f32, f32, f32) {
+    let (w, h) = ((region.x1 - region.x0).abs() as f32 * zoom, (region.y1 - region.y0).abs() as f32 * zoom);
+    (center.0 - w / 2.0, center.1 - h / 2.0, center.0 + w / 2.0, center.1 + h / 2.0)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -74,7 +88,12 @@ pub fn mosaic_color(x: i64, y: i64) -> [u8; 4] {
 pub fn bounds(a: &Annotation) -> (f32, f32, f32, f32) {
     let r = |g: &Region| (g.x0.min(g.x1) as f32, g.y0.min(g.y1) as f32, g.x0.max(g.x1) as f32, g.y0.max(g.y1) as f32);
     match &a.shape {
-        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => r(region),
+        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region } => r(region),
+        Shape::Magnify { region, center, zoom, width } => {
+            let (a, (l, t, rr, b)) = (r(region), magnify_target(region, *center, *zoom));
+            let pad = width / 2.0;
+            (a.0.min(l) - pad, a.1.min(t) - pad, a.2.max(rr) + pad, a.3.max(b) + pad)
+        }
         Shape::Line { from, to, width } => {
             let pad = width / 2.0 + 2.0;
             (from.0.min(to.0) - pad, from.1.min(to.1) - pad, from.0.max(to.0) + pad, from.1.max(to.1) + pad)
@@ -162,8 +181,44 @@ pub fn render_into(img: &mut RgbaImage, scene: &Scene, scale: f32) {
             }
         }
     }
-    if scene.annotations.is_empty() { return; }
-    // 2. Annotations, anti-aliased, on a premultiplied copy.
+    // 2. Spotlights: darken everything outside the union of their regions.
+    let spots: Vec<(f32, f32, f32, f32)> = scene.annotations.iter().filter_map(|a| match &a.shape {
+        Shape::Spotlight { region: r } => Some((r.x0.min(r.x1) as f32, r.y0.min(r.y1) as f32, r.x0.max(r.x1) as f32, r.y0.max(r.y1) as f32)),
+        _ => None,
+    }).collect();
+    if !spots.is_empty() {
+        for (x, y, p) in img.enumerate_pixels_mut() {
+            let (sx, sy) = ((x as f32 + 0.5) / scale, (y as f32 + 0.5) / scale);
+            if spots.iter().any(|&(l, t, r, b)| sx >= l && sx < r && sy >= t && sy < b) { continue; }
+            for c in &mut p.0[..3] { *c = (f32::from(*c) * SPOTLIGHT_KEEP).round() as u8; }
+        }
+    }
+    // 3. Magnifiers copy the picture as it is now (redactions included), enlarged.
+    let mags: Vec<(Region, (f32, f32), f32)> = scene.annotations.iter().filter_map(|a| match &a.shape {
+        Shape::Magnify { region, center, zoom, .. } => Some((*region, *center, *zoom)),
+        _ => None,
+    }).collect();
+    if !mags.is_empty() {
+        let snap = img.clone();
+        for (r, center, zoom) in mags {
+            let (l, t, rr, b) = magnify_target(&r, center, zoom);
+            let (sl, st) = (r.x0.min(r.x1) as f32, r.y0.min(r.y1) as f32);
+            let (x0, y0) = ((l * scale).floor().max(0.0) as u32, (t * scale).floor().max(0.0) as u32);
+            let (x1, y1) = ((rr * scale).ceil().min(w as f32) as u32, (b * scale).ceil().min(h as f32) as u32);
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    // Nearest source pixel of the enlarged view, sampled from the snapshot.
+                    let sx = ((x as f32 + 0.5) / scale - l) / zoom + sl;
+                    let sy = ((y as f32 + 0.5) / scale - t) / zoom + st;
+                    let (px, py) = ((sx * scale) as i64, (sy * scale) as i64);
+                    if px < 0 || py < 0 || px >= i64::from(w) || py >= i64::from(h) { continue; }
+                    img.put_pixel(x, y, *snap.get_pixel(px as u32, py as u32));
+                }
+            }
+        }
+    }
+    if scene.annotations.iter().all(|a| matches!(a.shape, Shape::Spotlight { .. })) { return; }
+    // 4. Annotations, anti-aliased, on a premultiplied copy.
     let Some(size) = tiny_skia::IntSize::from_wh(w, h) else { return };
     let Some(mut pm) = Pixmap::from_vec(premultiply(img), size) else { return };
     let tf = Transform::from_scale(scale, scale);
@@ -250,6 +305,21 @@ fn draw(pm: &mut Pixmap, a: &Annotation, tf: Transform, scale: f32) {
                 pm.stroke_path(&line, &paint(color), &Stroke { width: *width, line_cap: LineCap::Round, ..Stroke::default() }, tf, None);
             }
         }
+        Shape::Spotlight { .. } => {}
+        Shape::Magnify { region, center, zoom, width } => {
+            let Some(src) = rect_of(region) else { return };
+            let (l, t, rr, b) = magnify_target(region, *center, *zoom);
+            let Some(dst) = Rect::from_ltrb(l, t, rr, b) else { return };
+            // Leader line between the facing edges (it never crosses either frame).
+            let (a, z) = (edge_toward(src, dst), edge_toward(dst, src));
+            let mut pb = PathBuilder::new();
+            pb.move_to(a.0, a.1);
+            pb.line_to(z.0, z.1);
+            let thin = Stroke { width: (width / 2.0).max(1.0), line_cap: LineCap::Round, ..Stroke::default() };
+            if let Some(line) = pb.finish() { pm.stroke_path(&line, &paint(color), &thin, tf, None); }
+            pm.stroke_path(&PathBuilder::from_rect(src), &paint(color), &thin, tf, None);
+            pm.stroke_path(&PathBuilder::from_rect(dst), &paint(color), &Stroke { width: *width, ..Stroke::default() }, tf, None);
+        }
         Shape::Pen { points, width } => {
             if let Some(path) = pen_path(points) {
                 let stroke = Stroke { width: *width, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
@@ -257,6 +327,16 @@ fn draw(pm: &mut Pixmap, a: &Annotation, tf: Transform, scale: f32) {
             }
         }
     }
+}
+
+/// The point on `r`'s edge on the way from its centre toward `other`'s centre.
+fn edge_toward(r: Rect, other: Rect) -> (f32, f32) {
+    let (cx, cy) = ((r.left() + r.right()) / 2.0, (r.top() + r.bottom()) / 2.0);
+    let (ox, oy) = ((other.left() + other.right()) / 2.0, (other.top() + other.bottom()) / 2.0);
+    let (dx, dy) = (ox - cx, oy - cy);
+    if dx == 0.0 && dy == 0.0 { return (cx, cy); }
+    let k = ((r.width() / 2.0) / dx.abs().max(f32::EPSILON)).min((r.height() / 2.0) / dy.abs().max(f32::EPSILON)).min(1.0);
+    (cx + dx * k, cy + dy * k)
 }
 
 /// Smooth a freehand polyline: straight segments between the midpoints of consecutive

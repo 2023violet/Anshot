@@ -18,11 +18,13 @@ pub const INKS: [[u8; 4]; 6] = [
 pub const CUSTOM_INK: usize = 6;
 pub const WIDTHS: [f32; 3] = [2.0, 4.0, 7.0];
 pub const TEXT_SIZES: [f32; 5] = [14.0, 18.0, 24.0, 32.0, 48.0];
+/// Magnifier callout zoom.
+pub const MAGNIFY: f32 = 2.0;
 /// 04_DESIGN `redact.solid` choices.
 pub const SOLIDS: [[u8; 4]; 2] = [[0x1a, 0x19, 0x15, 255], [0xff, 0xff, 0xff, 255]];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Tool { Select, Arrow, Rect, Text, Number, Highlight, Redact, Mosaic, Crop, Ellipse, Line, Pen }
+pub enum Tool { Select, Arrow, Rect, Text, Number, Highlight, Redact, Mosaic, Crop, Ellipse, Line, Pen, Spotlight, Magnify }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Delivery { Copy, Save }
@@ -95,20 +97,24 @@ impl Default for Controller {
 }
 
 fn region_of(a: &Annotation) -> Option<Region> {
-    match a.shape { Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => Some(region), _ => None }
+    match a.shape { Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region } => Some(region), _ => None }
 }
 fn with_region(a: &Annotation, r: Region) -> Annotation {
     let mut a = a.clone();
-    if let Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } = &mut a.shape { *region = r; }
+    if let Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region } = &mut a.shape { *region = r; }
     a
 }
 fn translate(a: &Annotation, dx: f32, dy: f32) -> Annotation {
     let mut a = a.clone();
     let (ix, iy) = (dx.round() as i64, dy.round() as i64);
     match &mut a.shape {
-        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => *region = Region::new(region.x0 + ix, region.y0 + iy, region.x1 + ix, region.y1 + iy),
+        Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region } => *region = Region::new(region.x0 + ix, region.y0 + iy, region.x1 + ix, region.y1 + iy),
         Shape::Arrow { from, to, .. } | Shape::Line { from, to, .. } => { *from = (from.0 + dx, from.1 + dy); *to = (to.0 + dx, to.1 + dy); }
         Shape::Pen { points, .. } => { for p in points.iter_mut() { *p = (p.0 + dx, p.1 + dy); } }
+        Shape::Magnify { region, center, .. } => {
+            *region = Region::new(region.x0 + ix, region.y0 + iy, region.x1 + ix, region.y1 + iy);
+            *center = (center.0 + dx, center.1 + dy);
+        }
         Shape::Number { center, .. } => *center = (center.0 + dx, center.1 + dy),
         Shape::Text { origin, .. } => *origin = (origin.0 + dx, origin.1 + dy),
     }
@@ -203,7 +209,7 @@ impl Controller {
         let sc = |x: f32, y: f32| (v.x + f64::from(x) * v.scale, v.y + f64::from(y) * v.scale);
         match self.display_annotation(id).map(|a| a.shape) {
             Some(Shape::Arrow { from, to, .. } | Shape::Line { from, to, .. }) => vec![(Grip::ArrowFrom, sc(from.0, from.1)), (Grip::ArrowTo, sc(to.0, to.1))],
-            Some(Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. }) => box_grips(v.rect(region)),
+            Some(Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region }) => box_grips(v.rect(region)),
             _ => Vec::new(),
         }
     }
@@ -230,6 +236,19 @@ impl Controller {
                 Shape::Pen { points, width } => {
                     let near = |a: (f32, f32), b: (f32, f32)| seg_dist(s, (a.0.into(), a.1.into()), (b.0.into(), b.1.into())) <= f64::from(*width) / 2.0 + tol;
                     match points.as_slice() { [only] => near(*only, *only), pts => pts.windows(2).any(|w| near(w[0], w[1])) }
+                }
+                // A spotlight is where the rest gets drawn: only its edge selects it.
+                Shape::Spotlight { region: r } => {
+                    let (l, t, rr, b) = (r.x0.min(r.x1) as f64, r.y0.min(r.y1) as f64, r.x0.max(r.x1) as f64, r.y0.max(r.y1) as f64);
+                    let within = s.0 >= l - tol && s.0 <= rr + tol && s.1 >= t - tol && s.1 <= b + tol;
+                    within && ((s.0 - l).abs() <= tol || (s.0 - rr).abs() <= tol || (s.1 - t).abs() <= tol || (s.1 - b).abs() <= tol)
+                }
+                // A magnifier is its source box or its callout, not the gap between them.
+                Shape::Magnify { region: r, center, zoom, .. } => {
+                    let (l, t, rr, b) = anshot_render::magnify_target(r, *center, *zoom);
+                    let in_box = |l: f64, t: f64, rr: f64, b: f64| s.0 >= l && s.0 < rr && s.1 >= t && s.1 < b;
+                    in_box(r.x0.min(r.x1) as f64, r.y0.min(r.y1) as f64, r.x0.max(r.x1) as f64, r.y0.max(r.y1) as f64)
+                        || in_box(l.into(), t.into(), rr.into(), b.into())
                 }
                 _ => s.0 >= f64::from(x0) && s.0 < f64::from(x1) && s.1 >= f64::from(y0) && s.1 < f64::from(y1),
             };
@@ -390,6 +409,18 @@ impl Controller {
             Tool::Rect if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Rect { region: r, width: WIDTHS[self.style.width] }, color })),
             Tool::Highlight if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Highlight { region: r }, color })),
             Tool::Ellipse if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Ellipse { region: r, width: WIDTHS[self.style.width] }, color })),
+            Tool::Spotlight if area > 0 => Some(Draft::Ann(Annotation { shape: Shape::Spotlight { region: r }, color })),
+            Tool::Magnify if area > 0 => {
+                // The 2x callout goes beside the region (right, else left), kept inside the image.
+                let (w, h) = self.editor.as_ref().map_or((0, 0), |e| e.dimensions());
+                let (rw, rh) = ((r.x1 - r.x0) as f32 * MAGNIFY, (r.y1 - r.y0) as f32 * MAGNIFY);
+                let gap = 16.0;
+                let right = r.x1 as f32 + gap + rw / 2.0;
+                let cx = if right + rw / 2.0 <= w as f32 { right } else { r.x0 as f32 - gap - rw / 2.0 };
+                let cx = cx.clamp(rw / 2.0, (w as f32 - rw / 2.0).max(rw / 2.0));
+                let cy = ((r.y0 + r.y1) as f32 / 2.0).clamp(rh / 2.0, (h as f32 - rh / 2.0).max(rh / 2.0));
+                Some(Draft::Ann(Annotation { shape: Shape::Magnify { region: r, center: (cx, cy), zoom: MAGNIFY, width: WIDTHS[self.style.width] }, color }))
+            }
             Tool::Line if ((c.0 - s.0).powi(2) + (c.1 - s.1).powi(2)).sqrt() * view.scale >= 4.0 => Some(Draft::Ann(Annotation {
                 shape: Shape::Line { from: (s.0 as f32, s.1 as f32), to: (c.0 as f32, c.1 as f32), width: WIDTHS[self.style.width] }, color })),
             Tool::Arrow if ((c.0 - s.0).powi(2) + (c.1 - s.1).powi(2)).sqrt() * view.scale >= 6.0 => Some(Draft::Ann(Annotation {
@@ -474,6 +505,7 @@ impl Controller {
             Shape::Arrow { .. } => Tool::Arrow, Shape::Rect { .. } => Tool::Rect, Shape::Highlight { .. } => Tool::Highlight,
             Shape::Number { .. } => Tool::Number, Shape::Text { .. } => Tool::Text,
             Shape::Ellipse { .. } => Tool::Ellipse, Shape::Line { .. } => Tool::Line, Shape::Pen { .. } => Tool::Pen,
+            Shape::Spotlight { .. } => Tool::Spotlight, Shape::Magnify { .. } => Tool::Magnify,
         })
     }
     /// Pull the selected object's style into the current style.
@@ -488,7 +520,7 @@ impl Controller {
         let (color, shape) = (a.annotation.color, a.annotation.shape.clone());
         self.adopt_color(color);
         match &shape {
-            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } => { if let Some(i) = WIDTHS.iter().position(|w| w == width) { self.style.width = i; } }
+            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } | Shape::Magnify { width, .. } => { if let Some(i) = WIDTHS.iter().position(|w| w == width) { self.style.width = i; } }
             Shape::Text { size, background, .. } => {
                 if let Some(i) = TEXT_SIZES.iter().position(|s| s == size) { self.style.size = i; }
                 self.style.background = *background;
@@ -510,11 +542,34 @@ impl Controller {
         let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
         a.color = ink;
         match &mut a.shape {
-            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } => *width = WIDTHS[st.width],
+            Shape::Arrow { width, .. } | Shape::Rect { width, .. } | Shape::Ellipse { width, .. } | Shape::Line { width, .. } | Shape::Pen { width, .. } | Shape::Magnify { width, .. } => *width = WIDTHS[st.width],
             Shape::Text { size, background, .. } => { *size = TEXT_SIZES[st.size]; *background = st.background; }
             _ => {}
         }
         e.replace_annotation(id, a).unwrap_or(false)
+    }
+    /// Alt+wheel on the selection: a number counts up or down, strokes and text step their
+    /// width / size (one undo entry each).
+    pub fn wheel_adjust(&mut self, up: bool) -> bool {
+        if self.drag.is_some() { return false; }
+        let Some(e) = self.editor.as_ref() else { return false };
+        let Some(id) = e.selected() else { return false };
+        let Some(a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
+        let step = |i: usize, n: usize| if up { (i + 1).min(n - 1) } else { i.saturating_sub(1) };
+        match a.shape {
+            Shape::Number { n, center, radius } => {
+                let n = if up { n.saturating_add(1) } else { n.saturating_sub(1).max(1) };
+                let mut a = a.clone();
+                a.shape = Shape::Number { n, center, radius };
+                self.editor.as_mut().is_some_and(|e| e.replace_annotation(id, a).unwrap_or(false))
+            }
+            Shape::Text { .. } => { let i = step(self.style.size, TEXT_SIZES.len()); self.apply_style(|s| s.size = i) }
+            Shape::Arrow { .. } | Shape::Rect { .. } | Shape::Ellipse { .. } | Shape::Line { .. } | Shape::Pen { .. } | Shape::Magnify { .. } => {
+                let i = step(self.style.width, WIDTHS.len());
+                self.apply_style(|s| s.width = i)
+            }
+            _ => false,
+        }
     }
     /// Switch between the paired shapes (frame <-> ellipse, arrow <-> line) for new drawings,
     /// converting a selected object of the pair in place (one undo entry).
@@ -666,7 +721,7 @@ impl Controller {
         let (w, h) = e.dimensions();
         let Some(mut a) = e.annotations().iter().find(|a| a.id == id).map(|a| a.annotation.clone()) else { return false };
         match &mut a.shape {
-            Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } => {
+            Shape::Rect { region, .. } | Shape::Highlight { region } | Shape::Ellipse { region, .. } | Shape::Spotlight { region } => {
                 let Some(pr) = PixelRect::from_region(*region, w, h) else { return false };
                 *region = pr.resize(Handle::Se, dx, dy, w, h).region();
             }

@@ -183,3 +183,54 @@ fn golden_scene_v2_digest_is_frozen() {
 
 /// Frozen 2026-10-21 after visual review; same toolchain pins as v1.
 const GOLDEN_SCENE_V2: u64 = 0xd654_7732_c6a9_0ce1;
+
+pub(crate) fn golden_scene_v3() -> Scene {
+    Scene {
+        redactions: vec![Redaction { region: Region::new(40, 40, 90, 60), style: RedactStyle::SafeMosaic }],
+        annotations: vec![
+            Annotation { shape: Shape::Spotlight { region: Region::new(20, 20, 120, 100) }, color: [0xe5, 0x34, 0x2b, 255] },
+            Annotation { shape: Shape::Magnify { region: Region::new(40, 40, 90, 70), center: (220.0, 80.0), zoom: 2.0, width: 3.0 }, color: [0xe5, 0x34, 0x2b, 255] },
+        ],
+        crop: None,
+    }
+}
+
+#[test]
+fn spotlight_dims_outside_and_magnifier_enlarges_the_redacted_picture() {
+    let src = source(320, 240, 33);
+    let mut img = src.clone();
+    let scene = golden_scene_v3();
+    render_into(&mut img, &scene, 1.0);
+    // Outside the spotlight: darkened; inside (away from the mosaic): unchanged.
+    let (o, d) = (src.get_pixel(300, 220).0, img.get_pixel(300, 220).0);
+    assert_eq!(d[0], (f32::from(o[0]) * SPOTLIGHT_KEEP).round() as u8);
+    assert_eq!(img.get_pixel(30, 90).0, src.get_pixel(30, 90).0);
+    // The callout shows the mosaic (never the covered source pixels), at 2x:
+    // source (42, 42) is mosaic; it appears at callout (170 + 4..5, 50 + 4..5).
+    let (l, t, _, _) = magnify_target(&Region::new(40, 40, 90, 70), (220.0, 80.0), 2.0);
+    assert_eq!((l, t), (170.0, 50.0));
+    assert_eq!(img.get_pixel(174, 54).0, mosaic_color(42, 42));
+    assert_ne!(img.get_pixel(174, 54).0, src.get_pixel(42, 42).0);
+    // Bounds span the region and the callout.
+    let (x0, y0, x1, y1) = bounds(&scene.annotations[1]);
+    assert!(x0 <= 40.0 && y0 <= 40.0 && x1 >= 270.0 && y1 >= 110.0, "{x0} {y0} {x1} {y1}");
+    // The preview (scale 0.5) samples the same picture.
+    let mut small = image::imageops::resize(&src, 160, 120, image::imageops::FilterType::Nearest);
+    render_into(&mut small, &scene, 0.5);
+    assert_eq!(small.dimensions(), (160, 120));
+}
+
+/// Frozen render golden for the 0.3 shapes (tests/golden/render/scene-v3.png).
+#[test]
+fn golden_scene_v3_digest_is_frozen() {
+    let mut img = source(320, 240, 91);
+    render_into(&mut img, &golden_scene_v3(), 1.0);
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN_V3").is_some() {
+        img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v3.png")).unwrap();
+        println!("DIGEST_V3={:#018x}", digest(&img));
+    }
+    assert_eq!(digest(&img), GOLDEN_SCENE_V3, "render output changed; review and re-freeze deliberately");
+}
+
+/// Frozen 2026-10-24 after visual review.
+const GOLDEN_SCENE_V3: u64 = 0xe8bc_9325_9bf6_889d;

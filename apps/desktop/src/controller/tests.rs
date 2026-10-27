@@ -412,3 +412,49 @@ fn redactions_are_padded_and_clamped_when_the_setting_is_on() {
     drag(&mut c, (100.0, 60.0), (150.0, 90.0));
     assert!(matches!(editor(&c).annotations()[0].annotation.shape, anshot_render::Shape::Rect { region, .. } if region == Region::new(100, 60, 150, 90)));
 }
+
+#[test]
+fn spotlight_and_magnifier_tools_and_alt_wheel() {
+    use anshot_render::Shape;
+    let mut c = opened(400, 200);
+    c.tool = Tool::Spotlight;
+    drag(&mut c, (10.0, 10.0), (110.0, 60.0));
+    let Shape::Spotlight { region } = editor(&c).annotations()[0].annotation.shape else { panic!("no spotlight") };
+    assert!((region.x0, region.y0) == (10, 10) && (110..=111).contains(&region.x1) && (60..=61).contains(&region.y1), "{region:?}");
+    // Drawing inside a spotlight draws (does not grab the spotlight); its edge selects it.
+    c.tool = Tool::Arrow;
+    drag(&mut c, (30.0, 20.0), (80.0, 50.0));
+    assert_eq!(editor(&c).annotations().len(), 2, "arrow drawn inside the spotlight");
+    assert!(matches!(c.hit(at(&c, 10.0, 30.0)), Hit::Ann(_)), "left edge selects");
+    editor_delete_last(&mut c);
+    // The callout goes right of the region when it fits, else left; always inside the image.
+    c.tool = Tool::Magnify;
+    drag(&mut c, (20.0, 100.0), (60.0, 130.0));
+    let Shape::Magnify { region: r, center, zoom, .. } = editor(&c).annotations()[1].annotation.shape else { panic!() };
+    assert_eq!(zoom, 2.0);
+    assert_eq!(center.0, r.x1 as f32 + 16.0 + (r.x1 - r.x0) as f32);
+    drag(&mut c, (330.0, 100.0), (380.0, 130.0));
+    let Shape::Magnify { region: r, center, .. } = editor(&c).annotations()[2].annotation.shape else { panic!() };
+    assert_eq!(center.0, r.x0 as f32 - 16.0 - (r.x1 - r.x0) as f32, "no room on the right");
+    // Moving a magnifier moves the region and the callout together.
+    let before = editor(&c).annotations()[2].annotation.clone();
+    c.tool = Tool::Select;
+    drag(&mut c, (340.0, 110.0), (330.0, 120.0));
+    let Shape::Magnify { region, center, .. } = editor(&c).annotations()[2].annotation.shape else { panic!() };
+    let Shape::Magnify { region: r0, center: c0, .. } = before.shape else { panic!() };
+    assert_eq!((region.x0 - r0.x0, region.y0 - r0.y0), (-10, 10));
+    assert_eq!((center.0 - c0.0, center.1 - c0.1), (-10.0, 10.0));
+    // Alt+wheel: the selected magnifier's frame gets thicker, a number counts.
+    let w0 = c.style.width;
+    assert!(c.wheel_adjust(true));
+    assert_eq!(c.style.width, (w0 + 1).min(WIDTHS.len() - 1));
+    c.tool = Tool::Number;
+    c.pointer_down(at(&c, 200.0, 20.0)); c.pointer_up();
+    assert!(c.wheel_adjust(true));
+    assert!(matches!(editor(&c).annotations().last().unwrap().annotation.shape, Shape::Number { n: 2, .. }));
+    assert!(c.wheel_adjust(false));
+    assert!(!c.wheel_adjust(false), "already 1: no change");
+    assert!(matches!(editor(&c).annotations().last().unwrap().annotation.shape, Shape::Number { n: 1, .. }), "never below 1");
+}
+
+fn editor_delete_last(c: &mut Controller) { let id = editor(c).annotations().last().unwrap().id; c.editor.as_mut().unwrap().select(Some(id)).unwrap(); assert!(c.delete_selected()); }

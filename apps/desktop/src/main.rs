@@ -190,7 +190,9 @@ impl App {
         ui.set_has_selection(kind.is_some());
         let mode = match kind.unwrap_or(ctl.tool) {
             Tool::Redact => "redact", Tool::Mosaic => "mosaic",
-            Tool::Arrow | Tool::Rect | Tool::Ellipse | Tool::Line | Tool::Pen => "stroke",
+            Tool::Arrow | Tool::Rect | Tool::Ellipse | Tool::Line | Tool::Pen | Tool::Magnify => "stroke",
+            // A spotlight has no colour or width: the property bar only shows the hint.
+            Tool::Spotlight => "spotlight",
             Tool::Number | Tool::Highlight => "fill", Tool::Text => "text", Tool::Select => "hint-select", Tool::Crop => "crop",
         };
         ui.set_prop_mode(mode.into());
@@ -1206,6 +1208,8 @@ fn command(cmd: &str) {
                     "tool-ellipse" => { a.ctl.set_shape_tool(Tool::Ellipse); }
                     "tool-line" => { a.ctl.set_shape_tool(Tool::Line); }
                     "tool-pen" => a.ctl.tool = Tool::Pen,
+                    "tool-spotlight" => a.ctl.tool = Tool::Spotlight,
+                    "tool-magnify" => a.ctl.tool = Tool::Magnify,
                     "color-picker" => a.open_picker(),
                     "tool-text" => a.ctl.tool = Tool::Text,
                     "tool-number" => a.ctl.tool = Tool::Number,
@@ -1310,9 +1314,10 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_pointer_up(|| { with(|a| { a.ctl.pointer_up(); a.refresh(); }); });
     ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); }); });
     ui.on_command(|c| command(c.as_str()));
-    ui.on_wheel(|dx, dy, x, y, ctrl, shift| {
+    ui.on_wheel(|dx, dy, x, y, ctrl, shift, alt| {
         with(|a| {
-            if ctrl { a.ctl.zoom_by(if dy > 0.0 { 1.1 } else { 1.0 / 1.1 }, Point { x: x.into(), y: y.into() }); }
+            if alt { if dy != 0.0 { a.ctl.wheel_adjust(dy > 0.0); } }
+            else if ctrl { a.ctl.zoom_by(if dy > 0.0 { 1.1 } else { 1.0 / 1.1 }, Point { x: x.into(), y: y.into() }); }
             else if shift { a.ctl.scroll(f64::from(dy), 0.0); }
             else { a.ctl.scroll(f64::from(dx), f64::from(dy)); }
             a.refresh();
@@ -1399,7 +1404,7 @@ fn tool_name(t: Tool) -> &'static str {
     match t {
         Tool::Select => "select", Tool::Arrow => "arrow", Tool::Rect => "rect", Tool::Text => "text", Tool::Number => "number",
         Tool::Highlight => "highlight", Tool::Redact => "redact", Tool::Mosaic => "mosaic", Tool::Crop => "crop",
-        Tool::Ellipse => "ellipse", Tool::Line => "line", Tool::Pen => "pen",
+        Tool::Ellipse => "ellipse", Tool::Line => "line", Tool::Pen => "pen", Tool::Spotlight => "spotlight", Tool::Magnify => "magnify",
     }
 }
 /// 02 §5.2 single-key tools.
@@ -1407,7 +1412,7 @@ fn tool_for_key(c: char) -> Option<Tool> {
     Some(match c {
         'v' => Tool::Select, 'a' => Tool::Arrow, 'r' => Tool::Rect, 't' => Tool::Text, 'n' => Tool::Number,
         'h' => Tool::Highlight, 'b' => Tool::Redact, 'm' => Tool::Mosaic, 'c' => Tool::Crop,
-        'e' => Tool::Ellipse, 'l' => Tool::Line, 'p' => Tool::Pen, _ => return None,
+        'e' => Tool::Ellipse, 'l' => Tool::Line, 'p' => Tool::Pen, 's' => Tool::Spotlight, 'z' => Tool::Magnify, _ => return None,
     })
 }
 

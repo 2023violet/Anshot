@@ -93,7 +93,7 @@ export component AppWindow inherits Window {
     callback dialog-choice(string);
     callback text-commit(string);
     callback text-cancel();
-    callback wheel(length, length, length, length, bool, bool); // dx, dy, x, y, ctrl, shift
+    callback wheel(length, length, length, length, bool, bool, bool); // dx, dy, x, y, ctrl, shift, alt
     callback middle-down(length, length);
     callback key-released(string);
     in property <bool> drop-hover;
@@ -127,6 +127,8 @@ export component AppWindow inherits Window {
                         ToolButton { label: "序号 N"; d: "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 M 11 9 L 12.5 8 L 12.5 16"; selected: root.has-document && root.tool == "number"; enabled: root.has-document; clicked => { root.command("tool-number"); } }
                         ToolButton { label: "高亮 H"; d: "M 9 11 L 4 16 L 4 20 L 8 20 L 13 15 M 9 11 L 14 6 L 18 10 L 13 15 Z"; selected: root.has-document && root.tool == "highlight"; enabled: root.has-document; clicked => { root.command("tool-highlight"); } }
                         ToolButton { label: "画笔 P"; d: "M 3 17 C 6 9 9 21 12 13 C 14 8 17 7 21 9"; selected: root.has-document && root.tool == "pen"; enabled: root.has-document; clicked => { root.command("tool-pen"); } }
+                        ToolButton { label: "聚光灯 S"; d: "M 3 3 L 21 3 L 21 21 L 3 21 Z M 8 8 L 16 8 L 16 16 L 8 16 Z"; selected: root.has-document && root.tool == "spotlight"; enabled: root.has-document; clicked => { root.command("tool-spotlight"); } }
+                        ToolButton { label: "放大镜 Z"; d: "M 10 4 A 6 6 0 1 0 10 16 A 6 6 0 1 0 10 4 M 14.5 14.5 L 20 20 M 10 7 L 10 13 M 7 10 L 13 10"; selected: root.has-document && root.tool == "magnify"; enabled: root.has-document; clicked => { root.command("tool-magnify"); } }
                         VerticalLayout { alignment: center; padding-left: 6px; padding-right: 6px; VSep { } }
                         ToolButton { label: "遮挡 B"; d: "M 12 3 L 20 6 L 20 12 L 17 18 L 12 21 L 7 18 L 4 12 L 4 6 Z"; selected: root.has-document && root.tool == "redact"; enabled: root.has-document; clicked => { root.command("tool-redact"); } }
                         ToolButton { label: "安全马赛克 M"; d: "M 4 4 L 11 4 L 11 11 L 4 11 Z M 13 13 L 20 13 L 20 20 L 13 20 Z"; selected: root.has-document && root.tool == "mosaic"; enabled: root.has-document; secure-badge: true; clicked => { root.command("tool-mosaic"); } }
@@ -186,6 +188,7 @@ export component AppWindow inherits Window {
                         VerticalLayout { alignment: center; Segmented { options: ["无底色", "背景底色"]; selected: root.text-background ? 1 : 0; picked(i) => { root.command(i == 1 ? "bg-on" : "bg-off"); } } }
                     }
                     if root.prop-mode == "hint-select": Label { horizontal-stretch: 0; text: "单击选择对象 · 拖动移动 · 拖手柄调整 · 方向键微调（Shift ×10）· 双击文字修改"; }
+                    if root.prop-mode == "spotlight": Label { horizontal-stretch: 0; text: "拖出要突出的区域，其余部分变暗；可画多个，一起亮起"; }
                     if root.prop-mode == "crop": Label { horizontal-stretch: 0; text: "拖拽框出要保留的区域 · 拖手柄调整 · 拖内部移动 · Enter 确认 · Esc 取消"; }
                     if root.has-region: HorizontalLayout { spacing: 8px; horizontal-stretch: 0; alignment: start;
                         VerticalLayout { alignment: center; VSep { } }
@@ -250,7 +253,7 @@ export component AppWindow inherits Window {
                         if e.button == PointerEventButton.middle && e.kind == PointerEventKind.up { root.pointer-up(); }
                     }
                     scroll-event(e) => {
-                        root.wheel(e.delta-x, e.delta-y, self.mouse-x, self.mouse-y, e.modifiers.control, e.modifiers.shift);
+                        root.wheel(e.delta-x, e.delta-y, self.mouse-x, self.mouse-y, e.modifiers.control, e.modifiers.shift, e.modifiers.alt);
                         accept
                     }
                     moved => { root.pointer-move(self.mouse-x, self.mouse-y); }

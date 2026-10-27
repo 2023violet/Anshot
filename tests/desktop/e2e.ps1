@@ -933,6 +933,26 @@ Stop-Process -Id $fixture.Id -Force
 if (-not $app.HasExited) { $app.Kill() }
 Start-Sleep -Milliseconds 500
 
+# ---- 34. spotlight and magnifier: dim outside, the callout enlarges the redacted picture ----
+New-Item -ItemType Directory -Force $env:ANSHOT_SETTINGS_DIR | Out-Null
+Set-Content -Encoding utf8 (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') "hide_after_copy=false`npad_redactions=false"
+$w = Launch @("`"$((Resolve-Path $Image).Path)`"")
+$io = ImageOrigin $w $iw $ih
+Key 0x4D                                         # M: mosaic over the phone number
+Drag $w ($io.X + 506) ($io.Y + 141) ($io.X + 595) ($io.Y + 162)
+Key 0x53                                         # S: spotlight on the right-hand bubble
+Drag $w ($io.X + 300) ($io.Y + 120) ($io.X + 610) ($io.Y + 180)
+Key 0x5A                                         # Z: magnifier over the number
+Drag $w ($io.X + 500) ($io.Y + 138) ($io.X + 600) ($io.Y + 166)
+Shot $w '21-spotlight-magnifier.png'
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x43 -Ctrl; Start-Sleep -Milliseconds 1500
+Log "ANNOT copy=$(ClipSave 'clipboard-spotlight.png')"
+Log ("ANNOT check=" + (python (Join-Path $PSScriptRoot 'check_spotlight.py') (Resolve-Path $Image).Path (Join-Path $Out 'clipboard-spotlight.png') 100 300 560 127))   # (560, 127): lit, not under the callout
+if (-not $w.P.HasExited) { $w.P.Kill() }
+[System.IO.File]::Delete((Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt'))
+Start-Sleep -Milliseconds 500
+
 # Leave no test settings or history behind.
 if (Test-Path $env:ANSHOT_HISTORY_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_HISTORY_DIR }
 if (Test-Path $env:ANSHOT_SETTINGS_DIR) { Remove-Item -Recurse -Force $env:ANSHOT_SETTINGS_DIR }
