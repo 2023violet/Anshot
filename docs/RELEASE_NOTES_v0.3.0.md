@@ -21,7 +21,7 @@
 
 ## 已知限制
 - 未做真人可用性测试。
-- 只在 Windows 10、单显示器上实测；多显示器、HDR、Windows 11、讲述人未验证（系统缩放的复测情况见 README）。
+- 只在 Windows 10、单显示器、100% 缩放下实测；125% / 150% 系统缩放、多显示器、HDR、Windows 11、讲述人未验证。
 - 识别文字需要 Windows 里装有对应语言的 OCR 组件；准确率依赖系统组件，小字号或复杂背景会出错。
 - 遮挡外扩能减少文字边缘外泄，但不能隐藏被遮内容的长度。
 - 其他程序设了“不允许截图”的窗口，在截图里会是空白。
@@ -62,7 +62,7 @@
 
 ## Known limits
 - No human usability testing.
-- Tested only on Windows 10 with one monitor. Multi-monitor, HDR, Windows 11 and Narrator are not verified; see the README for display-scaling results.
+- Tested only on Windows 10 with one monitor at 100% scaling. 125%/150% scaling, multi-monitor, HDR, Windows 11 and Narrator are not verified.
 - Text recognition needs the Windows OCR component for the language. Accuracy depends on that component, and small text or busy backgrounds cause errors.
 - Padding redactions reduces leaks at the text edges, but it cannot hide the length of the covered text.
 - Windows of other programs that forbid capture appear blank in screenshots.

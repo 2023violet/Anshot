@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-## 0.3.0 — 未发布 / unreleased
+## 0.3.0 — 2026-10-27
 
 ### 新增 / Added
 - 识别文字（离线 OCR）：选区工具条、编辑器（Ctrl+Shift+O）与钉图菜单；用 Windows 自带的文字识别，在本机完成、不联网、不下载；编辑器里识别的是导出图，被遮挡的内容识别不到；结果可编辑、可复制，不落盘。/ Text recognition (offline OCR) from the selection toolbar, the editor (Ctrl+Shift+O) and pins, using the OCR built into Windows: local, no network, no download; the editor reads the export render, so redacted text is not recognised; results are editable, copyable and never saved.
