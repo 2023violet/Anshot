@@ -694,7 +694,10 @@ if (-not $app.HasExited) { $app.Kill() }
 # The region also covers the sidebar; only the scrolling pane may be stitched, header and footer once.
 $hx = 160; $hdr = 40; $ftr = 32; $inset = 10; $fw = 800; $fh = 420
 $fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'scroll_window.ps1'), '-Image', "`"$page`"", '-X', $fx, '-Y', $fy, '-W', $fw, '-H', $fh, '-Side', $hx, '-Header', $hdr, '-Footer', $ftr) -PassThru -WindowStyle Hidden
-Start-Sleep -Seconds 3
+# The fixture builds its page first: wait until it is really on screen (a fixed wait was flaky).
+$t0 = Get-Date; while ([E]::TitleAny('Anshot scroll fixture') -eq [IntPtr]::Zero -and ((Get-Date) - $t0).TotalSeconds -lt 20) { Start-Sleep -Milliseconds 200 }
+Start-Sleep -Milliseconds 800
+Log "LONGHARD fixture_shown=$([E]::TitleAny('Anshot scroll fixture') -ne [IntPtr]::Zero)"
 $app = Start-Process $Exe -ArgumentList '--background' -PassThru; Start-Sleep -Seconds 2
 Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 1200
 $ovh = ([E]::Visible([uint32]$app.Id, 'Anshot 截图'))[0]
@@ -705,10 +708,10 @@ Start-Sleep -Milliseconds 800
 [void][E]::SetCursorPos($fx + $hx + 300, $fy + 200); Start-Sleep -Milliseconds 300
 foreach ($i in 1..10) { [E]::mouse_event(0x0800, 0, 0, [uint32]4294967176, [IntPtr]::Zero); Start-Sleep -Milliseconds 350 }
 Start-Sleep -Milliseconds 600
-$panel = [E]::TitleAny('Anshot 长截图')
-$pn = UiaNames ([pscustomobject]@{ H = $panel })
+$t0 = Get-Date; while (($panel = [E]::TitleAny('Anshot 长截图')) -eq [IntPtr]::Zero -and ((Get-Date) - $t0).TotalSeconds -lt 5) { Start-Sleep -Milliseconds 200 }
+$pn = if ($panel -ne [IntPtr]::Zero) { UiaNames ([pscustomobject]@{ H = $panel }) } else { @('NO_PANEL') }
 Log ("LONGHARD panel=" + (($pn | Where-Object { $_ -like '*拼接*' }) -join ' | '))
-Log "LONGHARD finish=$(Invoke-Uia ([pscustomobject]@{ H = $panel }) '完成')"
+Log "LONGHARD finish=$(if ($panel -ne [IntPtr]::Zero) { Invoke-Uia ([pscustomobject]@{ H = $panel }) '完成' } else { 'NO_PANEL' })"
 Start-Sleep -Milliseconds 2500
 Stop-Process -Id $fixture.Id -Force; Start-Sleep -Milliseconds 800
 $w = [pscustomobject]@{ P = $app; H = [E]::Editor([uint32]$app.Id); O = $null; W = 0; Hh = 0 }
