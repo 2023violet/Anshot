@@ -54,7 +54,7 @@ impl Chrome {
     pub const ALL: [Chrome; 4] = [Chrome::None, Chrome::Mac, Chrome::Windows, Chrome::Browser];
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Frame {
     pub background: Background,
     pub padding: Step,
@@ -64,6 +64,14 @@ pub struct Frame {
     pub chrome: Chrome,
     /// Title or address text, typed by the user only; empty draws no text.
     pub text: String,
+}
+
+impl std::fmt::Debug for Frame {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Frame").field("background", &self.background).field("padding", &self.padding).field("radius", &self.radius)
+            .field("shadow", &self.shadow).field("ratio", &self.ratio).field("chrome", &self.chrome)
+            .field("text", &format_args!("<{} chars>", self.text.chars().count())).finish()
+    }
 }
 
 impl Default for Frame {
@@ -120,16 +128,18 @@ pub fn frame_layout(size: (u32, u32), frame: &Frame) -> Result<Layout, String> {
 }
 
 /// Lighter and darker versions of the median colour of the export's 2 px outer ring.
+/// Only opaque pixels count: colour hidden under transparency is never used. With none,
+/// the first preset is used.
 pub fn auto_colors(img: &RgbaImage) -> ([u8; 4], [u8; 4]) {
     let (w, h) = img.dimensions();
     let mut ch: [Vec<u8>; 3] = Default::default();
     for (x, y, p) in img.enumerate_pixels() {
-        if x >= 2 && y >= 2 && x + 2 < w && y + 2 < h { continue; }
+        if (x >= 2 && y >= 2 && x + 2 < w && y + 2 < h) || p[3] < 255 { continue; }
         for k in 0..3 { ch[k].push(p[k]); }
     }
+    if ch[0].is_empty() { let Background::Gradient(a, b) = PRESETS[0] else { unreachable!() }; return (a, b); }
     let mut mid = [0u8; 3];
     for k in 0..3 {
-        if ch[k].is_empty() { continue; }
         let n = ch[k].len() / 2;
         mid[k] = *ch[k].select_nth_unstable(n).1;
     }
@@ -141,6 +151,37 @@ pub fn auto_colors(img: &RgbaImage) -> ([u8; 4], [u8; 4]) {
 /// The export framed as `frame` says; every output pixel is opaque.
 pub fn render_framed(img: &RgbaImage, frame: &Frame) -> Result<RgbaImage, String> {
     let lay = frame_layout(img.dimensions(), frame)?;
+    compose(img, frame, &lay, &fitted(&lay, frame))
+}
+
+/// A preview of the framed export from a downscaled `img` (`scale` preview px per output
+/// px). The layout and the cut of the chrome text come from the full-size export, so the
+/// preview never shows less (or more) of the text than the delivered image.
+pub fn render_framed_preview(img: &RgbaImage, frame: &Frame, scale: f32) -> Result<RgbaImage, String> {
+    if !(scale > 0.0 && scale < 1.0) { return render_framed(img, frame); }
+    let (w, h) = img.dimensions();
+    let full = frame_layout(((w as f32 / scale).round() as u32, (h as f32 / scale).round() as u32), frame)?;
+    let s = |v: u32| (v as f32 * scale).round() as u32;
+    let (ix, iy, bar) = (s(full.image.0), s(full.image.1), s(full.bar.3));
+    let lay = Layout {
+        canvas: (s(full.canvas.0).max(ix + w), s(full.canvas.1).max(iy + h)),
+        image: (ix, iy, w, h),
+        bar: (ix, iy.saturating_sub(bar), w, bar.min(iy)),
+        radius: full.radius * scale,
+        blur: full.blur * scale,
+    };
+    compose(img, frame, &lay, &fitted(&full, frame))
+}
+
+/// The chrome text as the export shows it, cut to the room in `lay`.
+fn fitted(lay: &Layout, frame: &Frame) -> String {
+    let (w, h) = (lay.bar.2 as f32, lay.bar.3 as f32);
+    if h == 0.0 { return String::new(); }
+    fit_text(&frame.text, h * TEXT, text_room(frame.chrome, w, h).max(0.0))
+}
+
+fn compose(img: &RgbaImage, frame: &Frame, lay: &Layout, text: &str) -> Result<RgbaImage, String> {
+    let lay = *lay;
     let (cw, ch) = lay.canvas;
     let mut pm = Pixmap::new(cw, ch).ok_or("canvas too large")?;
 
@@ -159,7 +200,7 @@ pub fn render_framed(img: &RgbaImage, frame: &Frame) -> Result<RgbaImage, String
     // 3. The window: chrome bar, then the export, both clipped to the rounded shape.
     let mut clip = Mask::new(cw, ch).ok_or("mask")?;
     clip.fill_path(&shape, FillRule::Winding, true, Transform::identity());
-    if lay.bar.3 > 0 { chrome(&mut pm, &lay, frame, &clip); }
+    if lay.bar.3 > 0 { chrome(&mut pm, &lay, frame.chrome, text, &clip); }
     paste(&mut pm, img, &lay, &clip);
 
     let mut data = pm.take();
@@ -291,36 +332,52 @@ pub fn fit_text(text: &str, size: f32, room: f32) -> String {
     String::new()
 }
 
-fn chrome(pm: &mut Pixmap, lay: &Layout, frame: &Frame, clip: &Mask) {
+/// Chrome text size, as a share of the bar height.
+const TEXT: f32 = 0.42;
+const DOT: f32 = 0.43 / 2.0;
+const GAP: f32 = DOT * 3.2;
+/// Where the text may start after the three dots, from the bar's left edge (bar heights).
+const AFTER_DOTS: f32 = 0.5 + GAP * 2.0 + DOT + 0.4;
+const ADDRESS: f32 = 0.62;
+const SLOT: f32 = 1.3;
+
+/// Width available to the chrome text in a bar of `w` by `h`.
+fn text_room(chrome: Chrome, w: f32, h: f32) -> f32 {
+    match chrome {
+        Chrome::None => 0.0,
+        Chrome::Mac => w - 2.0 * AFTER_DOTS * h,
+        Chrome::Windows => w - SLOT * 3.0 * h - h,
+        Chrome::Browser => w - 0.5 * h - AFTER_DOTS * h - ADDRESS * h,
+    }
+}
+
+fn chrome(pm: &mut Pixmap, lay: &Layout, kind: Chrome, text: &str, clip: &Mask) {
     let (x, y, w, h) = (lay.bar.0 as f32, lay.bar.1 as f32, lay.bar.2 as f32, lay.bar.3 as f32);
     let id = Transform::identity();
-    let fill = match frame.chrome { Chrome::Windows => [0xf3, 0xf3, 0xf3, 255], Chrome::Browser => [0xec, 0xeb, 0xe6, 255], _ => [0xf2, 0xf1, 0xed, 255] };
+    let fill = match kind { Chrome::Windows => [0xf3, 0xf3, 0xf3, 255], Chrome::Browser => [0xec, 0xeb, 0xe6, 255], _ => [0xf2, 0xf1, 0xed, 255] };
     if let Some(r) = Rect::from_xywh(x, y, w, h) { pm.fill_rect(r, &paint(fill), id, Some(clip)); }
-    let size = h * 0.42;
-    let dot = h * 0.43 / 2.0;
-    let gap = dot * 3.2;
+    let size = h * TEXT;
+    let (dot, gap) = (h * DOT, h * GAP);
     let dots = |pm: &mut Pixmap| {
         for (i, c) in DOTS.iter().enumerate() {
             let cx = x + h * 0.5 + gap * i as f32;
             if let Some(p) = PathBuilder::from_circle(cx, y + h / 2.0, dot) { pm.fill_path(&p, &paint(*c), FillRule::Winding, id, Some(clip)); }
         }
-        x + h * 0.5 + gap * 2.0 + dot + h * 0.4
+        x + h * AFTER_DOTS
     };
-    match frame.chrome {
+    match kind {
         Chrome::None => {}
         Chrome::Mac => {
-            let left = dots(pm);
-            let room = w - 2.0 * (left - x);
-            let t = fit_text(&frame.text, size, room.max(0.0));
-            if !t.is_empty() {
-                let (tw, th) = text_extent(&t, size);
-                glyphs(pm, &t, (x + (w - tw) / 2.0, y + (h - th) / 2.0), size, INK, 1.0);
+            dots(pm);
+            if !text.is_empty() {
+                let (tw, th) = text_extent(text, size);
+                glyphs(pm, text, (x + (w - tw) / 2.0, y + (h - th) / 2.0), size, INK, 1.0);
             }
         }
         Chrome::Windows => {
             let icon = h * 0.28;
             let stroke = Stroke { width: (h / 28.0).max(1.0), ..Stroke::default() };
-            let slot = h * 1.3;
+            let slot = h * SLOT;
             for i in 0..3 {
                 let cx = x + w - slot * (i as f32 + 0.5);
                 let (cy, s) = (y + h / 2.0, icon / 2.0);
@@ -332,25 +389,22 @@ fn chrome(pm: &mut Pixmap, lay: &Layout, frame: &Frame, clip: &Mask) {
                 }
                 if let Some(p) = pb.finish() { pm.stroke_path(&p, &paint(INK), &stroke, id, Some(clip)); }
             }
-            let left = x + h * 0.5;
-            let t = fit_text(&frame.text, size, (w - slot * 3.0 - h * 0.5 - h * 0.5).max(0.0));
-            if !t.is_empty() {
-                let th = text_extent(&t, size).1;
-                glyphs(pm, &t, (left, y + (h - th) / 2.0), size, INK, 1.0);
+            if !text.is_empty() {
+                let th = text_extent(text, size).1;
+                glyphs(pm, text, (x + h * 0.5, y + (h - th) / 2.0), size, INK, 1.0);
             }
         }
         Chrome::Browser => {
             let left = dots(pm);
-            let bh = h * 0.62;
+            let bh = h * ADDRESS;
             let right = x + w - h * 0.5;
             if right - left > bh {
                 if let Some(r) = Rect::from_ltrb(left, y + (h - bh) / 2.0, right, y + (h + bh) / 2.0) {
                     if let Some(p) = rounded(r, bh / 2.0) { pm.fill_path(&p, &paint([255, 255, 255, 255]), FillRule::Winding, id, Some(clip)); }
                 }
-                let t = fit_text(&frame.text, size, (right - left - bh).max(0.0));
-                if !t.is_empty() {
-                    let th = text_extent(&t, size).1;
-                    glyphs(pm, &t, (left + bh / 2.0, y + (h - th) / 2.0), size, INK, 1.0);
+                if !text.is_empty() {
+                    let th = text_extent(text, size).1;
+                    glyphs(pm, text, (left + bh / 2.0, y + (h - th) / 2.0), size, INK, 1.0);
                 }
             }
         }

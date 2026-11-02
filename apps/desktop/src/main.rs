@@ -44,6 +44,20 @@ enum AfterCopy { Stay, Close, Quit }
 #[derive(Clone, Copy)]
 enum ToastAction { Retry(Delivery), Review }
 
+/// One image that left, with what is needed to check it, taken when it left: a later
+/// change (frame, crop, covers) must not move the area that is read.
+struct Delivered {
+    png: Vec<u8>,
+    kind: Delivery,
+    document: u64,
+    source: Vec<u8>,
+    crop: Option<anshot_core::Region>,
+    /// Size of the delivered image and where the screenshot sits in it.
+    size: (u32, u32),
+    rect: (u32, u32, u32, u32),
+    covers: Vec<anshot_core::Region>,
+}
+
 struct App {
     ctl: Controller,
     ui: slint::Weak<AppWindow>,
@@ -101,7 +115,7 @@ struct App {
     check_running: bool,
     auto_check_running: bool,
     /// The newest delivery waiting for its check.
-    auto_check_next: Option<(Vec<u8>, Delivery)>,
+    auto_check_next: Option<Delivered>,
     /// The system toast's own timer: an editor toast must not keep it on screen.
     system_toast_seq: u64,
     /// The redaction the stand-in input belongs to.
@@ -321,7 +335,7 @@ impl App {
         self.after_copy = AfterCopy::Stay;
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
-        self.frame_text.clear();
+        self.forget_frame();
         if self.settings.frame_default {
             let frame = self.settings.frame_style.frame("");
             // A frame that cannot fit this image is skipped quietly; the panel says why.
@@ -338,6 +352,12 @@ impl App {
 
     // ---- delivery ----
     fn start(&mut self, kind: Delivery) -> bool {
+        if self.ctl.editor.as_ref().is_some_and(|e| !e.frame_fits()) {
+            if let Some(e) = self.ctl.editor.as_mut() { let _ = e.set_frame(None); }
+            self.toast("warn", t("图片太大，已关闭美化"), t("美化后会超过 2400 万像素；请再复制或保存一次"), None);
+            self.refresh();
+            return false;
+        }
         let started = match self.ctl.begin_delivery(kind) {
             Ok(work) => {
                 self.clear_toast();
@@ -361,7 +381,7 @@ impl App {
             Ok((Delivery::Copy, ticket)) => {
                 let mut kept = None;
                 let outcome = self.ctl.deliver(ticket, |png, dims| { let r = platform::write_clipboard(png, dims); if r.is_ok() { kept = Some(png.to_vec()); } r });
-                if let Some(png) = kept { self.record_history(&png); self.auto_check(png, Delivery::Copy); }
+                if let Some(png) = kept { self.record_history(&png); self.auto_check_delivered(png, Delivery::Copy); }
                 self.after_delivery(Delivery::Copy, outcome, None);
             }
             Ok((Delivery::Save, ticket)) => {
@@ -369,7 +389,7 @@ impl App {
                 let path = platform::free_path(&path);
                 let mut kept = None;
                 let outcome = self.ctl.deliver(ticket, |png, _| { let r = platform::write_file(&path, png); if r.is_ok() { kept = Some(png.to_vec()); } r });
-                if let Some(png) = kept { self.record_history(&png); self.auto_check(png, Delivery::Save); }
+                if let Some(png) = kept { self.record_history(&png); self.auto_check_delivered(png, Delivery::Save); }
                 let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
                 self.after_delivery(Delivery::Save, outcome, name);
             }
@@ -383,6 +403,7 @@ impl App {
             }
             Err(Notice::Ignored) => {}
         }
+        self.sync_frame_text();
         self.refresh();
     }
     fn after_delivery(&mut self, kind: Delivery, outcome: Result<(), String>, name: Option<String>) {
@@ -490,7 +511,7 @@ impl App {
     // ---- window lifecycle ----
     /// Hide the editor (resident) or end the process. `discard` drops the document.
     fn close_editor(&mut self, discard: bool) {
-        if discard { self.ctl.close_document(); self.base = None; self.refresh(); }
+        if discard { self.ctl.close_document(); self.base = None; self.forget_frame(); self.refresh(); }
         if !self.resident { let _ = slint::quit_event_loop(); return; }
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
     }
@@ -578,19 +599,24 @@ impl App {
     /// After a copy or save: read the bytes that left, on a worker, and speak up only if
     /// something new turned up. Never blocks and never changes anything; a missing OCR
     /// language stays silent here (the button explains it).
-    fn auto_check(&mut self, png: Vec<u8>, kind: Delivery) {
+    /// Right after a delivery: the document is still exactly what left.
+    fn auto_check_delivered(&mut self, png: Vec<u8>, kind: Delivery) {
         if !self.settings.check_on_share || self.after_copy == AfterCopy::Quit { return; }
+        let Some((source, crop, rect)) = self.ctl.delivery_source() else { return };
+        let Some(size) = self.ctl.editor.as_ref().map(|e| e.output_dimensions()) else { return };
+        let d = Delivered { png, kind, document: self.ctl.generation(), source, crop, size, rect, covers: self.ctl.covers_in_output() };
+        self.auto_check(d);
+    }
+    fn auto_check(&mut self, d: Delivered) {
         // One check at a time: a newer delivery waits and replaces any older one still waiting.
-        if self.auto_check_running { self.auto_check_next = Some((png, kind)); return; }
-        let document = self.ctl.generation();
-        let Some((source, crop, (ix, iy, iw, ih))) = self.ctl.delivery_source() else { return };
-        let covers = self.ctl.covers_in_output();
+        if self.auto_check_running { self.auto_check_next = Some(d); return; }
+        let Delivered { png, kind, document, source, crop, size, rect: (ix, iy, iw, ih), covers } = d;
         self.auto_check_running = true;
         std::thread::spawn(move || {
             let decode = |bytes: &[u8]| anshot_core::decode_source(bytes).ok();
             // A framed delivery: only the screenshot inside it (not the background or chrome text).
-            let inner = |img: RgbaImage| if (ix, iy, iw, ih) == (0, 0, img.width(), img.height()) { Some(img) }
-                else if ix + iw <= img.width() && iy + ih <= img.height() { Some(image::imageops::crop_imm(&img, ix, iy, iw, ih).to_image()) } else { None };
+            let inner = |img: RgbaImage| if img.dimensions() != size || ix + iw > img.width() || iy + ih > img.height() { None }
+                else if (iw, ih) == size { Some(img) } else { Some(image::imageops::crop_imm(&img, ix, iy, iw, ih).to_image()) };
             let done = decode(&png).and_then(inner).zip(decode(&source)).and_then(|(export, source)| check::check_export(&export, crop, &source, &covers).ok());
             drop(source);
             let _ = slint::invoke_from_event_loop(move || {
@@ -599,7 +625,7 @@ impl App {
                     a.auto_check_running = false;
                     match a.auto_check_next.take() {
                         // A newer image has left since: only its result matters.
-                        Some((png, kind)) => a.auto_check(png, kind),
+                        Some(next) => a.auto_check(next),
                         None => if a.ctl.generation() == document { if let Some((items, audit)) = done { a.auto_check_done(items, audit, document, kind); } },
                     }
                 });
@@ -625,6 +651,7 @@ impl App {
         self.toast("warn", &title, t("这是辅助检查"), Some((t("查看"), ToastAction::Review)));
     }
     fn open_pending_review(&mut self) {
+        self.frame_open = false;
         self.ctl.review = self.ctl.pending_review.take();
         self.clear_toast();
         self.show_editor();
@@ -643,6 +670,7 @@ impl App {
     /// text is covered in the export; only the suggestions leave the worker.
     fn run_same_text(&mut self) {
         if self.check_running { return; }
+        self.frame_open = false;
         let Some((mask, region)) = self.ctl.selected_mask() else { return };
         let Some((source, _)) = self.ctl.ocr_snapshot() else { return };
         let Some(e) = self.ctl.editor.as_ref() else { return };
@@ -701,16 +729,28 @@ impl App {
     fn set_frame(&mut self, on: bool, style: beautify::Style) {
         let Some(e) = self.ctl.editor.as_mut() else { return };
         match e.set_frame(on.then(|| style.frame(&self.frame_text))) {
-            Ok(_) => {}
-            Err(EditError::InvalidImageDimensions) => self.toast("warn", t("图片太大，无法美化"), t("美化后会超过 2400 万像素；复制和保存不受影响"), None),
+            Ok(_) => if style != self.settings.frame_style { self.settings.frame_style = style; self.persist(); },
+            Err(EditError::InvalidImageDimensions) => {
+                // The switch goes off rather than leaving an older style on.
+                let _ = e.set_frame(None);
+                self.toast("warn", t("图片太大，无法美化"), t("美化后会超过 2400 万像素；复制和保存不受影响"), None);
+            }
             Err(err) => self.toast("error", t("无法美化"), &messages::edit(&err), None),
         }
-        if style != self.settings.frame_style { self.settings.frame_style = style; self.persist(); }
+    }
+    /// Panel state and chrome text go with their document.
+    fn forget_frame(&mut self) {
+        self.frame_open = false;
+        self.frame_text.clear();
+        *self.framed_cache.borrow_mut() = None;
     }
     fn frame_command(&mut self, c: &str) {
         let mut s = self.frame_style();
         let pick = |prefix: &str| c.strip_prefix(prefix).and_then(|i| i.parse::<usize>().ok());
         match c {
+            "frame" if self.ctl.text_edit.is_some() && !self.frame_open => {
+                self.toast("warn", t("请先完成文字编辑"), t("按 Enter 完成或 Esc 取消"), None);
+            }
             "frame" => {
                 self.frame_open = !self.frame_open && self.ctl.editor.is_some();
                 if self.frame_open {
@@ -739,8 +779,15 @@ impl App {
     }
     fn frame_text_edited(&mut self, text: &str) {
         self.frame_text = text.chars().filter(|c| !c.is_control()).take(200).collect();
-        if self.ctl.editor.as_ref().is_some_and(|e| e.frame().is_some()) { let s = self.frame_style(); self.set_frame(true, s); }
+        self.sync_frame_text();
         self.refresh();
+    }
+    /// Put the typed chrome text on the frame. While a copy or save runs the document cannot
+    /// change: the text waits and goes on once that delivery is done.
+    fn sync_frame_text(&mut self) {
+        if !self.ctl.can_deliver() { return; }
+        let stale = self.ctl.editor.as_ref().and_then(|e| e.frame()).is_some_and(|f| f.text != self.frame_text);
+        if stale { let s = self.frame_style(); self.set_frame(true, s); }
     }
     /// The framed export at preview resolution (same renderer as the export), cached per revision.
     fn framed_preview(&self) -> Option<(Image, (f64, f64))> {
@@ -757,7 +804,7 @@ impl App {
             let (l, t, r, b) = anshot_core::Region::new(at(c.x0), at(c.y0), at(c.x1), at(c.y1)).clipped(img.width(), img.height())?;
             img = image::imageops::crop_imm(&img, l, t, r - l, b - t).to_image();
         }
-        let out = to_image(&anshot_render::render_framed(&img, &frame).ok()?);
+        let out = to_image(&anshot_render::render_framed_preview(&img, &frame, *k).ok()?);
         let dims = size(&out);
         *self.framed_cache.borrow_mut() = Some((key, out.clone()));
         Some((out, dims))

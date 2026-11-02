@@ -444,3 +444,35 @@ fn frame_timing_large() {
         println!("FRAME {:?} -> {:?} in {} ms", src.dimensions(), out.dimensions(), t.elapsed().as_millis());
     }
 }
+
+#[test]
+fn preview_keeps_the_export_proportions_and_text_cut() {
+    // A 4000 px export: the bar is capped at 72 px (1.8%). A quarter-size preview must show
+    // the same proportions, not its own 28 px minimum, and the same cut of the text.
+    let f = Frame { chrome: Chrome::Browser, text: "https://example.com/a/very/long/path/with/a/token-0123456789abcdef".repeat(3), ..framed(Chrome::Browser, Ratio::Free) };
+    let full = frame_layout((4000, 2000), &f).unwrap();
+    let small = source(1000, 500, 3);
+    let out = render_framed_preview(&small, &f, 0.25).unwrap();
+    let (cw, ch) = full.canvas;
+    assert!((i64::from(out.width()) - i64::from(cw / 4)).abs() <= 1 && (i64::from(out.height()) - i64::from(ch / 4)).abs() <= 1, "{:?} vs {:?}", out.dimensions(), full.canvas);
+    assert_eq!(full.bar.3, 72);
+    // The export pixels sit unchanged in the preview too.
+    let (ix, iy) = ((full.image.0 as f32 * 0.25).round() as u32, (full.image.1 as f32 * 0.25).round() as u32);
+    assert_eq!(out.get_pixel(ix + 500, iy + 250).0, small.get_pixel(500, 250).0);
+    // Scale 1 is the export itself.
+    assert_eq!(render_framed_preview(&small, &f, 1.0).unwrap(), render_framed(&small, &f).unwrap());
+}
+
+#[test]
+fn frame_debug_hides_the_typed_text() {
+    let f = Frame { text: "secret-token-42".into(), ..Frame::default() };
+    let shown = format!("{f:?} {:?}", Scene { frame: Some(f.clone()), ..Scene::default() });
+    assert!(!shown.contains("secret") && shown.contains("<15 chars>"), "{shown}");
+}
+
+#[test]
+fn auto_colors_ignore_transparent_pixels() {
+    let img = RgbaImage::from_pixel(20, 20, Rgba([200, 10, 10, 0]));
+    let Background::Gradient(a, b) = PRESETS[0] else { unreachable!() };
+    assert_eq!(auto_colors(&img), (a, b));
+}

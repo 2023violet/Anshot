@@ -134,7 +134,9 @@ $apply = Wait-Name $h '^遮挡所选' 3
 Log "COVER $apply=$(Invoke-Named $h $apply)"
 Start-Sleep -Milliseconds 800
 Log "COPY size=$(CopyTo 'frame-covered.png')"
-Start-Sleep -Seconds 4 # the check after the copy runs on a worker
+# The check after that copy runs on a worker: wait for its notice, then for it to go.
+[void](Wait-Name $h '^已核对 \d+ 处遮挡' 20)
+$d = (Get-Date).AddSeconds(15); while ((Get-Date) -lt $d -and (Wait-Name $h '^已核对' 1)) { Start-Sleep -Milliseconds 300 }
 Focus-Editor
 Key 0x42 -Ctrl -Shift
 $panel = Wait-Name $h '^比例' 5
@@ -162,6 +164,7 @@ Log "TEXT $(Set-Text $h '地址栏文字' $secret)"
 Key 0x0D # Enter hands the keyboard back to the canvas, so Ctrl+C copies the image
 Start-Sleep -Milliseconds 800
 Shot $h 'beautify-2-browser.png'
+$d = (Get-Date).AddSeconds(15); while ((Get-Date) -lt $d -and (Wait-Name $h '^已核对' 1)) { Start-Sleep -Milliseconds 300 }
 Log "COPY size=$(CopyTo 'frame-browser.png')"
 $f = Frame 'frame-covered.png' 'frame-browser.png' '16:9' 'frame-inner-browser.png'
 Log $f
@@ -204,6 +207,7 @@ Verdict 'style_saved_text_not' ($style -match '^frame_style=0,2,2,2,3,3' -and @(
 
 # ---- 6. too large: refused with a notice; the copy still works, unframed ----
 $big = Join-Path $tmp 'big.png'
+@('hide_after_copy=false', 'frame_style=0,2,2,2,3,0') | Set-Content $settingsFile
 python (Join-Path $PSScriptRoot 'check_frame.py') big $big | Out-Null
 Start-App $big
 Focus-Editor
@@ -214,7 +218,9 @@ $notice = Wait-Name $h '^图片太大，无法美化' 5
 Shot $h 'beautify-3-too-large.png'
 Key 0x1B
 Log "BIG notice=$notice copy=$(CopyTo 'frame-big.png')"
-Verdict 'too_large_is_refused' ($notice -ne '' -and (Get-Content $settingsFile -Raw) -match 'frame_style=' -and (Test-Path (Join-Path $Out 'frame-big.png')) -and ((python -c "from PIL import Image; print(Image.open(r'$(Join-Path $Out 'frame-big.png')').size)") -match '6000, 4000'))
+$kept = (Get-Content $settingsFile -Raw) -match 'frame_style=0,2,2,2,3,0'
+Log "BIG style_kept=$kept"
+Verdict 'too_large_is_refused' ($notice -ne '' -and $kept -and (Test-Path (Join-Path $Out 'frame-big.png')) -and ((python -c "from PIL import Image; print(Image.open(r'$(Join-Path $Out 'frame-big.png')').size)") -match '6000, 4000'))
 Remove-Item (Join-Path $Out 'frame-big.png') -ErrorAction SilentlyContinue
 if (-not $p.HasExited) { $p.Kill() }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

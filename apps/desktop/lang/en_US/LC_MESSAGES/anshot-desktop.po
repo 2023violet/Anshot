@@ -1140,3 +1140,15 @@ msgstr "Beautify with the last style"
 
 msgid "预览时暂停编辑。外框文字只由你输入，不会保存到设置里。"
 msgstr "Editing pauses while previewing. Window text is only what you type and is never saved in the settings."
+
+msgid "图片太大，已关闭美化"
+msgstr "Too large: beautify switched off"
+
+msgid "美化后会超过 2400 万像素；请再复制或保存一次"
+msgstr "It would pass 24 megapixels. Copy or save again."
+
+msgid "请先完成文字编辑"
+msgstr "Finish the text first"
+
+msgid "按 Enter 完成或 Esc 取消"
+msgstr "Press Enter to finish or Esc to cancel"

@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod frame;
-pub use frame::{auto_colors, fit_text, frame_layout, render_framed, Background, Chrome, Frame, Layout, Ratio, Step, PRESETS};
+pub use frame::{auto_colors, fit_text, frame_layout, render_framed, render_framed_preview, Background, Chrome, Frame, Layout, Ratio, Step, PRESETS};
 
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
 use image::{DynamicImage, ImageFormat, RgbaImage};
