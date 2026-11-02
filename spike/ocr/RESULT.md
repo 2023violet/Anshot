@@ -106,3 +106,25 @@ Windows 10 Home China 22H2, 10.0.19045.6466 · Intel Core i5-10200H @ 2.40 GHz �
 ## Files
 
 `Cargo.toml`, `Cargo.lock`, `src/main.rs` (spike exe), `make_fixtures.py`, `evaluate.py`, `fixtures/*.png` + `truth.json` (`.bgra` regenerable, git-ignored), `out/` (measurement output, git-ignored — the numbers above are the record; rerun `evaluate.py` to regenerate), `.gitignore`. Standalone `[workspace]`; not in the root workspace.
+
+
+## 0.4 privacy check (M0, 2026-11-01): word boxes and format rules
+
+Agent-run, synthetic only. Fixtures `make_sensitive.py` (invented values, 3 fonts x 5 sizes 12-20 px x light/dark x 6 kinds x 3 values = 540 images, plus 360 ordinary lines); words from `ocr-spike words`; scoring `evaluate_sensitive.py`. Pillow grayscale antialiasing on flat backgrounds; ClearType and busy backgrounds NOT_VERIFIED.
+
+Gate: recall >= 90 %, redaction box (word boxes + 4 px) covers the value's glyph box >= 95 %.
+
+| Run | Recall | Cover | False positives |
+|---|---|---|---|
+| Strict regexes, one scale (first attempt, Consolas fixtures flawed) | 57-58 % | 93-95 % | not measured |
+| Tolerant rules, scale 1.5 only | 78.0 % | 87.9 % | 5/360 |
+| Tolerant rules, union of 1 + 1.5 + 2 (tuning set) | 92.8 % | 95.2 % | 17/360 |
+| **Same rules, held-out values and fonts (Arial, SimSun)** | **90.0 %** | **97.1 %** | **13/360** |
+
+**Gate: PASS, narrowly, on the held-out set (MEASURED).** Limits the design must absorb:
+
+- Recall here means a finding overlaps the value, even if its category is wrong or a digit was misread. Exact text matches are lower, so found text can be wrong and must not be treated as the true value.
+- About 1 in 10 synthetic values is missed. By kind (held-out): card 97.8, email 96.7, id 96.7, ip 83.3, phone 84.4, key 81.1 %. At 12-14 px recall is 83-87 %; at 16-20 px 96-97 %.
+- Rules were tuned on the first set, so that figure is optimistic; the held-out row is the one to quote.
+- Why single-scale fails: digit runs get split by misread characters (`0` read as `e`, dots read as CJK characters). Different scales fail on different values, so the union helps.
+- Three passes cost about 2.3 s on a 1080p image (378 + 717 + 1295 ms, this machine): worker thread only, and the auto-check must not block anything.

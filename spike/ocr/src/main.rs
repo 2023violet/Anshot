@@ -125,8 +125,23 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Some("words") if args.len() >= 3 => {
+            let e = engine(&args[1])?;
+            let f = std::env::var("OCR_UPSCALE").ok().and_then(|v| v.parse::<f32>().ok()).unwrap_or(1.0);
+            for path in &args[2..] {
+                let result = e.RecognizeAsync(&load_bitmap(path)?)?.join()?;
+                for (i, line) in result.Lines()?.into_iter().enumerate() {
+                    for word in line.Words()? {
+                        // Boxes go back to input pixels, the coordinates a redaction would use.
+                        let r = word.BoundingRect()?;
+                        println!("{path}\t{i}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{}", r.X / f, r.Y / f, r.Width / f, r.Height / f, word.Text()?);
+                    }
+                }
+            }
+            Ok(())
+        }
         _ => {
-            eprintln!("usage: ocr-spike langs | recog <lang|user> <file.bgra>... | bench <lang|user> <file.bgra> <runs>");
+            eprintln!("usage: ocr-spike langs | recog <lang|user> <file.bgra>... | bench <lang|user> <file.bgra> <runs> | words <lang|user> <file.bgra>...");
             std::process::exit(2);
         }
     }

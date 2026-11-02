@@ -2,3 +2,4 @@
 # Regenerable raw pixel fixtures (python spike/ocr/make_fixtures.py)
 /fixtures/*.bgra
 /out/
+/fixtures/sensitive.tsv
