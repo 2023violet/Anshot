@@ -1,7 +1,8 @@
 //! The privacy check: reads text from pixels Rust rendered, several times, and applies the
 //! format rules. Runs on a worker thread. Recognised text stays in memory and is never logged.
+use crate::controller::Delivery;
 use crate::i18n::t;
-use anshot_core::sensitive::{find_text, merge_findings, same_text, scan_line, text_in, Certainty, Finding, SensitiveKind, TextWord};
+use anshot_core::sensitive::{find_text, merge_findings, same_text, scan_line, straddles, text_in, Certainty, Finding, SensitiveKind, TextWord};
 use anshot_core::Region;
 use anshot_platform_windows::{ocr_recognize, OcrError, OcrLine};
 use image::{imageops, RgbaImage};
@@ -32,6 +33,8 @@ pub struct Review {
     pub like: Option<u64>,
     /// Stand-in text instead of a plain cover.
     pub replace: bool,
+    /// The image already left this way, so applying the list must say so or send it again.
+    pub delivered: Option<Delivery>,
 }
 
 /// Findings on the exported image, as suggestions on the source image.
@@ -78,7 +81,8 @@ pub fn stand_ins(items: &[Item]) -> Vec<String> {
         let next = count.entry(i.kind).or_insert(0);
         let n = *seen.entry((i.kind, i.text.as_str())).or_insert_with(|| { *next += 1; *next - 1 });
         match i.kind {
-            SensitiveKind::Phone => format!("138 0000 {n:04}"),
+            // Letters in place of digits: obviously not a number anyone has.
+            SensitiveKind::Phone => format!("138 XXXX {:04}", n + 1),
             SensitiveKind::Email => format!("user-{}@example.com", char::from(b'a' + (n % 26) as u8)),
             _ => t("已隐藏").to_string(),
         }
@@ -172,6 +176,12 @@ pub struct Audit {
     pub readable: usize,
     /// Covers with no text the reader could make out, which proves nothing either way.
     pub no_text: usize,
+    /// Covers that hide only part of a word: what is left may be readable, so no promise.
+    pub partial: usize,
+}
+impl Audit {
+    /// Only then may the result say the covered text could not be read.
+    pub fn vouches(&self) -> bool { self.checked > 0 && self.readable == 0 && self.partial == 0 }
 }
 
 fn area_of(r: Region) -> (f32, f32, f32, f32) {
@@ -183,6 +193,7 @@ fn area_of(r: Region) -> (f32, f32, f32, f32) {
 pub fn audit_covers(source: &[Vec<Vec<TextWord>>], export: &[Vec<Vec<TextWord>>], covers: &[Region]) -> (Audit, Vec<Finding>) {
     let (mut audit, mut found) = (Audit::default(), Vec::new());
     for cover in covers {
+        if source.iter().any(|lines| straddles(lines, area_of(*cover))) { audit.partial += 1; continue; }
         let phrases: Vec<Vec<char>> = source.iter().filter_map(|lines| text_in(lines, area_of(*cover))).collect();
         if phrases.is_empty() { audit.no_text += 1; continue; }
         audit.checked += 1;
@@ -193,21 +204,33 @@ pub fn audit_covers(source: &[Vec<Vec<TextWord>>], export: &[Vec<Vec<TextWord>>]
     (audit, found)
 }
 
+/// Every pass that worked; an error only when none did. One failed pass loses its part of the
+/// check, not all of it.
+fn read_passes(img: &RgbaImage) -> Result<Vec<Vec<Vec<TextWord>>>, OcrError> {
+    let (w, h) = img.dimensions();
+    let (mut ok, mut last) = (Vec::new(), None);
+    for f in scales(w, h) { match read_at(img, f) { Ok(r) => ok.push(r), Err(e) => last = Some(e) } }
+    match (ok.is_empty(), last) { (true, Some(e)) => Err(e), _ => Ok(ok) }
+}
+
 /// The check after a delivery: rules on the export, then whether its covers really hide their
 /// text. Without covers the source is not read at all.
 pub fn check_export(export: &RgbaImage, crop: Option<Region>, source: &RgbaImage, covers: &[Region]) -> Result<(Vec<Item>, Audit), OcrError> {
-    let (w, h) = export.dimensions();
-    let read: Vec<_> = scales(w, h).map(|f| read_at(export, f)).collect::<Result<_, _>>()?;
-    let mut found: Vec<Finding> = read.iter().flatten().flat_map(|l| scan_line(l)).collect();
+    let read = read_passes(export)?;
+    let found: Vec<Finding> = read.iter().flatten().flat_map(|l| scan_line(l)).collect();
+    // A stand-in on a cover looks like the real thing: only uncovered text counts.
+    let mut items = without_dismissed(to_items(merge_findings(found), crop, export), covers);
     let mut audit = Audit::default();
     if !covers.is_empty() {
-        let (sw, sh) = source.dimensions();
-        let hidden: Vec<_> = scales(sw, sh).map(|f| read_at(source, f)).collect::<Result<_, _>>()?;
+        let hidden = read_passes(source)?;
         let (a, places) = audit_covers(&hidden, &read, covers);
         audit = a;
-        found.extend(places);
+        let places = to_items(merge_findings(places), crop, export);
+        let regions: Vec<Region> = places.iter().map(|i| i.region).collect();
+        items = without_dismissed(items, &regions);
+        items.extend(places);
     }
-    Ok((to_items(merge_findings(found), crop, export), audit))
+    Ok((items, audit))
 }
 
 /// Other places in `img` with the text inside `region`; `None` when none could be read there.
@@ -265,9 +288,17 @@ mod tests {
         let export = [vec![name(100.0)]];
         let covers = [Region::new(0, 0, 40, 20), Region::new(0, 200, 40, 220), Region::new(300, 300, 340, 320)];
         let (audit, places) = audit_covers(&source, &export, &covers);
-        assert_eq!(audit, Audit { checked: 2, readable: 1, no_text: 1 });
+        assert_eq!(audit, Audit { checked: 2, readable: 1, no_text: 1, partial: 0 });
+        assert!(!audit.vouches());
         assert_eq!(places.len(), 1);
         assert_eq!(places[0].bounds.1, 100.0, "the place to fix is where it can still be read");
+    }
+    #[test]
+    fn a_cover_over_part_of_a_word_is_not_vouched_for() {
+        let digits = TextWord { text: "13800138000".into(), x: 0.0, y: 0.0, w: 110.0, h: 20.0 };
+        let (audit, _) = audit_covers(&[vec![vec![digits]]], &[vec![]], &[Region::new(0, 0, 60, 20)]);
+        assert_eq!(audit, Audit { checked: 0, readable: 0, no_text: 0, partial: 1 });
+        assert!(!audit.vouches(), "the last digits are still on show");
     }
     #[test]
     fn the_fill_comes_from_around_the_box_only() {
@@ -285,7 +316,8 @@ mod tests {
     fn stand_ins_hide_the_original_but_keep_it_consistent() {
         let item = |kind, text: &str| Item { kind, certainty: Certainty::Confirmed, text: text.into(), region: Region::new(0, 0, 1, 1), on: true, fill: [255; 4] };
         let got = stand_ins(&[item(SensitiveKind::Phone, "13812345678"), item(SensitiveKind::Email, "a@b.cn"), item(SensitiveKind::Phone, "13900001111"), item(SensitiveKind::Phone, "13812345678"), item(SensitiveKind::Email, "c@d.cn")]);
-        assert_eq!(got[..3], ["138 0000 0000", "user-a@example.com", "138 0000 0001"]);
+        assert_eq!(got[..3], ["138 XXXX 0001", "user-a@example.com", "138 XXXX 0002"]);
+        assert!(anshot_core::sensitive::scan_line(&[TextWord { text: got[0].clone(), x: 0.0, y: 0.0, w: 100.0, h: 20.0 }]).is_empty(), "a stand-in is not a phone number");
         assert_eq!(got[3], got[0], "the same number gets the same stand-in");
         assert_eq!(got[4], "user-b@example.com");
         assert!(!got.iter().any(|s| s.contains("1234") || s.contains("b.cn")));

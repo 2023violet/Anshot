@@ -31,7 +31,7 @@ fn applying_a_review_remembers_only_what_stayed_unticked() {
     use anshot_core::sensitive::{Certainty, SensitiveKind};
     let mut c = opened(400, 200);
     let item = |x0, on| crate::check::Item { kind: SensitiveKind::Phone, certainty: Certainty::Confirmed, text: String::new(), region: Region::new(x0, 10, x0 + 50, 30), on, fill: [255; 4] };
-    c.review = Some(Review { document: 1, items: vec![item(10, true), item(100, false)], like: None, replace: false });
+    c.review = Some(Review { document: 1, items: vec![item(10, true), item(100, false)], like: None, replace: false, delivered: None });
     assert_eq!(c.apply_review(), Ok(1));
     assert_eq!(editor(&c).masks().len(), 1);
     assert_eq!(c.dismissed, [Region::new(100, 10, 150, 30)], "a covered item must warn again if the cover is undone");
@@ -47,7 +47,7 @@ fn same_text_suggestions_copy_the_selected_redaction() {
     let (id, _) = c.selected_mask().unwrap();
     c.tool = Tool::Redact;
     let item = crate::check::Item { kind: SensitiveKind::SameText, certainty: Certainty::Confirmed, text: String::new(), region: Region::new(100, 10, 150, 30), on: true, fill: [255; 4] };
-    c.review = Some(Review { document: 1, items: vec![item], like: Some(id), replace: false });
+    c.review = Some(Review { document: 1, items: vec![item], like: Some(id), replace: false, delivered: None });
     c.apply_review().unwrap();
     assert_eq!(editor(&c).masks()[1].style, RedactStyle::SafeMosaic);
 }
@@ -57,7 +57,7 @@ fn replacing_puts_stand_ins_on_opaque_fills_and_copies_follow_a_typed_name() {
     use anshot_core::sensitive::{Certainty, SensitiveKind};
     let mut c = opened(400, 200);
     let item = |kind, x0: i64, text: &str| crate::check::Item { kind, certainty: Certainty::Confirmed, text: text.into(), region: Region::new(x0, 10, x0 + 50, 30), on: true, fill: [240, 240, 240, 255] };
-    c.review = Some(Review { document: 1, items: vec![item(SensitiveKind::Email, 10, "a@b.cn")], like: None, replace: true });
+    c.review = Some(Review { document: 1, items: vec![item(SensitiveKind::Email, 10, "a@b.cn")], like: None, replace: true, delivered: None });
     c.apply_review().unwrap();
     let m = &editor(&c).masks()[0];
     assert_eq!(m.style, RedactStyle::Solid([240, 240, 240, 255]));
@@ -67,7 +67,7 @@ fn replacing_puts_stand_ins_on_opaque_fills_and_copies_follow_a_typed_name() {
     drag(&mut c, (10.0, 100.0), (60.0, 120.0));
     assert_eq!(c.replace_selected("用户 A", [250, 250, 250, 255]), Ok(true));
     let (id, _) = c.selected_mask().unwrap();
-    c.review = Some(Review { document: 1, items: vec![item(SensitiveKind::SameText, 200, "张三")], like: Some(id), replace: false });
+    c.review = Some(Review { document: 1, items: vec![item(SensitiveKind::SameText, 200, "张三")], like: Some(id), replace: false, delivered: None });
     c.apply_review().unwrap();
     assert_eq!(editor(&c).masks()[2].text.as_ref().unwrap().text, "用户 A");
     editor_undo(&mut c);
@@ -79,12 +79,15 @@ fn closing_the_list_leaves_the_image_alone_and_a_new_document_forgets_it() {
     use anshot_core::sensitive::{Certainty, SensitiveKind};
     let mut c = opened(400, 200);
     let item = crate::check::Item { kind: SensitiveKind::Email, certainty: Certainty::Confirmed, text: "secret".into(), region: Region::new(10, 10, 60, 30), on: true, fill: [255; 4] };
-    c.review = Some(Review { document: 1, items: vec![item.clone()], like: None, replace: false });
+    c.review = Some(Review { document: 1, items: vec![item.clone()], like: None, replace: false, delivered: None });
     c.dismiss_review();
     assert_eq!((editor(&c).masks().len(), c.dismissed.len()), (0, 1));
-    c.pending_review = Some((Review { document: 1, items: vec![item], like: None, replace: false }, Delivery::Copy));
+    c.pending_review = Some(Review { document: 1, items: vec![item], like: None, replace: false, delivered: Some(Delivery::Copy) });
     c.accept_source(SourceCandidate::decode(png(50, 50)).unwrap(), None).unwrap();
+    let before = c.generation();
     assert!(c.review.is_none() && c.pending_review.is_none() && c.dismissed.is_empty());
+    c.close_document();
+    assert_ne!(c.generation(), before, "a worker for the old document must not land on the next one");
 }
 
 #[test]

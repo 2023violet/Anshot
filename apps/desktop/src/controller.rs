@@ -92,15 +92,18 @@ pub struct Controller {
     /// The last privacy check of this document; recognised text lives only here.
     pub review: Option<Review>,
     /// What the check after a copy or save found, until the user looks at it.
-    pub pending_review: Option<(Review, Delivery)>,
+    pub pending_review: Option<Review>,
     /// Places the user saw and left uncovered: the automatic check stays quiet about them.
     pub dismissed: Vec<Region>,
+    /// Counts documents. Editor ids start again for each new editor, so a worker's result is
+    /// matched to its document by this instead.
+    generation: u64,
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { pad: 0, editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255], review: None, pending_review: None, dismissed: Vec::new() }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255], review: None, pending_review: None, dismissed: Vec::new(), generation: 0 }
     }
 }
 
@@ -209,8 +212,11 @@ impl Controller {
         self.source_name = None;
         self.forget_review();
     }
+    /// Which document is open now; changes whenever one is opened or closed.
+    pub fn generation(&self) -> u64 { self.generation }
     /// Recognised text goes with its document.
     fn forget_review(&mut self) {
+        self.generation += 1;
         self.review = None;
         self.pending_review = None;
         self.dismissed.clear();
@@ -801,6 +807,12 @@ impl Controller {
         let Some((id, _)) = self.selected_mask() else { return Ok(false) };
         let text = MaskText { text: text.to_string(), ink: ink_for(fill) };
         self.editor.as_mut().ok_or(EditError::MissingSource)?.set_mask_text(id, fill, text)
+    }
+    /// What a check of the delivered image needs. Unlike `ocr_snapshot` this also answers
+    /// during a gesture: the image has already left either way.
+    pub fn delivery_source(&self) -> Option<(Vec<u8>, Option<Region>)> {
+        let e = self.editor.as_ref()?;
+        Some((e.source_bytes()?.to_vec(), e.scene().crop))
     }
     /// Covers that reach the exported image.
     pub fn covers_in_output(&self) -> Vec<Region> {

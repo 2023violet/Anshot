@@ -91,13 +91,14 @@ export component ToastWindow inherits Window {
     no-frame: true;
     always-on-top: true;
     title: "Anshot";
-    width: root.action == "" ? 300px : 420px; height: 64px;
+    width: root.wide ? 420px : 300px; height: 64px;
     background: transparent;
     default-font-family: Theme.font-ui;
     in property <string> kind; // "done" | "error" | "warn"
     in property <string> heading;
     in property <string> detail;
     in property <string> action;
+    in property <bool> wide;
     callback act();
     Rectangle {
         border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;

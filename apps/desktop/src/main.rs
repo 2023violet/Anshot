@@ -4,6 +4,8 @@
 // Slint's generated code needs `unsafe`; our own modules each `forbid` it.
 #![deny(unsafe_code)]
 use crate::i18n::{t, tf};
+use anshot_core::sensitive::SensitiveKind;
+use std::cell::Cell;
 
 mod canvas;
 mod capture;
@@ -96,10 +98,13 @@ struct App {
     /// A text recognition job is running.
     ocr_running: bool,
     check_running: bool,
-    /// Only the check of the latest delivery may report.
-    auto_check_seq: u64,
-    /// The open list came from this delivery: its image has already left.
-    delivered_unchecked: Option<Delivery>,
+    auto_check_running: bool,
+    /// The newest delivery waiting for its check.
+    auto_check_next: Option<(Vec<u8>, Delivery)>,
+    /// The system toast's own timer: an editor toast must not keep it on screen.
+    system_toast_seq: u64,
+    /// The redaction the stand-in input belongs to.
+    replace_target: Cell<Option<u64>>,
 }
 
 struct LongShot {
@@ -162,6 +167,7 @@ impl App {
             ui.set_crop_visible(false);
             ui.set_has_selection(false);
             ui.set_mask_selected(false);
+            ui.set_replace_editing(false);
             ui.set_has_region(false);
             ui.set_text_editing(false);
             ui.set_dims_text(SharedString::new());
@@ -202,7 +208,10 @@ impl App {
         ui.set_crop_active(ctl.tool == Tool::Crop);
         let kind = ctl.selected_kind();
         ui.set_has_selection(kind.is_some());
-        ui.set_mask_selected(ctl.selected_mask().is_some());
+        let target = ctl.selected_mask().map(|m| m.0);
+        ui.set_mask_selected(target.is_some());
+        // The input belongs to one redaction: it must not write to the next one selected.
+        if self.replace_target.replace(target) != target && ui.get_replace_editing() { ui.set_replace_editing(false); ui.invoke_focus_keys(); }
         let mode = match kind.unwrap_or(ctl.tool) {
             Tool::Redact => "redact", Tool::Mosaic => "mosaic",
             Tool::Arrow | Tool::Rect | Tool::Ellipse | Tool::Line | Tool::Pen | Tool::Magnify => "stroke",
@@ -385,7 +394,6 @@ impl App {
     fn key(&mut self, text: &str, ctrl: bool, shift: bool, other: bool) -> bool {
         use slint::platform::Key;
         let is = |k: Key| text == SharedString::from(k).as_str();
-        if is(Key::Escape) && self.ctl.review.is_some() { self.check_command("check-close"); return true; }
         if let Some(ui) = self.ui() {
             if ui.get_dialog() != "" {
                 if is(Key::Escape) { self.dialog_choice("cancel"); return true; }
@@ -395,6 +403,7 @@ impl App {
                 return false;
             }
         }
+        if is(Key::Escape) && self.ctl.review.is_some() && !self.ctl.dragging() && self.ctl.tool != Tool::Crop { self.check_command("check-close"); return true; }
         if other { return false; } // Alt / Win combinations are not ours.
         if ctrl {
             // Some platforms deliver Ctrl+letter as a control character.
@@ -473,6 +482,7 @@ impl App {
     /// S4 outside the editor: bottom-right of the primary work area, 3 s.
     fn system_toast(&mut self, kind: &str, heading: &str, detail: &str) { self.system_toast_with(kind, heading, detail, ""); }
     fn system_toast_with(&mut self, kind: &str, heading: &str, detail: &str, action: &str) {
+        let wide = !action.is_empty() || heading.chars().count() > 24;
         if self.toast_win.is_none() {
             self.toast_win = ToastWindow::new().ok();
             if let Some(t) = self.toast_win.as_ref() {
@@ -481,6 +491,7 @@ impl App {
         }
         let Some(t) = self.toast_win.as_ref() else { return };
         t.set_action(action.into());
+        t.set_wide(wide);
         t.set_kind(kind.into());
         t.set_heading(heading.into());
         t.set_detail(detail.into());
@@ -492,14 +503,14 @@ impl App {
         slint::Timer::single_shot(Duration::from_millis(60), move || anshot_platform_windows::restore_foreground(focus));
         if let Some(m) = anshot_platform_windows::monitors().ok().and_then(|ms| ms.into_iter().find(|m| m.primary)) {
             let s = t.window().scale_factor();
-            let (w, h) = ((if action.is_empty() { 300.0 } else { 420.0 } * s) as i32, (64.0 * s) as i32);
+            let (w, h) = ((if wide { 420.0 } else { 300.0 } * s) as i32, (64.0 * s) as i32);
             t.window().set_position(slint::PhysicalPosition::new(m.work.x + m.work.w - w - (16.0 * s) as i32, m.work.y + m.work.h - h - (16.0 * s) as i32));
         }
-        self.toast_seq += 1;
-        let seq = self.toast_seq;
+        self.system_toast_seq += 1;
+        let seq = self.system_toast_seq;
         // A toast with a button stays long enough to reach it.
         slint::Timer::single_shot(Duration::from_secs(if action.is_empty() { 3 } else { 10 }), move || {
-            with(|a| if a.toast_seq == seq { if let Some(t) = a.toast_win.as_ref() { let _ = t.hide(); } });
+            with(|a| if a.system_toast_seq == seq { if let Some(t) = a.toast_win.as_ref() { let _ = t.hide(); } });
         });
     }
 
@@ -507,7 +518,8 @@ impl App {
     fn run_check(&mut self) {
         if self.check_running { return; }
         let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
-        let Some(document) = self.ctl.editor.as_ref().map(|e| e.stamp().document_id) else { return };
+        let document = self.ctl.generation();
+        let covers = self.ctl.covers_in_output();
         self.check_running = true;
         self.ctl.review = None;
         self.refresh();
@@ -521,9 +533,9 @@ impl App {
                 with(|a| {
                     a.check_running = false;
                     // The document was replaced or closed while the worker ran.
-                    if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
+                    if a.ctl.generation() == document {
                         match items {
-                            Ok(items) => a.ctl.review = Some(check::Review { document, items, like: None, replace: false }),
+                            Ok(items) => a.ctl.review = Some(check::Review { document, items: check::without_dismissed(items, &covers), like: None, replace: false, delivered: None }),
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
                         }
                     }
@@ -537,40 +549,49 @@ impl App {
     /// language stays silent here (the button explains it).
     fn auto_check(&mut self, png: Vec<u8>, kind: Delivery) {
         if !self.settings.check_on_share || self.after_copy == AfterCopy::Quit { return; }
-        let Some(stamp) = self.ctl.editor.as_ref().map(|e| e.stamp()) else { return };
-        let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
-        let (crop, covers) = (scene.crop, self.ctl.covers_in_output());
-        self.auto_check_seq += 1;
-        let seq = self.auto_check_seq;
+        // One check at a time: a newer delivery waits and replaces any older one still waiting.
+        if self.auto_check_running { self.auto_check_next = Some((png, kind)); return; }
+        let document = self.ctl.generation();
+        let Some((source, crop)) = self.ctl.delivery_source() else { return };
+        let covers = self.ctl.covers_in_output();
+        self.auto_check_running = true;
         std::thread::spawn(move || {
             let decode = |bytes: &[u8]| anshot_core::decode_source(bytes).ok();
             let done = decode(&png).zip(decode(&source)).and_then(|(export, source)| check::check_export(&export, crop, &source, &covers).ok());
+            drop(source);
             let _ = slint::invoke_from_event_loop(move || {
-                with(|a| if a.auto_check_seq == seq && a.ctl.editor.as_ref().map(|e| e.stamp()) == Some(stamp) {
-                    if let Some((items, audit)) = done { a.auto_check_done(items, audit, stamp.document_id, kind); }
+                // An edit made meanwhile changes nothing: this image has already left.
+                with(|a| {
+                    a.auto_check_running = false;
+                    match a.auto_check_next.take() {
+                        // A newer image has left since: only its result matters.
+                        Some((png, kind)) => a.auto_check(png, kind),
+                        None => if a.ctl.generation() == document { if let Some((items, audit)) = done { a.auto_check_done(items, audit, document, kind); } },
+                    }
                 });
             });
         });
     }
     fn auto_check_done(&mut self, items: Vec<check::Item>, audit: check::Audit, document: u64, kind: Delivery) {
-        let items = check::without_dismissed(items, &self.ctl.dismissed);
+        let mut items = check::without_dismissed(items, &self.ctl.dismissed);
+        // Covered while the worker ran. Text still readable on a cover stays listed.
+        let covers = self.ctl.covers_in_output();
+        items.retain(|i| i.kind == SensitiveKind::SameText || check::without_dismissed(vec![i.clone()], &covers).len() == 1);
         if items.is_empty() {
             // Only now can the covers be vouched for, and only as far as this reader goes.
-            if audit.checked > 0 && audit.readable == 0 {
-                let detail = if audit.no_text > 0 { tf("另有 {} 处框内未识别到文字", &[&audit.no_text]) } else { t("这是辅助检查").to_string() };
+            if audit.vouches() {
+                let detail = if audit.no_text > 0 { tf("另有 {} 处框内未识别到文字 · 这是辅助检查", &[&audit.no_text]) } else { t("这是辅助检查").to_string() };
                 self.toast("done", &tf("已核对 {} 处遮挡：成品里识别不出", &[&audit.checked]), &detail, None);
             }
             return;
         }
         let n = items.len();
         let title = if kind == Delivery::Copy { tf("已复制 · 发现 {} 处可能的隐私内容", &[&n]) } else { tf("已保存 · 发现 {} 处可能的隐私内容", &[&n]) };
-        self.ctl.pending_review = Some((check::Review { document, items, like: None, replace: false }, kind));
+        self.ctl.pending_review = Some(check::Review { document, items, like: None, replace: false, delivered: Some(kind) });
         self.toast("warn", &title, t("这是辅助检查"), Some((t("查看"), ToastAction::Review)));
     }
     fn open_pending_review(&mut self) {
-        let Some((review, kind)) = self.ctl.pending_review.take() else { return };
-        self.ctl.review = Some(review);
-        self.delivered_unchecked = Some(kind);
+        self.ctl.review = self.ctl.pending_review.take();
         self.clear_toast();
         self.show_editor();
     }
@@ -591,7 +612,7 @@ impl App {
         let Some((mask, region)) = self.ctl.selected_mask() else { return };
         let Some((source, _)) = self.ctl.ocr_snapshot() else { return };
         let Some(e) = self.ctl.editor.as_ref() else { return };
-        let document = e.stamp().document_id;
+        let document = self.ctl.generation();
         let covered: Vec<anshot_core::Region> = e.masks().iter().map(|m| m.region).collect();
         self.check_running = true;
         self.ctl.review = None;
@@ -602,9 +623,9 @@ impl App {
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| {
                     a.check_running = false;
-                    if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
+                    if a.ctl.generation() == document {
                         match found {
-                            Ok(Some(items)) if !items.is_empty() => a.ctl.review = Some(check::Review { document, items, like: Some(mask), replace: false }),
+                            Ok(Some(items)) if !items.is_empty() => a.ctl.review = Some(check::Review { document, items, like: Some(mask), replace: false, delivered: None }),
                             Ok(Some(_)) => a.toast("warn", t("没有找到相同内容"), t("写法不同或识别有误时找不到"), None),
                             Ok(None) => a.toast("warn", t("框内没有识别到文字"), t("至少要两个字才能查找"), None),
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
@@ -618,13 +639,20 @@ impl App {
     fn check_command(&mut self, c: &str) {
         match c {
             "check-mode-cover" | "check-mode-replace" => if let Some(r) = self.ctl.review.as_mut() { r.replace = c == "check-mode-replace"; },
-            "check-close" => { self.ctl.dismiss_review(); self.delivered_unchecked = None; }
-            "check-apply" => match self.ctl.apply_review() {
+            "check-close" => self.ctl.dismiss_review(),
+            "check-apply" => {
                 // The image that left is still the uncovered one: replace it.
-                Ok(_) if self.delivered_unchecked.take() == Some(Delivery::Copy) => { self.start(Delivery::Copy); }
+                let recopy = self.ctl.review.as_ref().is_some_and(|r| r.delivered == Some(Delivery::Copy));
+                let resave = self.ctl.review.as_ref().is_some_and(|r| r.delivered == Some(Delivery::Save));
+                // Not yet: the list stays so that the clipboard's old image is not forgotten.
+                if recopy && !self.ctl.can_deliver() { self.toast("warn", t("正在处理"), t("请等上一次复制或保存完成"), None); self.refresh(); return; }
+                match self.ctl.apply_review() {
+                Ok(_) if recopy => { self.start(Delivery::Copy); }
+                Ok(n) if self.ctl.review.is_none() && resave => self.toast("warn", &tf("已遮挡 {} 处", &[&n]), t("保存的文件还是刚才那张图，请再保存一次"), None),
                 Ok(n) => self.toast("done", &tf("已遮挡 {} 处", &[&n]), t("可以撤销；检查可能有遗漏"), None),
                 Err(e) => self.toast("error", t("无法遮挡"), &messages::edit(&e), None),
-            },
+                }
+            }
             _ => if let (Some(i), Some(r)) = (c.strip_prefix("check-toggle-").and_then(|i| i.parse::<usize>().ok()), self.ctl.review.as_mut()) {
                 if let Some(item) = r.items.get_mut(i) { item.on = !item.on; }
             },
@@ -636,8 +664,9 @@ impl App {
         ui.set_check_state(if self.check_running { "busy" } else { match review { None => "", Some(r) if r.items.is_empty() => "empty", _ => "list" } }.into());
         let items = review.map_or(&[][..], |r| &r.items[..]);
         ui.set_check_replace(review.is_some_and(|r| r.replace));
-        ui.set_check_recopy(review.is_some() && self.delivered_unchecked == Some(Delivery::Copy));
-        ui.set_check_resave(review.is_some() && self.delivered_unchecked == Some(Delivery::Save));
+        ui.set_check_recopy(review.is_some_and(|r| r.delivered == Some(Delivery::Copy)));
+        ui.set_check_resave(review.is_some_and(|r| r.delivered == Some(Delivery::Save)));
+        ui.set_check_history(review.is_some_and(|r| r.delivered.is_some()) && self.settings.history_limit > 0);
         let rows: Vec<CheckRow> = items.iter().map(|i| CheckRow { label: check::label(i).into(), hint: check::hint(&i.text).into(), on: i.on }).collect();
         ui.set_check_count(items.iter().filter(|i| i.on).count() as i32);
         ui.set_check_rows(ModelRc::new(VecModel::from(rows)));
@@ -1350,7 +1379,8 @@ fn picker<T>(f: impl FnOnce() -> Option<T>) -> Option<T> {
 
 fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
-    let settings_cmd = cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
+    let in_about = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "about")).unwrap_or(false);
+    let settings_cmd = cmd.starts_with("autocheck-") || cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
         || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
@@ -1368,7 +1398,7 @@ fn command(cmd: &str) {
         });
         return;
     }
-    if !(in_settings && settings_cmd) && with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
+    if !(in_settings && settings_cmd) && !(in_about && cmd == "check-update") && with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(false) { return; }
     match cmd {
         // Blocking dialogs and clipboard reads run outside the state borrow.
         "open" => { if let Some(p) = picker(platform::pick_image) { open_path(p); } }
@@ -1476,7 +1506,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false, auto_check_seq: 0, delivered_unchecked: None,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false, auto_check_running: false, auto_check_next: None, system_toast_seq: 0, replace_target: Cell::new(None),
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {

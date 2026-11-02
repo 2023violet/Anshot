@@ -45,6 +45,7 @@ export component AppWindow inherits Window {
     callback replace-commit(string);
     in property <bool> check-recopy; // the list came from a copy: applying copies again
     in property <bool> check-resave; // the list came from a save: the file still has the old image
+    in property <bool> check-history; // ... and capture history keeps a copy of it
     in property <string> dims-text;
     in property <string> zoom-text: "100%";
     in property <bool> zoom-fit: true;
@@ -380,6 +381,7 @@ export component AppWindow inherits Window {
                             Segmented { options: [@tr("打码"), @tr("替换成占位文字")]; selected: root.check-replace ? 1 : 0; picked(i) => { root.command(i == 0 ? "check-mode-cover" : "check-mode-replace"); } } }
                         if root.check-recopy: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("剪贴板里还是刚才那张图。"); }
                         if root.check-resave: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("保存的文件还是刚才那张图，遮挡后请再保存一次。"); }
+                        if root.check-history: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("截图历史里也存着那张图，可在历史中删除。"); }
                         if root.check-state != "busy": Text { font-size: 11px; color: Theme.mute; wrap: word-wrap;
                             text: @tr("这只是辅助检查，可能有遗漏，姓名和地址找不到。分享前请再看一遍。"); }
                         if root.check-state == "busy": Rectangle { vertical-stretch: 1; }

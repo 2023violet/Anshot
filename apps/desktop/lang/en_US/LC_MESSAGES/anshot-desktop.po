@@ -1018,8 +1018,14 @@ msgstr "Cover"
 msgid "替换成占位文字"
 msgstr "Replace with placeholder"
 
-msgid "另有 {} 处框内未识别到文字"
-msgstr "{} more had no text the check could read"
+msgid "另有 {} 处框内未识别到文字 · 这是辅助检查"
+msgstr "{} more had no readable text · This check is only an aid"
 
 msgid "已核对 {} 处遮挡：成品里识别不出"
 msgstr "Checked {} covers: not readable in the result"
+
+msgid "保存的文件还是刚才那张图，请再保存一次"
+msgstr "The saved file is still the earlier image. Save it again."
+
+msgid "截图历史里也存着那张图，可在历史中删除。"
+msgstr "Capture history also holds that image; you can delete it there."

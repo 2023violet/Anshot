@@ -186,6 +186,10 @@ Shot $h 'check-2c-replaced.png'
 Log "COPY size=$(CopyTo 'check-replaced.png')"
 $read = python (Join-Path $PSScriptRoot 'check_review.py') $doc (Join-Path $Out 'check-replaced.png') $truth 'phone,id,card,email,ip,key' replaced
 Log $read
+# A stand-in reads like a phone number or a mail address: it must not set the check off.
+$after = Wait-Name $h '^已核对 \d+ 处遮挡|^已复制 · 发现' 20
+Log "REPLACE after_copy=$after"
+Verdict 'stand_ins_do_not_warn' ($after -match '^已核对')
 Focus-Editor
 Key 0x4F -Ctrl -Shift
 $ocr = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(15); $text = ''
@@ -245,6 +249,19 @@ $same = @(Names $h | Where-Object { $_ -eq '相同内容' }).Count
 Log "LEAK same_rows=$same"
 Verdict 'audit_reports_uncovered_copy' ($same -eq 1)
 Shot $h 'check-3c-leak.png'
+[void](Invoke-Named $h '关闭')
+
+# ---- 4c. the setting really switches the check after a copy off ----
+Focus-Editor
+Key 0xBC -Ctrl; Start-Sleep -Milliseconds 800
+Log "SETTING tab=$(Invoke-Named $h '隐私')"
+Log "SETTING off=$(Invoke-Named $h '只手动检查')"
+Start-Sleep -Milliseconds 400
+$file = Get-Content (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') -Raw
+Verdict 'autocheck_setting_saves' ($file -match 'check_on_share=false')
+Key 0x1B; Start-Sleep -Milliseconds 400
+Log "SETTING copy=$(CopyTo 'check-off.png')"
+Verdict 'autocheck_off_is_quiet' ((Wait-Name $h '^已复制 · 发现|^已核对' 8) -eq '')
 
 if (-not $p.HasExited) { $p.Kill() }
 Start-Sleep -Milliseconds 800

@@ -21,6 +21,10 @@ const KEY_PREFIXES: [&str; 10] = ["sk-", "ghp_", "gho_", "ghs_", "xoxb-", "xoxp-
 const KEY_MIN_TAIL: usize = 8;
 /// Characters the engine reads in place of a digit.
 const DIGIT_LOOKALIKES: &str = "OolI|eScgBZ";
+/// Units that follow numbers in ordinary text; never a misread dot.
+const NUMBER_UNITS: &str = "天时分秒月日年号室厅卫平元万亿个条次人岁点";
+/// Words this far apart (in line heights) are columns, not one value.
+const COLUMN_GAP: f32 = 2.0;
 
 /// Full-width forms to ASCII; everything else stays.
 fn fold(c: char) -> char {
@@ -37,6 +41,9 @@ impl<'a> Line<'a> {
     fn new(words: &'a [TextWord]) -> Self {
         let (mut chars, mut owner) = (Vec::new(), Vec::new());
         for (i, w) in words.iter().enumerate() {
+            if let Some(p) = i.checked_sub(1).map(|p| &words[p]) {
+                if w.x - (p.x + p.w) > COLUMN_GAP * w.h.max(p.h) { chars.push('\t'); owner.push(i); }
+            }
             for c in w.text.chars().map(fold).filter(|c| !c.is_whitespace()) { chars.push(c); owner.push(i); }
         }
         Self { chars, owner, words }
@@ -81,7 +88,18 @@ fn numbers(l: &Line, out: &mut Vec<Finding>) {
         let mut e = end + 1;
         // An ID's check character can be X.
         if e - i == 17 && c.get(e).is_some_and(|x| matches!(x, 'X' | 'x')) { e += 1; }
+        let before = out.len();
         classify_number(l, i, e, real, out);
+        // Nothing fits the run as a whole: the characters inside were ordinary text, not
+        // misreads, so read the numbers on either side on their own.
+        if out.len() == before {
+            let mut s = i;
+            while s < e {
+                let n = (s..e).find(|&x| !c[x].is_ascii()).unwrap_or(e);
+                if n > s { classify_number(l, s, n, n - s, out); }
+                s = n + 1;
+            }
+        }
         i = e;
     }
 }
@@ -89,7 +107,9 @@ fn classify_number(l: &Line, s: usize, e: usize, real: usize, out: &mut Vec<Find
     use {Certainty::*, SensitiveKind::*};
     let (len, clean) = (e - s, l.digits(s, e));
     let run = &l.chars[s..e];
-    if real >= 9 && (11..=13).contains(&len) && run[0] == '1' {
+    if clean && len == 13 && run[..2] == ['8', '6'] && run[2] == '1' {
+        out.push(l.finding(Phone, Confirmed, s, e));
+    } else if real >= 9 && (11..=13).contains(&len) && run[0] == '1' && (!clean || len == 11) {
         let exact = clean && len == 11 && ('3'..='9').contains(&run[1]);
         out.push(l.finding(Phone, if exact { Confirmed } else { Possible }, s, e));
     } else if id_checksum(run) {
@@ -101,11 +121,23 @@ fn classify_number(l: &Line, s: usize, e: usize, real: usize, out: &mut Vec<Find
     }
 }
 
-/// `a.b.c.d`, where the engine may put any non-Latin mark in place of a dot.
+/// `138-0013-8000`: hyphens anywhere else are dates and part numbers.
+fn dashed_phone(l: &Line, out: &mut Vec<Finding>) {
+    let c = &l.chars;
+    for s in 0..c.len().saturating_sub(12) {
+        let shape = (0..13).all(|i| if i == 3 || i == 8 { c[s + i] == '-' } else { c[s + i].is_ascii_digit() });
+        let edge = |i: Option<&char>| i.is_some_and(|x| x.is_ascii_digit() || *x == '-');
+        if shape && c[s] == '1' && !edge(s.checked_sub(1).map(|p| &c[p])) && !edge(c.get(s + 13)) {
+            out.push(l.finding(SensitiveKind::Phone, Certainty::Confirmed, s, s + 13));
+        }
+    }
+}
+
+/// `a.b.c.d`, where the engine may put a non-Latin mark in place of a dot.
 fn ipv4(l: &Line, out: &mut Vec<Finding>) {
     let c = &l.chars;
     let octet = |mut i: usize| { let s = i; while i < c.len() && i - s < 3 && c[i].is_ascii_digit() { i += 1; } (i > s).then_some(i) };
-    let sep = |i: usize| c.get(i).is_some_and(|x| *x == '.' || *x == ',' || !x.is_ascii());
+    let sep = |i: usize| c.get(i).is_some_and(|x| *x == '.' || *x == ',' || (!x.is_ascii() && !NUMBER_UNITS.contains(*x)));
     for s in 0..c.len() {
         if !c[s].is_ascii_digit() || (s > 0 && (c[s - 1].is_ascii_digit() || c[s - 1] == '.')) { continue; }
         let Some(mut e) = octet(s) else { continue };
@@ -118,7 +150,8 @@ fn ipv4(l: &Line, out: &mut Vec<Finding>) {
         }
         if parts < 4 || c.get(e).is_some_and(char::is_ascii_digit) { continue; }
         let in_range = l.chars[s..e].split(|x| !x.is_ascii_digit()).all(|o| o.iter().collect::<String>().parse::<u16>().is_ok_and(|n| n <= 255));
-        out.push(l.finding(SensitiveKind::Ipv4, if exact && in_range { Certainty::Confirmed } else { Certainty::Possible }, s, e));
+        if !in_range { continue; }
+        out.push(l.finding(SensitiveKind::Ipv4, if exact { Certainty::Confirmed } else { Certainty::Possible }, s, e));
     }
 }
 
@@ -167,6 +200,7 @@ pub fn scan_line(words: &[TextWord]) -> Vec<Finding> {
     let l = Line::new(words);
     let mut out = Vec::new();
     numbers(&l, &mut out);
+    dashed_phone(&l, &mut out);
     ipv4(&l, &mut out);
     email(&l, &mut out);
     api_key(&l, &mut out);
@@ -184,6 +218,15 @@ fn text_inside(lines: &[Line], area: (f32, f32, f32, f32)) -> Vec<char> {
 pub fn text_in(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> Option<Vec<char>> {
     let lines: Vec<Line> = lines.iter().map(|w| Line::new(w)).collect();
     Some(text_inside(&lines, area)).filter(|p| p.len() >= 2)
+}
+/// Whether a word reaches over the edge of `area`: part of it is outside the cover, so what is
+/// left may still be read even though the whole word is not found.
+pub fn straddles(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> bool {
+    const SLACK: f32 = 2.0;
+    lines.iter().flatten().any(|w| {
+        let b = (w.x, w.y, w.x + w.w, w.y + w.h);
+        overlaps(b, area) && (b.0 < area.0 - SLACK || b.1 < area.1 - SLACK || b.2 > area.2 + SLACK || b.3 > area.3 + SLACK)
+    })
 }
 /// Every place `phrase` can be read. Exact match after folding: a misread copy is not found.
 pub fn find_text(lines: &[Vec<TextWord>], phrase: &[char]) -> Vec<Finding> {
@@ -248,6 +291,20 @@ mod tests {
         assert!(kinds(&["共", "1024", "条"]).is_empty());
         assert!(kinds(&["23800138000"]).is_empty());
     }
+    #[test] fn phones_next_to_other_numbers_and_in_other_forms() {
+        assert_eq!(kinds(&["1", "张", "三", "13800138000"]), [(Phone, Confirmed)]);
+        assert_eq!(kinds(&["13800138000", "张", "三", "5"]), [(Phone, Confirmed)]);
+        assert_eq!(kinds(&["+86", "13800138000"]), [(Phone, Confirmed)]);
+        assert_eq!(kinds(&["138-0013-8000"]), [(Phone, Confirmed)]);
+        assert!(kinds(&["2024-1015-1430"]).is_empty());
+        assert!(kinds(&["1730000000000"]).is_empty(), "a millisecond timestamp");
+    }
+    #[test] fn columns_are_not_one_number() {
+        let cell = |t: &str, x: f32| TextWord { text: t.into(), x, y: 0.0, w: 30.0, h: 16.0 };
+        // Joined, these would read as the phone number 15300881024.
+        assert!(scan_line(&[cell("15", 0.0), cell("300", 80.0), cell("88", 160.0), cell("1024", 240.0)]).is_empty());
+        assert_eq!(scan_line(&[cell("153", 0.0), cell("0088", 34.0), cell("1024", 68.0)]).len(), 1, "a number spaced as 3-4-4 is still one");
+    }
     #[test] fn ids_use_the_check_digit() {
         assert_eq!(kinds(&["11010519491231002X"]), [(IdCard, Confirmed)]);
         assert_eq!(kinds(&["110105194912310021"]), [(IdCard, Possible)]);
@@ -260,8 +317,7 @@ mod tests {
     #[test] fn ipv4_tolerates_marks_but_not_ordinary_numbers() {
         assert_eq!(kinds(&["192.0.2.10"]), [(Ipv4, Confirmed)]);
         assert_eq!(kinds(&["198", "。", "51", "。", "100", "。", "63"]), [(Ipv4, Possible)]);
-        assert_eq!(kinds(&["999.1.1.1"]), [(Ipv4, Possible)]);
-        for ordinary in ["1.18.1", "19045.3803", "14:30:25", "2024-10-15", "¥1,299.00"] { assert!(kinds(&[ordinary]).is_empty(), "{ordinary}"); }
+        for ordinary in ["999.1.1.1", "1.18.1", "19045.3803", "14:30:25", "2024-10-15", "¥1,299.00", "1天2小时3分4秒", "10月15日14时30分", "3室2厅1卫80平", "1,234,567,890"] { assert!(kinds(&[ordinary]).is_empty(), "{ordinary}"); }
     }
     #[test] fn mail_and_split_words() {
         assert_eq!(kinds(&["wpauv40@exa", "mple.co", "m"]), [(Email, Confirmed)]);
