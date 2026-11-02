@@ -161,6 +161,7 @@ impl App {
             ui.set_sel_visible(false);
             ui.set_crop_visible(false);
             ui.set_has_selection(false);
+            ui.set_mask_selected(false);
             ui.set_has_region(false);
             ui.set_text_editing(false);
             ui.set_dims_text(SharedString::new());
@@ -201,6 +202,7 @@ impl App {
         ui.set_crop_active(ctl.tool == Tool::Crop);
         let kind = ctl.selected_kind();
         ui.set_has_selection(kind.is_some());
+        ui.set_mask_selected(ctl.selected_mask().is_some());
         let mode = match kind.unwrap_or(ctl.tool) {
             Tool::Redact => "redact", Tool::Mosaic => "mosaic",
             Tool::Arrow | Tool::Rect | Tool::Ellipse | Tool::Line | Tool::Pen | Tool::Magnify => "stroke",
@@ -521,7 +523,7 @@ impl App {
                     // The document was replaced or closed while the worker ran.
                     if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
                         match items {
-                            Ok(items) => a.ctl.review = Some(check::Review { document, items }),
+                            Ok(items) => a.ctl.review = Some(check::Review { document, items, like: None }),
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
                         }
                     }
@@ -553,7 +555,7 @@ impl App {
         if items.is_empty() { return; }
         let n = items.len();
         let title = if kind == Delivery::Copy { tf("已复制 · 发现 {} 处可能的隐私内容", &[&n]) } else { tf("已保存 · 发现 {} 处可能的隐私内容", &[&n]) };
-        self.ctl.pending_review = Some((check::Review { document, items }, kind));
+        self.ctl.pending_review = Some((check::Review { document, items, like: None }, kind));
         self.toast("warn", &title, t("这是辅助检查"), Some((t("查看"), ToastAction::Review)));
     }
     fn open_pending_review(&mut self) {
@@ -562,6 +564,38 @@ impl App {
         self.delivered_unchecked = Some(kind);
         self.clear_toast();
         self.show_editor();
+    }
+    /// Find the selected redaction's text elsewhere. It reads the source pixels, because the
+    /// text is covered in the export; only the suggestions leave the worker.
+    fn run_same_text(&mut self) {
+        if self.check_running { return; }
+        let Some((mask, region)) = self.ctl.selected_mask() else { return };
+        let Some((source, _)) = self.ctl.ocr_snapshot() else { return };
+        let Some(e) = self.ctl.editor.as_ref() else { return };
+        let document = e.stamp().document_id;
+        let covered: Vec<anshot_core::Region> = e.masks().iter().map(|m| m.region).collect();
+        self.check_running = true;
+        self.ctl.review = None;
+        self.refresh();
+        std::thread::spawn(move || {
+            let found = anshot_core::decode_source(&source).map_err(|_| t("无法读取图片").to_string())
+                .and_then(|img| check::same_as(&img, region).map_err(|e| check::ocr_message(&e).to_string()))
+                .map(|found| found.map(|f| check::without_dismissed(check::to_items(f, None), &covered)));
+            let _ = slint::invoke_from_event_loop(move || {
+                with(|a| {
+                    a.check_running = false;
+                    if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
+                        match found {
+                            Ok(Some(items)) if !items.is_empty() => a.ctl.review = Some(check::Review { document, items, like: Some(mask) }),
+                            Ok(Some(_)) => a.toast("warn", t("没有找到相同内容"), t("写法不同或识别有误时找不到"), None),
+                            Ok(None) => a.toast("warn", t("框内没有识别到文字"), t("至少要两个字才能查找"), None),
+                            Err(e) => a.toast("error", t("无法检查"), &e, None),
+                        }
+                    }
+                    a.refresh();
+                });
+            });
+        });
     }
     fn check_command(&mut self, c: &str) {
         match c {
@@ -1371,6 +1405,7 @@ fn command(cmd: &str) {
                     "history" => a.open_history(),
                     "ocr" => a.ocr_document(),
                     "check" => a.run_check(),
+                    "same-text" => a.run_same_text(),
                     c if c.starts_with("check-") => a.check_command(c),
                     "pin" => a.pin_document(),
                     c if c.starts_with("keep-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_LIMITS.get(i)) {

@@ -30,7 +30,7 @@ fn applying_a_review_remembers_only_what_stayed_unticked() {
     use anshot_core::sensitive::{Certainty, SensitiveKind};
     let mut c = opened(400, 200);
     let item = |x0, on| crate::check::Item { kind: SensitiveKind::Phone, certainty: Certainty::Confirmed, text: String::new(), region: Region::new(x0, 10, x0 + 50, 30), on };
-    c.review = Some(Review { document: 1, items: vec![item(10, true), item(100, false)] });
+    c.review = Some(Review { document: 1, items: vec![item(10, true), item(100, false)], like: None });
     assert_eq!(c.apply_review(), Ok(1));
     assert_eq!(editor(&c).masks().len(), 1);
     assert_eq!(c.dismissed, [Region::new(100, 10, 150, 30)], "a covered item must warn again if the cover is undone");
@@ -38,14 +38,28 @@ fn applying_a_review_remembers_only_what_stayed_unticked() {
 }
 
 #[test]
+fn same_text_suggestions_copy_the_selected_redaction() {
+    use anshot_core::sensitive::{Certainty, SensitiveKind};
+    let mut c = opened(400, 200);
+    c.tool = Tool::Mosaic;
+    drag(&mut c, (10.0, 10.0), (60.0, 30.0));
+    let (id, _) = c.selected_mask().unwrap();
+    c.tool = Tool::Redact;
+    let item = crate::check::Item { kind: SensitiveKind::SameText, certainty: Certainty::Confirmed, text: String::new(), region: Region::new(100, 10, 150, 30), on: true };
+    c.review = Some(Review { document: 1, items: vec![item], like: Some(id) });
+    c.apply_review().unwrap();
+    assert_eq!(editor(&c).masks()[1].style, RedactStyle::SafeMosaic);
+}
+
+#[test]
 fn closing_the_list_leaves_the_image_alone_and_a_new_document_forgets_it() {
     use anshot_core::sensitive::{Certainty, SensitiveKind};
     let mut c = opened(400, 200);
     let item = crate::check::Item { kind: SensitiveKind::Email, certainty: Certainty::Confirmed, text: "secret".into(), region: Region::new(10, 10, 60, 30), on: true };
-    c.review = Some(Review { document: 1, items: vec![item.clone()] });
+    c.review = Some(Review { document: 1, items: vec![item.clone()], like: None });
     c.dismiss_review();
     assert_eq!((editor(&c).masks().len(), c.dismissed.len()), (0, 1));
-    c.pending_review = Some((Review { document: 1, items: vec![item] }, Delivery::Copy));
+    c.pending_review = Some((Review { document: 1, items: vec![item], like: None }, Delivery::Copy));
     c.accept_source(SourceCandidate::decode(png(50, 50)).unwrap(), None).unwrap();
     assert!(c.review.is_none() && c.pending_review.is_none() && c.dismissed.is_empty());
 }

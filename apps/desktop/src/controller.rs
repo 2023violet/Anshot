@@ -780,11 +780,18 @@ impl Controller {
     pub fn apply_review(&mut self) -> Result<usize, EditError> {
         let Some(review) = self.review.as_ref() else { return Ok(0) };
         let regions: Vec<Region> = review.items.iter().filter(|i| i.on).map(|i| i.region).collect();
-        let style = if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) };
+        let like = review.like.and_then(|id| self.editor.as_ref()?.masks().iter().find(|m| m.id == id).map(|m| m.style));
+        let style = like.unwrap_or(if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) });
         let n = self.editor.as_mut().ok_or(EditError::MissingSource)?.add_redactions(&regions, style)?;
         // Only what stayed unticked was left alone on purpose: undoing a cover must warn again.
         if let Some(r) = self.review.take() { self.dismissed.extend(r.items.iter().filter(|i| !i.on).map(|i| i.region)); }
         Ok(n)
+    }
+    /// The selected redaction, if one is selected.
+    pub fn selected_mask(&self) -> Option<(u64, Region)> {
+        let e = self.editor.as_ref()?;
+        let id = e.selected()?;
+        e.masks().iter().find(|m| m.id == id).map(|m| (m.id, m.region))
     }
     pub fn ocr_snapshot(&self) -> Option<(Vec<u8>, anshot_render::Scene)> {
         // Not mid-gesture: a redaction still being drawn is not part of the document yet.

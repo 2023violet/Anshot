@@ -11,6 +11,9 @@ Add-Type @'
 using System; using System.Runtime.InteropServices; using System.Text;
 public static class K {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
@@ -139,6 +142,30 @@ Log "COPY size=$(CopyTo 'check-undone.png')"
 $same = python (Join-Path $PSScriptRoot 'check_png.py') same $doc (Join-Path $Out 'check-undone.png')
 Log "SAME_UNDONE $same"
 Verdict 'check_undo_is_one_step' ("$same" -match 'diff=0$')
+
+# ---- 3b. cover one name by hand, then every copy of it ----
+$rows = Get-Content $truth -Raw -Encoding utf8 | ConvertFrom-Json
+$b = @($rows | Where-Object { $_.kind -eq 'name' })[0].box
+$o = New-Object K+POINT; [void][K]::ClientToScreen($h, [ref]$o)
+$cr = New-Object K+RECT; [void][K]::GetClientRect($h, [ref]$cr)
+$ix = [math]::Round(($cr.R - 900) / 2) + $o.X; $iy = 92 + [math]::Round(($cr.B - 122 - 560) / 2) + $o.Y
+Focus-Editor
+Log "DRAW box=$($b -join ',') origin=$ix,$iy"
+[void][K]::SetCursorPos($ix + $b[0] - 3, $iy + $b[1] - 3); Start-Sleep -Milliseconds 200
+[K]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 80
+foreach ($i in 1..10) { [void][K]::SetCursorPos($ix + $b[0] - 3 + ($b[2] - $b[0] + 6) * $i / 10, $iy + $b[1] - 3 + ($b[3] - $b[1] + 6) * $i / 10); Start-Sleep -Milliseconds 25 }
+Start-Sleep -Milliseconds 100; [K]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+Log "SAME button=$(Invoke-Named $h '遮住相同内容')"
+$apply = Wait-Name $h '^遮挡所选' 15
+Log "SAME list=$apply rows=$(@(Names $h | Where-Object { $_ -eq '相同内容' }).Count)"
+Shot $h 'check-2b-same.png'
+Log "SAME apply=$(Invoke-Named $h $apply)"
+Log "COPY size=$(CopyTo 'check-same.png')"
+$read = python (Join-Path $PSScriptRoot 'check_review.py') $doc (Join-Path $Out 'check-same.png') $truth 'name'
+Log $read
+Verdict 'same_text_covers_every_copy' ("$read" -match 'PASS$')
+Focus-Editor
+Key 0x5A -Ctrl; Key 0x5A -Ctrl; Start-Sleep -Milliseconds 400
 
 # ---- 4. the check after a copy: the warning, its button, and covering plus copying again ----
 Focus-Editor

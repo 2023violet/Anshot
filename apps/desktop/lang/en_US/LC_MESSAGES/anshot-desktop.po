@@ -981,3 +981,24 @@ msgstr "After copy and save"
 
 msgid "只手动检查"
 msgstr "Manual only"
+
+msgid "相同内容"
+msgstr "Same text"
+
+msgid "遮住相同内容"
+msgstr "Cover same text"
+
+msgid "没有找到相同内容"
+msgstr "No matching text found"
+
+msgid "写法不同或识别有误时找不到"
+msgstr "Text written differently or misread is not found"
+
+msgid "框内没有识别到文字"
+msgstr "No text read inside the box"
+
+msgid "至少要两个字才能查找"
+msgstr "It takes at least two characters to search"
+
+msgid "无法读取图片"
+msgstr "Could not read the image"

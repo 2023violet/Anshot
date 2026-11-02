@@ -48,6 +48,7 @@ export component AppWindow inherits Window {
     // property bar: "redact" | "mosaic" | "stroke" | "fill" | "text" | "hint-select"
     in property <string> prop-mode: "redact";
     in property <bool> has-selection;
+    in property <bool> mask-selected;
     in property <bool> has-region;
     in property <string> sel-x; in property <string> sel-y; in property <string> sel-w; in property <string> sel-h;
     in property <int> color-index; in property <int> width-index: 1; in property <int> size-index: 1;
@@ -208,6 +209,7 @@ export component AppWindow inherits Window {
                         Label { text: "H"; } VerticalLayout { alignment: center; NumberField { value: root.sel-h; } }
                     }
                     Rectangle { horizontal-stretch: 1; }
+                    if root.mask-selected: VerticalLayout { alignment: center; ActionButton { label: @tr("遮住相同内容"); key: ""; kind: 2; clicked => { root.command("same-text"); } } }
                     if root.has-selection: VerticalLayout { alignment: center; ActionButton { label: @tr("删除"); key: "Del"; kind: 2; clicked => { root.command("delete"); } } }
                 }
                 Rectangle { y: parent.height - 1px; height: 1px; background: Theme.line; }

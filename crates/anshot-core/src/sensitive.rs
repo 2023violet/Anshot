@@ -8,7 +8,7 @@
 pub struct TextWord { pub text: String, pub x: f32, pub y: f32, pub w: f32, pub h: f32 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum SensitiveKind { Phone, IdCard, BankCard, Email, Ipv4, ApiKey }
+pub enum SensitiveKind { Phone, IdCard, BankCard, Email, Ipv4, ApiKey, SameText }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Certainty { Possible, Confirmed }
@@ -173,6 +173,29 @@ pub fn scan_line(words: &[TextWord]) -> Vec<Finding> {
     out
 }
 
+/// The text inside `area`: the longest run on one line among words centred in it.
+fn text_inside(lines: &[Line], area: (f32, f32, f32, f32)) -> Vec<char> {
+    let inside = |w: &TextWord| { let (x, y) = (w.x + w.w / 2.0, w.y + w.h / 2.0); x >= area.0 && x <= area.2 && y >= area.1 && y <= area.3 };
+    lines.iter().map(|l| l.chars.iter().zip(&l.owner).filter(|(_, &o)| inside(&l.words[o])).map(|(c, _)| *c).collect::<Vec<char>>())
+        .max_by_key(Vec::len).unwrap_or_default()
+}
+/// Other places with the same text as `area`. Exact match after folding: a misread copy is
+/// not found. `None` when `area` holds under 2 characters, which would match all over.
+pub fn same_text(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> Option<Vec<Finding>> {
+    let lines: Vec<Line> = lines.iter().map(|w| Line::new(w)).collect();
+    let phrase = text_inside(&lines, area);
+    if phrase.len() < 2 { return None; }
+    let mut out = Vec::new();
+    for l in &lines {
+        for s in 0..(l.chars.len() + 1).saturating_sub(phrase.len()) {
+            if l.chars[s..s + phrase.len()] != phrase[..] { continue; }
+            let f = l.finding(SensitiveKind::SameText, Certainty::Confirmed, s, s + phrase.len());
+            if !overlaps(f.bounds, area) { out.push(f); }
+        }
+    }
+    Some(out)
+}
+
 fn overlaps(a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)) -> bool { a.0 < b.2 && a.2 > b.0 && a.1 < b.3 && a.3 > b.1 }
 
 /// Merge findings that overlap (several OCR passes, tile seams, two rules on one value): one
@@ -246,6 +269,18 @@ mod tests {
         let split = scan_line(&line(&["AKlAbJ9Ki5FVoDPNz3KIRW", "错", "srgc", "mcPR"]));
         assert_eq!((split[0].kind, split[0].certainty), (ApiKey, Possible));
         assert_eq!(split[0].bounds.2, 390.0, "the box reaches the part after the misread");
+    }
+    #[test] fn same_text_finds_exact_copies_elsewhere() {
+        let at = |t: &[&str], y: f32| -> Vec<TextWord> { line(t).into_iter().map(|w| TextWord { y, ..w }).collect() };
+        let lines = [at(&["客", "户", "张", "三"], 0.0), at(&["联", "系", "人", "张", "三"], 50.0), at(&["张", "五"], 100.0)];
+        let found = same_text(&lines, (200.0, 0.0, 400.0, 20.0)).unwrap();
+        assert_eq!(found.len(), 1, "the selected place itself is not listed, and 张五 is not 张三");
+        assert_eq!((found[0].text.as_str(), found[0].bounds), ("张三", (300.0, 50.0, 490.0, 70.0)));
+    }
+    #[test] fn same_text_needs_at_least_two_characters() {
+        assert_eq!(same_text(&[line(&["张", "三"])], (0.0, 0.0, 90.0, 20.0)), None);
+        assert_eq!(same_text(&[line(&["张", "三"])], (500.0, 0.0, 600.0, 20.0)), None);
+        assert_eq!(same_text(&[], (0.0, 0.0, 90.0, 20.0)), None);
     }
     #[test] fn bounds_are_the_owning_words() {
         let f = &scan_line(&line(&["手机", "138", "0013", "8000", "备注"]))[0];
