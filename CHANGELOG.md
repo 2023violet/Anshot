@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-## 0.5.0 — 未发布 / unreleased
+## 0.5.0 — 2026-11-02
 
 ### 新增 / Added
 - 成品美化（Ctrl+Shift+B 或工具栏）：把截图放在背景上（8 组配色或从截图边缘自动取色），可调留白、圆角、阴影，按 1:1 / 4:3 / 16:9 / 3:4 / 9:16 出图（截图居中、不裁切），可加 macOS、Windows 或浏览器外框和自己输入的标题 / 地址文字。面板打开时画布显示成品预览。截图区域的像素与不带美化时完全相同（圆角切掉的角除外），遮挡不受影响；成品始终不透明。/ Beautify: put the capture on a background (8 palettes or colours taken from its edges) with padding, rounded corners and a shadow, at 1:1 / 4:3 / 16:9 / 3:4 / 9:16 (centred, never cut), with optional macOS, Windows or browser window chrome and your own title or address text. The canvas previews the result while the panel is open. Pixels of the capture are unchanged except under the rounded corners, covers included; the result is always opaque.

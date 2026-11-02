@@ -31,7 +31,7 @@
 - 未做真人可用性测试。只在 Windows 10、单显示器、100% 缩放下实测；系统缩放、多显示器、HDR、Windows 11、讲述人未验证。
 - 无自动更新；名称未做商标清查。
 
-完整说明见 README 与 [CHANGELOG](../CHANGELOG.md)。
+构建：提交 dc3cfc8（`release-metadata.json`）；之后的提交只改文档和测试证据。完整说明见 README 与 [CHANGELOG](../CHANGELOG.md)。
 
 ---
 
@@ -68,4 +68,4 @@
 - No human usability testing. Tested only on Windows 10 with one monitor at 100% scaling; scaling, multi-monitor, HDR, Windows 11 and Narrator are not verified.
 - No auto-update. The name has not been trademark-cleared.
 
-See the README and the [CHANGELOG](../CHANGELOG.md).
+Built from commit dc3cfc8 (`release-metadata.json`); later commits change only docs and test evidence. See the README and the [CHANGELOG](../CHANGELOG.md).
