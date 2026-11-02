@@ -241,3 +241,5 @@ pub mod size { pub const TOOLBAR_H: f32 = 52.0; pub const CONTROL: f32 = 32.0; /
 - [x] Token、排版、密度、组件、交互状态、适配规则已定义
 - [x] Gate 03 spike 确认 token 可在 Slint 实现（spike/slint）
 - [x] **用户确认冻结基线**：2026-10-19，v1.0。
+
+- v1.2（2026-11-01，0.4.0 增补，代理起草，**待用户确认**）：检查面板 280 px 宽，浮在画布右上角，圆角 12 px，沿用 `bg-card`、`line-strong`；建议框 2 px，选中为 `brand` 加 15% 填充，未选为 `decor` 无填充，矩形实线（Slint 没有虚线边框）；属性栏新增“替换为文字”“遮住相同内容”，用 kind 2 按钮；系统提示窗带按钮时宽 420 px，按钮显示 10 秒；占位文字用内置 Noto Sans，字号约为框高的 62%，放不下时缩小，墨色按底色亮度取 `#1a1915` 或 `#f7f7f4`。
