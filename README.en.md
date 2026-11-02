@@ -4,7 +4,7 @@
 
 **Screenshot, annotate, redact, share on Windows — what you cover is really gone from the export.**
 
-> Version 0.4.0, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
+> Version 0.5.0, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
 > "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese).
 
 Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover private parts with a solid block or a **safe mosaic**, then copy or save in one key. Covered areas are replaced by pixels that carry **no information from the original**, and the export is a freshly encoded PNG without source metadata. What the canvas shows is exactly what is exported.
@@ -21,14 +21,14 @@ From [Releases](https://github.com/2023violet/Anshot/releases):
 
 | File | What it is |
 |---|---|
-| `Anshot-0.4.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
-| `Anshot-0.4.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
+| `Anshot-0.5.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
+| `Anshot-0.5.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
 | `SHA256SUMS.txt` / `release-metadata.json` | Checksums and build facts (commit, toolchain, an explicit "unsigned" statement) |
 
 **About "Windows protected your PC".** The app is not signed with a paid certificate, so SmartScreen may block the first start. Make sure the file comes from this repository's Releases and that its checksum matches, then choose "More info → Run anyway":
 
 ```powershell
-Get-FileHash .\Anshot-0.4.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
+Get-FileHash .\Anshot-0.5.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 ```
 
 **Upgrade.** Run the newer installer over the old one; it closes a running copy first.
@@ -52,6 +52,10 @@ Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, th
   - Choose a plain cover or "Replace with placeholder" (such as `138 XXXX 0001` or `user-a@example.com`; stand-ins are never derived from the original). With a cover selected you can type your own text, or "Cover same text" finds every other copy in the picture.
   - After each copy or save it checks again (on by default; Settings → Privacy). It never blocks: if something new turns up, "Review" lets you cover it and copy again. When there are covers, it also checks whether the text under them can still be recognised in the result.
   - **An aid only.** On synthetic test images it misses about one value in ten, and it cannot find names, addresses, faces, handwriting or text inside pictures. Recognised text stays in memory: never saved, logged or added to the history.
+- **Beautify (Ctrl+Shift+B or the toolbar button).** Puts the capture on a background (8 palettes or colours taken from its edges) with padding, rounded corners and a shadow, at 1:1 / 4:3 / 16:9 / 3:4 / 9:16 (centred, never cut), with optional macOS, Windows or browser window chrome and your own title or address text.
+  - While the panel is open the canvas shows the Rust-rendered result and editing pauses. Switching it off restores the plain image; it takes no undo steps.
+  - The capture's pixels are identical to the plain export except at the rounded corners, covers included, and the result is always opaque.
+  - The window text stays in memory, is never saved in the settings, and is not read by the check before sharing.
 - **Long screenshot.** Choose a region, press "Long screenshot" and scroll slowly; the app stitches the frames locally. Sticky headers and footers are detected; when only one pane of the area scrolls, only that pane is stitched; you're told when scrolling went too fast.
 - **Pin to desktop.** Keep a capture on top of all windows. Drag it, zoom with the wheel, set its opacity, and right-click to copy or save.
 - **Annotate.**
@@ -66,10 +70,10 @@ Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, th
   - Stored **unencrypted** in `%LOCALAPPDATA%\Anshot\history`, and kept on uninstall unless you tick the option to delete it.
   - Frozen full screens, source files and editing state are never written to disk; pin copies are not recorded.
 - **Settings (Ctrl+,).**
-  - General: language (follow Windows / 中文 / English), capture hotkey (4 choices, with a warning if another app already uses it), hide or keep the editor after copying, delay, include the mouse pointer, start at login (waits in the tray), default save folder.
+  - General: language (follow Windows / 中文 / English), capture hotkey (4 choices, with a warning if another app already uses it), hide or keep the editor after copying, delay, include the mouse pointer, start at login (waits in the tray), default save folder, and whether new captures are beautified with the last style (off by default).
   - Privacy: how many history images to keep and for how long (always / 30 / 7 / 1 days), clear the history on exit, the 4 px redaction margin, the no-redaction warning, the check after copying or saving (on by default), and whether copies may enter Windows clipboard history and cloud sync (off by default).
 
-Keys: V select · A arrow · L line · R frame · E ellipse · P pen · T text · N number · H highlight · S spotlight · Z magnifier · B redact · M safe mosaic · C crop · 1–6 presets · 7 custom colour · Alt+wheel adjust the selection · Del delete · Ctrl+Z / Y undo / redo · Ctrl+Shift+O recognise text · Ctrl+Shift+K check before sharing · Ctrl+T pin · Ctrl+H history · Ctrl+0 / 1 fit / 100% · Ctrl+, settings. In the capture overlay: Shift keeps the ratio · Shift+C copies the colour · R repeats the last area.
+Keys: V select · A arrow · L line · R frame · E ellipse · P pen · T text · N number · H highlight · S spotlight · Z magnifier · B redact · M safe mosaic · C crop · 1–6 presets · 7 custom colour · Alt+wheel adjust the selection · Del delete · Ctrl+Z / Y undo / redo · Ctrl+Shift+O recognise text · Ctrl+Shift+K check before sharing · Ctrl+Shift+B beautify · Ctrl+T pin · Ctrl+H history · Ctrl+0 / 1 fit / 100% · Ctrl+, settings. In the capture overlay: Shift keeps the ratio · Shift+C copies the colour · R repeats the last area.
 
 ## Privacy and security
 
@@ -113,12 +117,12 @@ Architecture (Rust trust boundary). The UI only sends intents and shows what Rus
 All machine checks were run by the development agent with real OS mouse and keyboard input:
 - unit tests and frozen goldens;
 - 35 groups of end-to-end cases, with the clipboard read back by another process and compared pixel by pixel;
-- 13 check-before-sharing cases on a synthetic fake-data page;
+- 14 check-before-sharing cases and 9 beautify cases on a synthetic fake-data page;
 - Chinese IME input and performance;
 - install / upgrade / uninstall;
 - a 1-hour run of repeated captures.
 
-Measured numbers (0.4.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.2 MB, program 34.2 MB; start-up 732–866 ms; hotkey to overlay 80–86 ms from the tray; opening a 6000×4000 image 965 ms, copying it 1511 ms, peak memory 590 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. The machine was slower overall that day: 0.3.0 measured back to back in the same session gave start-up 762–862 ms and copy 1472–1528 ms, the same range as 0.4.0. A full-screen 1080p check takes about 1.3–2.3 s in the background.
+Measured numbers (0.5.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.3 MB, program 34.6 MB; start-up 673–1053 ms; hotkey to overlay 65–75 ms from the tray; opening a 6000×4000 image 860 ms, copying it 1519 ms, peak memory 587 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Load on the machine varied a lot that day: measured back to back, both 0.4.0 and 0.5.0 had 2–3 s start-ups, both copied in 1.5–1.8 s, and peak memory was the same. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
 
 See the [QA report](ui-design/07_UI_QA_REPORT.md) (Chinese).
 

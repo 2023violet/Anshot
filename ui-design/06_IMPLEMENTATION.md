@@ -175,4 +175,14 @@
 - M4 同词全遮。M5 替换：`MaskText`、`Scene.labels`、渲染第 1b 步、`backdrop()` / `stand_ins()` / `ink_for()`，冻结金样本 `scene-v4`。M6 出图自检 `audit_covers`。
 - M7 版本 0.4.0、02 / 04 增补（用户 2026-11-02 确认）、英文文案、代理安全与代码审查修复（b6746ec）、`check_e2e.ps1`。
 提交：ff5b546、768c272、00d5fa4、a6e6c14、e537db8、da4c9d0、a6d42fb、b6746ec、6685d36。
-候选构建（提交 6685d36b40f9a6ceccc342dadcd217aa0a0d206d，打包时工作区干净）：exe `3f1ed431799ee9b1b996e464a9da1878ceba00f6ed413db97e0ffe5cb855ec93`（35,822,592 字节），setup `04664b9e16a776fb5707657986658782ab9661c586f59082e5d44df9886f13e3`（17,016,619 字节），zip `638cf51f266be8e15aac1c097926d5aca8762b794cfa3c0a876f319cf2df7341`（22,302,525 字节）。测试结果见 07 §10。尚未发布；发布需用户说“发布”。
+候选构建（提交 6685d36b40f9a6ceccc342dadcd217aa0a0d206d，打包时工作区干净）：exe `3f1ed431799ee9b1b996e464a9da1878ceba00f6ed413db97e0ffe5cb855ec93`（35,822,592 字节），setup `04664b9e16a776fb5707657986658782ab9661c586f59082e5d44df9886f13e3`（17,016,619 字节），zip `638cf51f266be8e15aac1c097926d5aca8762b794cfa3c0a876f319cf2df7341`（22,302,525 字节）。测试结果见 07 §10。尚未发布；发布需用户说“发布”。用户 2026-11-02 决定 0.4.0 并入 0.5.0 一起发布，此构建不再单独发布。
+
+## B10 — 0.5.0 成品美化（代理实施，2026-11-02；新界面用户 2026-11-02 确认）
+按用户 2026-11-02 批准的 0.5.0 计划（M0–M6）实施，决定见 `docs/decisions/ADR_0_5_BEAUTIFY.md`：
+- M0（d9fb27e）记录 0.4.0 新界面的确认；PRD v0.5 修订、ADR、02 v0.5 增补、04 v1.3 token。
+- M1 / M2（a34f1b7）`anshot-render/src/frame.rs`：`Frame`、`frame_layout`、`render_framed`、`auto_colors`、`fit_text`；`Scene.frame`，`render_png` 在裁剪后合成，`frame = None` 时输出逐字节不变；冻结金样本 `scene-v5`。编辑器 `set_frame` / `set_initial_frame` / `frame_fits`：美化是文档属性，不进撤销。
+- 依赖（6446399）pulldown-cmark 0.13.6（RUSTSEC-2026-0414 / 0433）。
+- M3（35f32a9）面板、Ctrl+Shift+B、Rust 渲染的成品预览、`beautify.rs` 样式与设置 `frame_default` / `frame_style`；检查、识别文字、钉图用不带框的场景。渐变与阴影改为直接计算（4800×3200 从 4 秒降到 0.5 秒）。
+- M4 / M5 自动取色与窗口外框在 M1 的渲染模块中实现。
+- M6 e2e `beautify_e2e.ps1` 与 `check_frame.py`（1f798a7、6de59d8，含 e2e 发现的焦点问题修复）；代理安全与代码审查的修复（aa03343）；版本 0.5.0（dc3cfc8）。
+候选构建（提交 dc3cfc86aad9828d8d189a4e590da9f9d755a366，打包时工作区干净）：exe `290570171276279192ff601b4586cf204295e196fa60a61f2529abfb871d8d52`（36,283,392 字节），setup `0ca2063c338cf4005acefdd7a661a6037946a22dc83ecf83c1624649e2be88ad`（17,104,021 字节），zip `a32b330a9d740a87477758ec67307d7a93d27342689adbec443bee7483301d57`。测试结果见 07 §11。尚未发布；发布需用户说“发布”。

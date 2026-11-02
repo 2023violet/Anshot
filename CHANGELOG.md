@@ -9,7 +9,7 @@
 ### 修复 / Fixed
 - 依赖 pulldown-cmark 升到 0.13.6（RUSTSEC-2026-0414、RUSTSEC-2026-0433，只涉及安截不使用的 Markdown 维基链接选项）。/ pulldown-cmark 0.13.6 for two advisories about a Markdown option Anshot does not use.
 
-## 0.4.0 — 未发布 / unreleased
+## 0.4.0 — 未单独发布，并入 0.5.0 / not released on its own; shipped in 0.5.0
 
 ### 新增 / Added
 - 分享前检查（Ctrl+Shift+K 或工具栏）：本机识别后列出疑似手机号、身份证号、银行卡号、邮箱、IP 地址和密钥，画布上标出位置；确认后才遮挡，一次撤销即可恢复。这是辅助检查：在合成测试图上约每十处漏一处，姓名和地址找不到。/ Check before sharing: lists what looks like phone, ID and card numbers, mail, IP addresses and keys, recognised locally; nothing changes until you apply, and one undo reverts it. An aid only: about one in ten synthetic values is missed, and names and addresses are not found.
