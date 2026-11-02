@@ -12,7 +12,7 @@
 > **未签名提示**：首次运行 Windows 可能显示“已保护你的电脑”。请先核对校验值（`Get-FileHash <文件> -Algorithm SHA256`，与 `SHA256SUMS.txt` 一致），再点“更多信息 → 仍要运行”。
 
 ## 本版内容
-- **分享前检查**（Ctrl+Shift+K 或工具栏按钮）：列出疑似手机号、身份证号、银行卡号、邮箱、IP 地址和密钥，画布上用虚线框标出，虚线框不会进入成品。默认全选，可逐项取消；点“遮挡所选”后才改图，一次撤销即可恢复。
+- **分享前检查**（Ctrl+Shift+K 或工具栏按钮）：列出疑似手机号、身份证号、银行卡号、邮箱、IP 地址和密钥，画布上用方框标出，方框只在界面里，不会进入成品。默认全选，可逐项取消；点“遮挡所选”后才改图，一次撤销即可恢复。
 - **复制 / 保存后自动检查**（默认开，设置 → 隐私可关）：图先交付，不拦截；发现新内容时提示，点“查看”可遮挡并重新复制。
 - **同词全遮**：选中一个遮挡，点“遮住相同内容”，图中其他相同文字一起遮住。适合姓名这类规则找不到的内容。
 - **替换代替打码**：遮挡处可以写占位文字（如 `138 XXXX 0001`、`user-a@example.com`、“已隐藏”），或自己输入（如“用户 A”）。占位文字不由原文生成，也不保留部分原文。
@@ -45,7 +45,7 @@
 > **Unsigned:** Windows may show "Windows protected your PC" on first start. Check the checksum first (`Get-FileHash <file> -Algorithm SHA256`, compare with `SHA256SUMS.txt`), then choose "More info → Run anyway".
 
 ## What's in it
-- **Check before sharing** (Ctrl+Shift+K or the toolbar button): lists what looks like phone, ID and card numbers, mail addresses, IP addresses and keys, with dashed boxes on the canvas that never reach the result. Everything is ticked; untick what you want to keep. Nothing changes until you press "Cover selected", and one undo reverts it.
+- **Check before sharing** (Ctrl+Shift+K or the toolbar button): lists what looks like phone, ID and card numbers, mail addresses, IP addresses and keys, with boxes on the canvas that never reach the result. Everything is ticked; untick what you want to keep. Nothing changes until you press "Cover selected", and one undo reverts it.
 - **A check after each copy and save** (on by default; Settings → Privacy): the image is delivered first and nothing is blocked. If something new turns up, "Review" lets you cover it and copy again.
 - **Cover same text:** select a cover and every other copy of that text in the picture is covered too. Useful for names, which the rules cannot find.
 - **Stand-in text instead of a plain cover,** such as `138 XXXX 0001`, `user-a@example.com` or "Hidden", or your own words ("User A"). Stand-ins are never derived from the original and keep none of it.

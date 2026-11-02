@@ -166,13 +166,13 @@
 发布构建（提交 e8a5fe873352b4968b42bab0887a0e700f4e1a3d，代码与 66692fe 相同，之后只改了测试脚本和文档；打包时工作区干净）：exe `fd9852b3805bab512babe2d47e2adfa0d11c77e3b411fcdacc40517ee0971133`（35,128,320 字节），setup `bd433fbef5e224c73d3a966c36e4ea0d99d09f65cbc5d6ecddc9833b8748e16d`（16,887,533 字节），zip `c225a0c504696dd2d68e0dc68ec5c6e178a204d1cf7f8eb66f6f22e55cc54628`。全部测试在这个 exe 上重跑，见 07 §9.1a。
 
 
-## B9 — 0.4.0 分享前把关（代理实施，2026-11-02；新界面待用户确认）
+## B9 — 0.4.0 分享前把关（代理实施，2026-11-02；新界面用户 2026-11-02 确认，暂不发布）
 按用户 2026-11-01 批准的 0.4.0 计划（M0–M7）实施，决定见 `docs/decisions/ADR_0_4_PRIVACY_CHECK.md`：
 - M0 可行性验证（`spike/ocr/` 的 `words` 子命令、`make_sensitive.py`、`evaluate_sensitive.py`）：单一倍率召回 78%，按 1 / 1.5 / 2 三种倍率取并集并放宽数字识别后，留出集召回 90.2%、覆盖 97.7%，过门槛。
 - M1 `platform-windows/ocr.rs` 增加 `OcrWord` 与 `OcrLine.words`；新模块 `anshot-core/src/sensitive.rs`（手写规则，无 regex：手机号、身份证校验位、银行卡 Luhn、邮箱、IPv4、密钥前缀；容错数字串、列间距分隔、`same_text`）；`apps/desktop/src/check.rs`（多倍率、分段 4000 px / 重叠 200 px、坐标换回原图）。
 - M2 检查面板、Slint 层虚线建议框、`Editor::add_redactions` / `add_masks`（一步撤销，全有或全无，遵守 `MAX_MASKS`）。
 - M3 复制 / 保存后自动检查（worker，一次一个，按 `Controller::generation()` 匹配文档）；系统提示带“查看”按钮；设置 `check_on_share`。
 - M4 同词全遮。M5 替换：`MaskText`、`Scene.labels`、渲染第 1b 步、`backdrop()` / `stand_ins()` / `ink_for()`，冻结金样本 `scene-v4`。M6 出图自检 `audit_covers`。
-- M7 版本 0.4.0、02 / 04 增补（待用户确认）、英文文案、代理安全与代码审查修复（b6746ec）、`check_e2e.ps1`。
+- M7 版本 0.4.0、02 / 04 增补（用户 2026-11-02 确认）、英文文案、代理安全与代码审查修复（b6746ec）、`check_e2e.ps1`。
 提交：ff5b546、768c272、00d5fa4、a6e6c14、e537db8、da4c9d0、a6d42fb、b6746ec、6685d36。
 候选构建（提交 6685d36b40f9a6ceccc342dadcd217aa0a0d206d，打包时工作区干净）：exe `3f1ed431799ee9b1b996e464a9da1878ceba00f6ed413db97e0ffe5cb855ec93`（35,822,592 字节），setup `04664b9e16a776fb5707657986658782ab9661c586f59082e5d44df9886f13e3`（17,016,619 字节），zip `638cf51f266be8e15aac1c097926d5aca8762b794cfa3c0a876f319cf2df7341`（22,302,525 字节）。测试结果见 07 §10。尚未发布；发布需用户说“发布”。
