@@ -1,5 +1,17 @@
 # 更新日志 / Changelog
 
+## 0.4.0 — 未发布 / unreleased
+
+### 新增 / Added
+- 分享前检查（Ctrl+Shift+K 或工具栏）：本机识别后列出疑似手机号、身份证号、银行卡号、邮箱、IP 地址和密钥，画布上标出位置；确认后才遮挡，一次撤销即可恢复。这是辅助检查：在合成测试图上约每十处漏一处，姓名和地址找不到。/ Check before sharing: lists what looks like phone, ID and card numbers, mail, IP addresses and keys, recognised locally; nothing changes until you apply, and one undo reverts it. An aid only: about one in ten synthetic values is missed, and names and addresses are not found.
+- 复制 / 保存后自动检查（默认开，可在设置 → 隐私关闭）：不拦截；发现新内容时提示，点“查看”可遮挡并重新复制。/ A check after each copy and save (on by default; Settings → Privacy): never blocks; offers to cover and copy again.
+- 同词全遮：选中一个遮挡，“遮住相同内容”找出图中其他相同文字。/ Cover the same text everywhere from one redaction.
+- 替换代替打码：遮挡处可写占位文字或自己输入的文字（如“用户 A”）；占位文字不由原文生成。/ Replace with stand-in text instead of a plain cover; stand-ins are never derived from the original.
+- 出图自检：有遮挡时核对遮挡下的文字在成品中是否还能被识别出来。/ After delivery, checks whether text under each cover can still be recognised in the result.
+
+### 修复 / Fixed
+- 关于窗口里的“检查更新”按钮在 0.2.0 / 0.3.0 中不起作用（对话框打开时命令被拦下），已修复。/ "Check for updates" in About did nothing in 0.2.0 and 0.3.0.
+
 ## 0.3.0 — 2026-10-27
 
 ### 新增 / Added

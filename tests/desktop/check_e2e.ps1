@@ -294,5 +294,17 @@ Verdict 'quick_copy_toast_opens_list' ($list -ne '')
 if ($h -ne [IntPtr]::Zero) { Shot $h 'check-4-quick.png' }
 if (-not $p.HasExited) { $p.Kill() }
 Stop-Process -Id $fixture.Id -Force -ErrorAction SilentlyContinue
+
+# ---- 6. nothing the check read is on disk: the app writes no log, so search everything under its settings and history folders ----
+Start-Sleep -Milliseconds 500
+$values = @((Get-Content $truth -Raw | ConvertFrom-Json) | Where-Object { $_.kind -ne 'none' } | ForEach-Object value | Sort-Object -Unique)
+$files = @(Get-ChildItem $tmp -Recurse -File -ErrorAction SilentlyContinue)
+$found = foreach ($f in $files) {
+    $b = [IO.File]::ReadAllBytes($f.FullName)
+    $texts = [Text.Encoding]::UTF8.GetString($b), [Text.Encoding]::Unicode.GetString($b)
+    foreach ($v in $values) { if ($texts | Where-Object { $_.Contains($v) }) { "$($f.Name):$($values.IndexOf($v))" } }
+}
+Log "DISK files=$($files.Count) kinds=$(($files | Group-Object Extension | ForEach-Object { "$($_.Name)x$($_.Count)" }) -join ',') hits=$(@($found).Count)"
+Verdict 'nothing_read_is_on_disk' ($files.Count -gt 0 -and @($found).Count -eq 0)
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'check.log')
