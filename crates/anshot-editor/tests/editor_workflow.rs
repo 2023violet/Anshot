@@ -52,3 +52,54 @@ fn source_swap_changes_document_even_if_dimensions_or_region_ids_recur() {
     assert!(editor.bytes_for(save).is_none());
     assert!(!editor.finish(save,true));
 }
+
+#[test]
+fn frame_is_a_document_property_outside_the_undo_history() {
+    use anshot_editor::Frame;
+    let mut e=Editor::new(300,200).unwrap();
+    e.add_mask(Region::new(10,10,60,40)).unwrap();
+    let before=e.stamp();
+    assert_eq!(e.output_dimensions(),(300,200));
+    let f=Frame{ratio:anshot_render::Ratio::Square,..Frame::default()};
+    assert!(e.set_frame(Some(f.clone())).unwrap());
+    assert!(e.stamp().revision>before.revision,"a frame change drops a prepared export");
+    let l=anshot_render::frame_layout((300,200),&f).unwrap();
+    assert_eq!(e.output_dimensions(),l.canvas);
+    assert_eq!(e.scene().frame,Some(f.clone()));
+    assert!(!e.set_frame(Some(f.clone())).unwrap(),"same frame is no change");
+    // Undo reverts the mask, not the frame; redo brings the mask back.
+    e.undo().unwrap();
+    assert!(e.masks().is_empty());
+    assert_eq!(e.frame(),Some(&f));
+    e.redo().unwrap();
+    assert_eq!(e.masks().len(),1);
+    assert!(!e.can_redo());
+    // Crop changes the framed size; switching off restores the plain export.
+    e.set_crop(Some(Region::new(0,0,100,50))).unwrap();
+    assert_eq!(e.output_dimensions(),anshot_render::frame_layout((100,50),&f).unwrap().canvas);
+    assert!(e.set_frame(None).unwrap());
+    assert_eq!(e.output_dimensions(),(100,50));
+    assert!(e.can_undo());
+    // A new document starts unframed.
+    e.set_frame(Some(f)).unwrap();
+    e.replace_document(80,60).unwrap();
+    assert_eq!(e.frame(),None);
+}
+
+#[test]
+fn a_frame_that_cannot_fit_is_refused_or_dropped_from_the_export() {
+    use anshot_editor::{EditError,Frame};
+    use anshot_render::{Ratio,Step};
+    let mut e=Editor::new(6000,4000).unwrap();
+    let square=Frame{ratio:Ratio::Square,..Frame::default()};
+    assert_eq!(e.set_frame(Some(square.clone())),Err(EditError::InvalidImageDimensions));
+    assert_eq!(e.frame(),None);
+    // Fits while cropped; uncropping (by undo) makes it too large, so the export goes out plain.
+    e.set_crop(Some(Region::new(0,0,3000,3000))).unwrap();
+    e.set_frame(Some(Frame{padding:Step::None,..square})).unwrap();
+    assert!(e.frame_fits());
+    e.undo().unwrap();
+    assert!(!e.frame_fits());
+    assert_eq!(e.scene().frame,None);
+    assert_eq!(e.output_dimensions(),(6000,4000));
+}

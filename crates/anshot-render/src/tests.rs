@@ -33,7 +33,7 @@ pub(crate) fn golden_scene() -> Scene {
             Annotation { shape: Shape::Text { origin: (20.0, 160.0), text: "这里看凭证 OK".into(), size: 18.0, background: false }, color: [0x2f, 0x6f, 0xf0, 255] },
             Annotation { shape: Shape::Text { origin: (180.0, 200.0), text: "备注".into(), size: 14.0, background: true }, color: [0x22, 0xa6, 0x52, 255] },
         ],
-        crop: None,
+        crop: None, frame: None,
     }
 }
 
@@ -217,7 +217,7 @@ pub(crate) fn golden_scene_v2() -> Scene {
             Annotation { shape: Shape::Pen { points: wave, width: 4.0 }, color: [0x9b, 0x30, 0xd9, 255] },
             Annotation { shape: Shape::Pen { points: vec![(280.0, 200.0)], width: 8.0 }, color: [0x1a, 0x19, 0x15, 255] },
         ],
-        crop: None,
+        crop: None, frame: None,
     }
 }
 
@@ -263,7 +263,7 @@ pub(crate) fn golden_scene_v3() -> Scene {
             Annotation { shape: Shape::Spotlight { region: Region::new(20, 20, 120, 100) }, color: [0xe5, 0x34, 0x2b, 255] },
             Annotation { shape: Shape::Magnify { region: Region::new(40, 40, 90, 70), center: (220.0, 80.0), zoom: 2.0, width: 3.0 }, color: [0xe5, 0x34, 0x2b, 255] },
         ],
-        crop: None,
+        crop: None, frame: None,
     }
 }
 
@@ -306,3 +306,129 @@ fn golden_scene_v3_digest_is_frozen() {
 
 /// Frozen 2026-10-24 after visual review.
 const GOLDEN_SCENE_V3: u64 = 0xe8bc_9325_9bf6_889d;
+
+// ---- 0.5 frame (ADR 0.5-BEAUTIFY) ----
+
+fn framed(chrome: Chrome, ratio: Ratio) -> Frame {
+    Frame { background: PRESETS[2], padding: Step::Medium, radius: Step::Medium, shadow: Step::Medium, ratio, chrome, text: "example.com/anshot".into() }
+}
+
+#[test]
+fn frame_layout_follows_the_steps_and_ratio() {
+    let plain = Frame { padding: Step::None, radius: Step::None, shadow: Step::None, ..Frame::default() };
+    let l = frame_layout((300, 200), &plain).unwrap();
+    assert_eq!((l.canvas, l.image, l.bar.3, l.radius, l.blur), ((300, 200), (0, 0, 300, 200), 0, 0.0, 0.0));
+    // Medium padding is 8% of the long side on every side.
+    let l = frame_layout((300, 200), &Frame { padding: Step::Medium, ..plain.clone() }).unwrap();
+    assert_eq!((l.canvas, l.image), ((348, 248), (24, 24, 300, 200)));
+    // Ratios widen or heighten the canvas and centre the image; the image is never cut.
+    for ratio in Ratio::ALL {
+        let l = frame_layout((300, 200), &Frame { ratio, chrome: Chrome::Browser, ..plain.clone() }).unwrap();
+        let (cw, ch) = (u64::from(l.canvas.0), u64::from(l.canvas.1));
+        if let Some((rw, rh)) = ratio.wh() { assert!((cw * rh).abs_diff(ch * rw) < rw.max(rh), "{ratio:?} {cw}x{ch}"); }
+        assert_eq!((l.image.2, l.image.3), (300, 200));
+        assert!(l.image.0 + 300 <= l.canvas.0 && l.image.1 + 200 <= l.canvas.1);
+        assert_eq!((l.bar.0, l.bar.1 + l.bar.3, l.bar.2, l.bar.3), (l.image.0, l.image.1, 300, 28));
+    }
+    // Radius has a floor and never passes half the short side.
+    assert_eq!(frame_layout((300, 200), &Frame { radius: Step::Small, ..plain.clone() }).unwrap().radius, 4.0);
+    assert_eq!(frame_layout((40, 10), &Frame { radius: Step::Large, ..plain.clone() }).unwrap().radius, 5.0);
+}
+
+#[test]
+fn frame_layout_shrinks_padding_then_refuses_past_the_pixel_limit() {
+    let big = Frame { padding: Step::Large, ..Frame::default() };
+    // 6000x4000 is exactly the limit: padding has nowhere to go, so it is dropped.
+    let l = frame_layout((6000, 4000), &Frame { ratio: Ratio::Free, ..big.clone() }).unwrap();
+    assert_eq!((l.canvas, l.image), ((6000, 4000), (0, 0, 6000, 4000)));
+    // 5000x4000 has room for some padding but not 12%.
+    let l = frame_layout((5000, 4000), &big).unwrap();
+    assert!(u64::from(l.canvas.0) * u64::from(l.canvas.1) <= anshot_core::MAX_PIXELS as u64);
+    assert!(l.image.0 > 0 && l.image.0 < 600, "{:?}", l);
+    // A square output of a 6000x4000 image cannot fit at all.
+    assert!(frame_layout((6000, 4000), &Frame { ratio: Ratio::Square, ..big }).is_err());
+    assert!(frame_layout((0, 10), &Frame::default()).is_err());
+}
+
+#[test]
+fn framed_output_is_opaque_and_keeps_the_export_pixels() {
+    let mut src = source(320, 240, 57);
+    src.put_pixel(0, 0, Rgba([9, 9, 9, 0])); // a transparent source pixel still ends opaque
+    for chrome in Chrome::ALL {
+        let f = framed(chrome, Ratio::R4x3);
+        let out = render_framed(&src, &f).unwrap();
+        let l = frame_layout((320, 240), &f).unwrap();
+        assert_eq!(out.dimensions(), l.canvas);
+        assert!(out.pixels().all(|p| p[3] == 255), "{chrome:?}");
+        // Inside the image rectangle, away from the rounded corners, pixels are copied as is.
+        let r = l.radius.ceil() as u32 + 1;
+        let (x0, y0, w, h) = l.image;
+        for y in 0..h {
+            for x in 0..w {
+                let corner = (x < r || x + r >= w) && (y < r || y + r >= h);
+                if corner || (x, y) == (0, 0) { continue; }
+                assert_eq!(out.get_pixel(x0 + x, y0 + y).0, src.get_pixel(x, y).0, "{chrome:?} at {x},{y}");
+            }
+        }
+    }
+}
+
+#[test]
+fn render_png_frames_after_redaction_and_crop() {
+    let src = source(200, 120, 33);
+    let crop = Region::new(10, 10, 190, 110);
+    let red = Redaction { region: Region::new(20, 20, 80, 50), style: RedactStyle::Solid([0x1a, 0x19, 0x15, 255]) };
+    let plain = Scene { redactions: vec![red], crop: Some(crop), ..Scene::default() };
+    let f = framed(Chrome::Mac, Ratio::R16x9);
+    let scene = Scene { frame: Some(f.clone()), ..plain.clone() };
+    let flat = decode_generated_png(&render_png(&png(&src), &plain).unwrap(), (180, 100)).unwrap();
+    let dims = output_size((200, 120), &scene).unwrap();
+    let out = decode_generated_png(&render_png(&png(&src), &scene).unwrap(), dims).unwrap();
+    assert_eq!(out, render_framed(&flat, &f).unwrap());
+    let (x0, y0, _, _) = image_rect((200, 120), &scene).unwrap();
+    assert_eq!(image_rect((200, 120), &plain), Some((0, 0, 180, 100)));
+    // The cover survives framing: crop-relative (10..70, 10..40).
+    for (x, y) in [(10, 10), (40, 25), (69, 39)] { assert_eq!(out.get_pixel(x0 + x, y0 + y).0, [0x1a, 0x19, 0x15, 255]); }
+    // Without a frame the export is unchanged byte for byte.
+    assert_eq!(render_png(&png(&src), &plain).unwrap(), render_png(&png(&src), &Scene { frame: None, ..scene }).unwrap());
+}
+
+#[test]
+fn auto_colors_come_from_the_outer_ring_only() {
+    let mut img = RgbaImage::from_pixel(50, 40, Rgba([100, 150, 200, 255]));
+    for y in 5..35 { for x in 5..45 { img.put_pixel(x, y, Rgba([255, 0, 0, 255])); } }
+    let (light, dark) = auto_colors(&img);
+    assert_eq!(light, [119, 163, 207, 255]);
+    assert_eq!(dark, [88, 132, 176, 255]);
+    // Cover the ring and the colours follow the cover, not what was under it.
+    for (x, y, p) in img.enumerate_pixels_mut() { if x < 2 || y < 2 || x >= 48 || y >= 38 { *p = Rgba([0x1a, 0x19, 0x15, 255]); } }
+    assert_eq!(auto_colors(&img).1, [23, 22, 18, 255]);
+    let out = render_framed(&img, &Frame { background: Background::Auto, ..Frame::default() }).unwrap();
+    assert_eq!(out.get_pixel(0, 0).0[..3], auto_colors(&img).0[..3]);
+}
+
+#[test]
+fn chrome_text_is_cut_to_fit() {
+    assert_eq!(fit_text("short", 12.0, 500.0), "short");
+    let cut = fit_text(&"example.com/".repeat(20), 12.0, 120.0);
+    assert!(cut.ends_with('…') && text_extent(&cut, 12.0).0 <= 120.0, "{cut}");
+    assert_eq!(fit_text("a\nb", 12.0, 500.0), "a b");
+    assert_eq!(fit_text("abc", 12.0, 0.0), "");
+}
+
+/// Frozen render golden for the 0.5 frame (tests/golden/render/scene-v5.png): gradient,
+/// rounded corners, shadow and browser chrome around the v1 scene.
+#[test]
+fn golden_scene_v5_digest_is_frozen() {
+    let mut img = source(320, 240, 57);
+    render_into(&mut img, &golden_scene(), 1.0);
+    let img = render_framed(&img, &framed(Chrome::Browser, Ratio::R16x9)).unwrap();
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN_V5").is_some() {
+        img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v5.png")).unwrap();
+        println!("DIGEST_V5={:#018x}", digest(&img));
+    }
+    assert_eq!(digest(&img), GOLDEN_SCENE_V5, "render output changed; review and re-freeze deliberately");
+}
+
+/// Frozen 2026-11-02 after visual review.
+const GOLDEN_SCENE_V5: u64 = 0x4576_5fdb_6f21_2e49;

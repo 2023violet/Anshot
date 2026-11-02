@@ -3,7 +3,11 @@
 //! Order is fixed (02 U06): source pixels -> redactions (opaque replacement,
 //! no source information) -> annotations (anti-aliased, on top) -> crop.
 //! Every coordinate is in source pixels; `scale` maps them onto a preview.
+//! An optional frame (`frame.rs`) goes around the cropped export last.
 #![forbid(unsafe_code)]
+
+mod frame;
+pub use frame::{auto_colors, fit_text, frame_layout, render_framed, Background, Chrome, Frame, Layout, Ratio, Step, PRESETS};
 
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
 use image::{DynamicImage, ImageFormat, RgbaImage};
@@ -70,7 +74,7 @@ pub fn magnify_target(region: &Region, center: (f32, f32), zoom: f32) -> (f32, f
 pub struct Annotation { pub shape: Shape, pub color: [u8; 4] }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Scene { pub redactions: Vec<Redaction>, pub labels: Vec<Label>, pub annotations: Vec<Annotation>, pub crop: Option<Region> }
+pub struct Scene { pub redactions: Vec<Redaction>, pub labels: Vec<Label>, pub annotations: Vec<Annotation>, pub crop: Option<Region>, pub frame: Option<Frame> }
 
 /// Stand-in text drawn over an opaque redaction. The redaction has already replaced the
 /// pixels, so the text never blends with the source.
@@ -455,12 +459,13 @@ fn crop(img: RgbaImage, r: Region) -> Option<RgbaImage> {
     Some(image::imageops::crop_imm(&img, l, t, rr - l, b - t).to_image())
 }
 
-/// Export: decode the source through Core, render at scale 1, crop, encode a new PNG,
-/// and fail closed unless the bytes reopen at the expected dimensions.
+/// Export: decode the source through Core, render at scale 1, crop, frame, encode a new
+/// PNG, and fail closed unless the bytes reopen at the expected dimensions.
 pub fn render_png(source: &[u8], scene: &Scene) -> Result<Vec<u8>, String> {
     let mut img = decode_source(source)?;
     render_into(&mut img, scene, 1.0);
     let img = match scene.crop { Some(r) => crop(img, r).ok_or("crop is empty")?, None => img };
+    let img = match &scene.frame { Some(f) => render_framed(&img, f)?, None => img };
     let dims = img.dimensions();
     let mut out = Cursor::new(Vec::new());
     DynamicImage::ImageRgba8(img).write_to(&mut out, ImageFormat::Png).map_err(|e| format!("new PNG encode failed: {e}"))?;
@@ -469,8 +474,20 @@ pub fn render_png(source: &[u8], scene: &Scene) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-/// Output dimensions after crop.
+/// Output dimensions after crop and frame; `None` when either cannot be applied.
 pub fn output_size(source: (u32, u32), scene: &Scene) -> Option<(u32, u32)> {
+    let cut = cut_size(source, scene)?;
+    match &scene.frame { None => Some(cut), Some(f) => frame_layout(cut, f).ok().map(|l| l.canvas) }
+}
+
+/// Where the cropped export sits inside the output, `(x, y, w, h)`: the whole output
+/// without a frame.
+pub fn image_rect(source: (u32, u32), scene: &Scene) -> Option<(u32, u32, u32, u32)> {
+    let (w, h) = cut_size(source, scene)?;
+    match &scene.frame { None => Some((0, 0, w, h)), Some(f) => frame_layout((w, h), f).ok().map(|l| l.image) }
+}
+
+fn cut_size(source: (u32, u32), scene: &Scene) -> Option<(u32, u32)> {
     match scene.crop {
         None => Some(source),
         Some(r) => r.clipped(source.0, source.1).map(|(l, t, rr, b)| (rr - l, b - t)),

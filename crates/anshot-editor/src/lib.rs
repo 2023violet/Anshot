@@ -7,7 +7,7 @@ pub use geometry::{Handle, PixelRect};
 pub use viewport::{Point, Viewport, ViewportError};
 
 use anshot_core::{decode_source, redact, Region, COVER, MAX_PIXELS};
-pub use anshot_render::{Annotation, Label, RedactStyle, Redaction, Scene, Shape};
+pub use anshot_render::{Annotation, Frame, Label, RedactStyle, Redaction, Scene, Shape};
 use std::sync::Arc;
 
 const MAX_MASKS: usize = 1024;
@@ -117,6 +117,8 @@ pub struct Editor {
     masks:Vec<Mask>,
     annotations:Vec<AnnotationObject>,
     crop:Option<Region>,
+    /// Output beautify: a document property outside the undo history (ADR 0.5-BEAUTIFY).
+    frame:Option<Frame>,
     selected:Option<u64>,
     undo:Vec<Snapshot>, redo:Vec<Snapshot>,
     next_mask_id:u64,
@@ -142,7 +144,7 @@ impl Editor {
         Self::check_dimensions(width,height)?;
         Ok(Self{
             stamp:Stamp{document_id:1,revision:0},width,height,source:None,
-            masks:Vec::new(),annotations:Vec::new(),crop:None,selected:None,undo:Vec::new(),redo:Vec::new(),
+            masks:Vec::new(),annotations:Vec::new(),crop:None,frame:None,selected:None,undo:Vec::new(),redo:Vec::new(),
             next_mask_id:1,active:None,next_gesture_id:1,
             output:None,pending_png:None,pending:None,next_op:1,last_delivery:None,
         })
@@ -161,7 +163,28 @@ impl Editor {
     pub fn masks(&self)->&[Mask]{&self.masks}
     pub fn annotations(&self)->&[AnnotationObject]{&self.annotations}
     pub fn crop(&self)->Option<Region>{self.crop}
-    /// Exported image size (after crop).
+    /// The stored beautify settings, whether or not they fit the current crop.
+    pub fn frame(&self)->Option<&Frame>{self.frame.as_ref()}
+    /// False when a stored frame would pass the pixel limit; exports then go out unframed.
+    pub fn frame_fits(&self)->bool{
+        self.frame.as_ref().is_none_or(|f|anshot_render::frame_layout(self.cut_dimensions(),f).is_ok())
+    }
+    fn cut_dimensions(&self)->(u32,u32){
+        anshot_render::output_size(self.dimensions(),&Scene{crop:self.crop,..Scene::default()}).unwrap_or(self.dimensions())
+    }
+    /// Change the beautify settings. Like any edit it drops a prepared export, but it is
+    /// not an undo step: switching the frame off restores the plain export.
+    pub fn set_frame(&mut self,frame:Option<Frame>)->Result<bool,EditError>{
+        self.ensure_idle()?;
+        if frame==self.frame {return Ok(false);}
+        if let Some(f)=&frame {
+            anshot_render::frame_layout(self.cut_dimensions(),f).map_err(|_|EditError::InvalidImageDimensions)?;
+        }
+        let revision=self.stamp.revision.checked_add(1).ok_or(EditError::IdentityOverflow)?;
+        self.frame=frame;self.stamp.revision=revision;self.invalidate();
+        Ok(true)
+    }
+    /// Exported image size (after crop and frame).
     pub fn output_dimensions(&self)->(u32,u32){
         anshot_render::output_size(self.dimensions(),&self.scene()).unwrap_or(self.dimensions())
     }
@@ -172,6 +195,7 @@ impl Editor {
             labels:self.masks.iter().filter_map(|m|m.label(m.region)).collect(),
             annotations:self.annotations.iter().map(|a|a.annotation.clone()).collect(),
             crop:self.crop,
+            frame:self.frame.clone().filter(|_|self.frame_fits()),
         }
     }
     pub fn selected(&self)->Option<u64>{self.selected}
@@ -422,7 +446,7 @@ impl Editor {
         let next_id=self.stamp.document_id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         self.width=w;self.height=h;self.source=None;
         self.stamp=Stamp{document_id:next_id,revision:0};
-        self.masks.clear();self.annotations.clear();self.crop=None;self.selected=None;self.undo.clear();self.redo.clear();
+        self.masks.clear();self.annotations.clear();self.crop=None;self.frame=None;self.selected=None;self.undo.clear();self.redo.clear();
         self.active=None;self.invalidate();
         Ok(())
     }
