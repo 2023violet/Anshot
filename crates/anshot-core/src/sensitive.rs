@@ -179,21 +179,27 @@ fn text_inside(lines: &[Line], area: (f32, f32, f32, f32)) -> Vec<char> {
     lines.iter().map(|l| l.chars.iter().zip(&l.owner).filter(|(_, &o)| inside(&l.words[o])).map(|(c, _)| *c).collect::<Vec<char>>())
         .max_by_key(Vec::len).unwrap_or_default()
 }
-/// Other places with the same text as `area`. Exact match after folding: a misread copy is
-/// not found. `None` when `area` holds under 2 characters, which would match all over.
-pub fn same_text(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> Option<Vec<Finding>> {
+/// The text in `area`, if there is enough of it to search for: 1 character would match all
+/// over the image.
+pub fn text_in(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> Option<Vec<char>> {
     let lines: Vec<Line> = lines.iter().map(|w| Line::new(w)).collect();
-    let phrase = text_inside(&lines, area);
-    if phrase.len() < 2 { return None; }
+    Some(text_inside(&lines, area)).filter(|p| p.len() >= 2)
+}
+/// Every place `phrase` can be read. Exact match after folding: a misread copy is not found.
+pub fn find_text(lines: &[Vec<TextWord>], phrase: &[char]) -> Vec<Finding> {
     let mut out = Vec::new();
-    for l in &lines {
+    for words in lines {
+        let l = Line::new(words);
         for s in 0..(l.chars.len() + 1).saturating_sub(phrase.len()) {
-            if l.chars[s..s + phrase.len()] != phrase[..] { continue; }
-            let f = l.finding(SensitiveKind::SameText, Certainty::Confirmed, s, s + phrase.len());
-            if !overlaps(f.bounds, area) { out.push(f); }
+            if l.chars[s..s + phrase.len()] == *phrase { out.push(l.finding(SensitiveKind::SameText, Certainty::Confirmed, s, s + phrase.len())); }
         }
     }
-    Some(out)
+    out
+}
+/// Other places with the same text as `area`; `None` when `area` holds too little to search.
+pub fn same_text(lines: &[Vec<TextWord>], area: (f32, f32, f32, f32)) -> Option<Vec<Finding>> {
+    let phrase = text_in(lines, area)?;
+    Some(find_text(lines, &phrase).into_iter().filter(|f| !overlaps(f.bounds, area)).collect())
 }
 
 fn overlaps(a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)) -> bool { a.0 < b.2 && a.2 > b.0 && a.1 < b.3 && a.3 > b.1 }

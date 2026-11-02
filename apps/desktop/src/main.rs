@@ -538,21 +538,30 @@ impl App {
     fn auto_check(&mut self, png: Vec<u8>, kind: Delivery) {
         if !self.settings.check_on_share || self.after_copy == AfterCopy::Quit { return; }
         let Some(stamp) = self.ctl.editor.as_ref().map(|e| e.stamp()) else { return };
-        let crop = self.ctl.ocr_snapshot().and_then(|(_, scene)| scene.crop);
+        let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
+        let (crop, covers) = (scene.crop, self.ctl.covers_in_output());
         self.auto_check_seq += 1;
         let seq = self.auto_check_seq;
         std::thread::spawn(move || {
-            let items = anshot_core::decode_source(&png).ok().and_then(|img| check::scan(&img).ok().map(|found| check::to_items(found, crop, &img)));
+            let decode = |bytes: &[u8]| anshot_core::decode_source(bytes).ok();
+            let done = decode(&png).zip(decode(&source)).and_then(|(export, source)| check::check_export(&export, crop, &source, &covers).ok());
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| if a.auto_check_seq == seq && a.ctl.editor.as_ref().map(|e| e.stamp()) == Some(stamp) {
-                    if let Some(items) = items { a.auto_check_done(items, stamp.document_id, kind); }
+                    if let Some((items, audit)) = done { a.auto_check_done(items, audit, stamp.document_id, kind); }
                 });
             });
         });
     }
-    fn auto_check_done(&mut self, items: Vec<check::Item>, document: u64, kind: Delivery) {
+    fn auto_check_done(&mut self, items: Vec<check::Item>, audit: check::Audit, document: u64, kind: Delivery) {
         let items = check::without_dismissed(items, &self.ctl.dismissed);
-        if items.is_empty() { return; }
+        if items.is_empty() {
+            // Only now can the covers be vouched for, and only as far as this reader goes.
+            if audit.checked > 0 && audit.readable == 0 {
+                let detail = if audit.no_text > 0 { tf("另有 {} 处框内未识别到文字", &[&audit.no_text]) } else { t("这是辅助检查").to_string() };
+                self.toast("done", &tf("已核对 {} 处遮挡：成品里识别不出", &[&audit.checked]), &detail, None);
+            }
+            return;
+        }
         let n = items.len();
         let title = if kind == Delivery::Copy { tf("已复制 · 发现 {} 处可能的隐私内容", &[&n]) } else { tf("已保存 · 发现 {} 处可能的隐私内容", &[&n]) };
         self.ctl.pending_review = Some((check::Review { document, items, like: None, replace: false }, kind));

@@ -147,6 +147,7 @@ Verdict 'check_undo_is_one_step' ("$same" -match 'diff=0$')
 # ---- 3b. cover one name by hand, then every copy of it ----
 $rows = Get-Content $truth -Raw -Encoding utf8 | ConvertFrom-Json
 $b = @($rows | Where-Object { $_.kind -eq 'name' })[0].box
+function Draw-Over($b) {
 $o = New-Object K+POINT; [void][K]::ClientToScreen($h, [ref]$o)
 $cr = New-Object K+RECT; [void][K]::GetClientRect($h, [ref]$cr)
 $ix = [math]::Round(($cr.R - 900) / 2) + $o.X; $iy = 92 + [math]::Round(($cr.B - 122 - 560) / 2) + $o.Y
@@ -159,6 +160,8 @@ Start-Sleep -Milliseconds 100
 $c = New-Object K+POINT; [void][K]::GetCursorPos([ref]$c)
 Log "DRAW pointer_at_release=$($c.X),$($c.Y) expected=$($ix + $b[2] + 3),$($iy + $b[3] + 3)"
 [K]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+}
+Draw-Over $b
 Log "SAME button=$(Invoke-Named $h '遮住相同内容')"
 $apply = Wait-Name $h '^遮挡所选' 15
 Log "SAME list=$apply rows=$(@(Names $h | Where-Object { $_ -eq '相同内容' }).Count)"
@@ -220,8 +223,28 @@ if ($c) { $c.Save((Join-Path $Out 'check-auto-after.png'), [System.Drawing.Imagi
 $read = python (Join-Path $PSScriptRoot 'check_review.py') $doc (Join-Path $Out 'check-auto-after.png') $truth 'phone,id,card,email,key'
 Log $read
 Verdict 'auto_check_recopies_covered' ("$read" -match 'PASS$')
-Start-Sleep -Seconds 4
+$done = Wait-Name $h '^已核对 \d+ 处遮挡' 20
+Log "AUDIT done=$done"
+Verdict 'audit_vouches_for_covers' ($done -match '^已核对 5 处')
+Shot $h 'check-3b-audit.png'
 Log "AUTO quiet_after=$(-not (Wait-Name $h '^已复制 · 发现' 1))"
+if (-not $p.HasExited) { $p.Kill() }
+Start-Sleep -Milliseconds 800
+
+# ---- 4b. a name covered in one place but readable in another is reported ----
+$p = Start-Process $Exe -ArgumentList "`"$doc`"" -PassThru
+$d = (Get-Date).AddSeconds(20); $h = [IntPtr]::Zero
+while ((Get-Date) -lt $d -and $h -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 200; $h = [K]::Editor([uint32]$p.Id) }
+Start-Sleep -Milliseconds 1500
+Draw-Over $b
+Log "COPY size=$(CopyTo 'check-leak.png')"
+$warn = Wait-Name $h '^已复制 · 发现' 20
+Log "LEAK warning=$warn review=$(Invoke-Named $h '查看')"
+Start-Sleep -Milliseconds 500
+$same = @(Names $h | Where-Object { $_ -eq '相同内容' }).Count
+Log "LEAK same_rows=$same"
+Verdict 'audit_reports_uncovered_copy' ($same -eq 1)
+Shot $h 'check-3c-leak.png'
 
 if (-not $p.HasExited) { $p.Kill() }
 Start-Sleep -Milliseconds 800

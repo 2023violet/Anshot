@@ -1,7 +1,7 @@
 //! The privacy check: reads text from pixels Rust rendered, several times, and applies the
 //! format rules. Runs on a worker thread. Recognised text stays in memory and is never logged.
 use crate::i18n::t;
-use anshot_core::sensitive::{merge_findings, same_text, scan_line, Certainty, Finding, SensitiveKind, TextWord};
+use anshot_core::sensitive::{find_text, merge_findings, same_text, scan_line, text_in, Certainty, Finding, SensitiveKind, TextWord};
 use anshot_core::Region;
 use anshot_platform_windows::{ocr_recognize, OcrError, OcrLine};
 use image::{imageops, RgbaImage};
@@ -163,11 +163,58 @@ fn read_at(img: &RgbaImage, f: f32) -> Result<Vec<Vec<TextWord>>, OcrError> {
 /// The scales worth reading an image of this size at.
 fn scales(w: u32, h: u32) -> impl Iterator<Item = f32> { SCALES.into_iter().filter(move |&f| f == 1.0 || can_upscale(w, h, f)) }
 
+/// What the check of an export found out about its covers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Audit {
+    /// Covers with readable text underneath.
+    pub checked: usize,
+    /// Of those, covers whose text can still be read in the export (here or elsewhere).
+    pub readable: usize,
+    /// Covers with no text the reader could make out, which proves nothing either way.
+    pub no_text: usize,
+}
+
+fn area_of(r: Region) -> (f32, f32, f32, f32) {
+    (r.x0.min(r.x1) as f32, r.y0.min(r.y1) as f32, r.x0.max(r.x1) as f32, r.y0.max(r.y1) as f32)
+}
+
+/// Read what each cover hides from `source`, and look for it in the export's lines. Returns the
+/// audit and every place it can still be read. All of this stays on the worker, in memory.
+pub fn audit_covers(source: &[Vec<Vec<TextWord>>], export: &[Vec<Vec<TextWord>>], covers: &[Region]) -> (Audit, Vec<Finding>) {
+    let (mut audit, mut found) = (Audit::default(), Vec::new());
+    for cover in covers {
+        let phrases: Vec<Vec<char>> = source.iter().filter_map(|lines| text_in(lines, area_of(*cover))).collect();
+        if phrases.is_empty() { audit.no_text += 1; continue; }
+        audit.checked += 1;
+        let places: Vec<Finding> = phrases.iter().flat_map(|p| export.iter().flat_map(move |lines| find_text(lines, p))).collect();
+        if !places.is_empty() { audit.readable += 1; }
+        found.extend(places);
+    }
+    (audit, found)
+}
+
+/// The check after a delivery: rules on the export, then whether its covers really hide their
+/// text. Without covers the source is not read at all.
+pub fn check_export(export: &RgbaImage, crop: Option<Region>, source: &RgbaImage, covers: &[Region]) -> Result<(Vec<Item>, Audit), OcrError> {
+    let (w, h) = export.dimensions();
+    let read: Vec<_> = scales(w, h).map(|f| read_at(export, f)).collect::<Result<_, _>>()?;
+    let mut found: Vec<Finding> = read.iter().flatten().flat_map(|l| scan_line(l)).collect();
+    let mut audit = Audit::default();
+    if !covers.is_empty() {
+        let (sw, sh) = source.dimensions();
+        let hidden: Vec<_> = scales(sw, sh).map(|f| read_at(source, f)).collect::<Result<_, _>>()?;
+        let (a, places) = audit_covers(&hidden, &read, covers);
+        audit = a;
+        found.extend(places);
+    }
+    Ok((to_items(merge_findings(found), crop, export), audit))
+}
+
 /// Other places in `img` with the text inside `region`; `None` when none could be read there.
 /// `img` holds the uncovered pixels, so this stays on a worker and in memory.
 pub fn same_as(img: &RgbaImage, region: Region) -> Result<Option<Vec<Finding>>, OcrError> {
     let (w, h) = img.dimensions();
-    let area = (region.x0.min(region.x1) as f32, region.y0.min(region.y1) as f32, region.x0.max(region.x1) as f32, region.y0.max(region.y1) as f32);
+    let area = area_of(region);
     let (mut found, mut any) = (Vec::new(), false);
     for f in scales(w, h) {
         if let Some(more) = same_text(&read_at(img, f)?, area) { any = true; found.extend(more); }
@@ -208,6 +255,19 @@ mod tests {
         let item = |x0| Item { kind: SensitiveKind::Ipv4, certainty: Certainty::Possible, text: String::new(), region: Region::new(x0, 0, x0 + 10, 10), on: true, fill: [255; 4] };
         let left = without_dismissed(vec![item(0), item(100)], &[Region::new(2, 2, 8, 8)]);
         assert_eq!(left, [item(100)]);
+    }
+    #[test]
+    fn audit_reports_covers_that_still_read() {
+        let word = |t: &str, x: f32, y: f32| TextWord { text: t.into(), x, y, w: 20.0, h: 20.0 };
+        let name = |y: f32| vec![word("张", 0.0, y), word("三", 20.0, y)];
+        let source = [vec![name(0.0), name(100.0), vec![word("李", 0.0, 200.0), word("四", 20.0, 200.0)]]];
+        // The first 张三 and 李四 are covered; the second 张三 is not.
+        let export = [vec![name(100.0)]];
+        let covers = [Region::new(0, 0, 40, 20), Region::new(0, 200, 40, 220), Region::new(300, 300, 340, 320)];
+        let (audit, places) = audit_covers(&source, &export, &covers);
+        assert_eq!(audit, Audit { checked: 2, readable: 1, no_text: 1 });
+        assert_eq!(places.len(), 1);
+        assert_eq!(places[0].bounds.1, 100.0, "the place to fix is where it can still be read");
     }
     #[test]
     fn the_fill_comes_from_around_the_box_only() {

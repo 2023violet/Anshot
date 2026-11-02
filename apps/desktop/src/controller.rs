@@ -802,6 +802,12 @@ impl Controller {
         let text = MaskText { text: text.to_string(), ink: ink_for(fill) };
         self.editor.as_mut().ok_or(EditError::MissingSource)?.set_mask_text(id, fill, text)
     }
+    /// Covers that reach the exported image.
+    pub fn covers_in_output(&self) -> Vec<Region> {
+        let Some(e) = self.editor.as_ref() else { return Vec::new() };
+        let crop = e.scene().crop;
+        e.masks().iter().map(|m| m.region).filter(|r| crop.is_none_or(|c| r.x0 < c.x1 && r.x1 > c.x0 && r.y0 < c.y1 && r.y1 > c.y0)).collect()
+    }
     /// The selected redaction, if one is selected.
     pub fn selected_mask(&self) -> Option<(u64, Region)> {
         let e = self.editor.as_ref()?;

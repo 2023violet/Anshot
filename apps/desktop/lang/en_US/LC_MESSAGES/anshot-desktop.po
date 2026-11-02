@@ -1017,3 +1017,9 @@ msgstr "Cover"
 
 msgid "替换成占位文字"
 msgstr "Replace with placeholder"
+
+msgid "另有 {} 处框内未识别到文字"
+msgstr "{} more had no text the check could read"
+
+msgid "已核对 {} 处遮挡：成品里识别不出"
+msgstr "Checked {} covers: not readable in the result"
