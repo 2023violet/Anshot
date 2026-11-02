@@ -888,3 +888,66 @@ msgstr "Another program is using the clipboard; try again in a moment"
 
 msgid "找不到设置目录"
 msgstr "Could not find the settings folder"
+
+msgid "手机号"
+msgstr "Phone number"
+
+msgid "疑似手机号"
+msgstr "Possible phone number"
+
+msgid "身份证号"
+msgstr "ID number"
+
+msgid "疑似身份证号"
+msgstr "Possible ID number"
+
+msgid "银行卡号"
+msgstr "Card number"
+
+msgid "疑似银行卡号"
+msgstr "Possible card number"
+
+msgid "邮箱"
+msgstr "Email"
+
+msgid "疑似邮箱"
+msgstr "Possible email"
+
+msgid "IP 地址"
+msgstr "IP address"
+
+msgid "疑似 IP 地址"
+msgstr "Possible IP address"
+
+msgid "密钥"
+msgstr "Key"
+
+msgid "疑似密钥"
+msgstr "Possible key"
+
+msgid "分享前检查 Ctrl+Shift+K"
+msgstr "Check before sharing Ctrl+Shift+K"
+
+msgid "正在检查…"
+msgstr "Checking…"
+
+msgid "没有发现可疑内容"
+msgstr "Nothing suspicious found"
+
+msgid "发现 {} 处可能的隐私内容"
+msgstr "{} possible private items found"
+
+msgid "这只是辅助检查，可能有遗漏，姓名和地址找不到。分享前请再看一遍。"
+msgstr "This check is only an aid. It can miss things and cannot find names or addresses. Look again before you share."
+
+msgid "遮挡所选（{}）"
+msgstr "Cover selected ({})"
+
+msgid "无法检查"
+msgstr "Could not check"
+
+msgid "无法遮挡"
+msgstr "Could not cover"
+
+msgid "可以撤销；检查可能有遗漏"
+msgstr "You can undo this. The check may have missed something."

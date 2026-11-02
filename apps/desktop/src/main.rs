@@ -95,6 +95,7 @@ struct App {
     ocr_hidden: bool,
     /// A text recognition job is running.
     ocr_running: bool,
+    check_running: bool,
 }
 
 struct LongShot {
@@ -137,6 +138,7 @@ impl App {
         ui.set_tool(tool_name(ctl.tool).into());
         ui.set_busy(match ctl.busy() { Some(Delivery::Copy) => "copy", Some(Delivery::Save) => "save", None => "" }.into());
         ui.set_can_deliver(ctl.can_deliver());
+        self.push_check(&ui);
         ui.set_narrow(ctl.area().0 < 900.0);
         ui.set_tiny(ctl.area().0 < 720.0);
         let st = ctl.style;
@@ -373,6 +375,7 @@ impl App {
     fn key(&mut self, text: &str, ctrl: bool, shift: bool, other: bool) -> bool {
         use slint::platform::Key;
         let is = |k: Key| text == SharedString::from(k).as_str();
+        if is(Key::Escape) && self.ctl.review.is_some() { self.ctl.review = None; self.refresh(); return true; }
         if let Some(ui) = self.ui() {
             if ui.get_dialog() != "" {
                 if is(Key::Escape) { self.dialog_choice("cancel"); return true; }
@@ -480,6 +483,62 @@ impl App {
         slint::Timer::single_shot(Duration::from_secs(3), move || {
             with(|a| if a.toast_seq == seq { if let Some(t) = a.toast_win.as_ref() { let _ = t.hide(); } });
         });
+    }
+
+    // ---- privacy check: suggestions only; nothing changes until the user applies them ----
+    fn run_check(&mut self) {
+        if self.check_running { return; }
+        let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
+        let Some(document) = self.ctl.editor.as_ref().map(|e| e.stamp().document_id) else { return };
+        self.check_running = true;
+        self.ctl.review = None;
+        self.refresh();
+        std::thread::spawn(move || {
+            let crop = scene.crop;
+            let items = anshot_render::render_png(&source, &scene).map_err(|_| t("无法生成图片，请重试。").to_string())
+                .and_then(|png| anshot_core::decode_source(&png).map_err(|_| t("无法生成图片，请重试。").to_string()))
+                .and_then(|img| check::scan(&img).map_err(|e| check::ocr_message(&e).to_string()))
+                .map(|found| check::to_items(found, crop));
+            let _ = slint::invoke_from_event_loop(move || {
+                with(|a| {
+                    a.check_running = false;
+                    // The document was replaced or closed while the worker ran.
+                    if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
+                        match items {
+                            Ok(items) => a.ctl.review = Some(check::Review { document, items }),
+                            Err(e) => a.toast("error", t("无法检查"), &e, None),
+                        }
+                    }
+                    a.refresh();
+                });
+            });
+        });
+    }
+    fn check_command(&mut self, c: &str) {
+        match c {
+            "check-close" => self.ctl.review = None,
+            "check-apply" => match self.ctl.apply_review() {
+                Ok(n) => self.toast("done", &tf("已遮挡 {} 处", &[&n]), t("可以撤销；检查可能有遗漏"), None),
+                Err(e) => self.toast("error", t("无法遮挡"), &messages::edit(&e), None),
+            },
+            _ => if let (Some(i), Some(r)) = (c.strip_prefix("check-toggle-").and_then(|i| i.parse::<usize>().ok()), self.ctl.review.as_mut()) {
+                if let Some(item) = r.items.get_mut(i) { item.on = !item.on; }
+            },
+        }
+        self.refresh();
+    }
+    fn push_check(&self, ui: &AppWindow) {
+        let review = self.ctl.review.as_ref();
+        ui.set_check_state(if self.check_running { "busy" } else { match review { None => "", Some(r) if r.items.is_empty() => "empty", _ => "list" } }.into());
+        let items = review.map_or(&[][..], |r| &r.items[..]);
+        let rows: Vec<CheckRow> = items.iter().map(|i| CheckRow { label: check::label(i).into(), hint: check::hint(&i.text).into(), on: i.on }).collect();
+        ui.set_check_count(items.iter().filter(|i| i.on).count() as i32);
+        ui.set_check_rows(ModelRc::new(VecModel::from(rows)));
+        let boxes: Vec<MaskBox> = self.ctl.view().map_or(Vec::new(), |v| items.iter().map(|i| {
+            let (x, y, w, h) = v.rect(i.region);
+            MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected: i.on }
+        }).collect());
+        ui.set_check_boxes(ModelRc::new(VecModel::from(boxes)));
     }
 
     // ---- text recognition (Windows' own OCR, offline) ----
@@ -1257,6 +1316,8 @@ fn command(cmd: &str) {
                     "settings" => a.open_settings(),
                     "history" => a.open_history(),
                     "ocr" => a.ocr_document(),
+                    "check" => a.run_check(),
+                    c if c.starts_with("check-") => a.check_command(c),
                     "pin" => a.pin_document(),
                     c if c.starts_with("keep-") => { if let Some(&n) = c[5..].parse::<usize>().ok().and_then(|i| settings::HISTORY_LIMITS.get(i)) {
                         a.settings.history_limit = n; a.persist();
@@ -1304,7 +1365,7 @@ fn main() -> Result<(), slint::PlatformError> {
         resident: false, tray: None, session: None, overlays: Vec::new(), overlay_pool: Vec::new(), toast_win: None, base: None,
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
-        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false,
+        pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1385,6 +1446,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let c = text.chars().next().map(|c| if (c as u32) < 27 && c as u32 > 0 { (b'a' + c as u8 - 1) as char } else { c.to_ascii_lowercase() });
             match c {
                 Some('o') if shift => { command("ocr"); return true; }
+                Some('k') if shift => { command("check"); return true; }
                 Some('o') => { command("open"); return true; }
                 Some('v') => { command("paste"); return true; }
                 Some('s') => { command("save"); return true; }

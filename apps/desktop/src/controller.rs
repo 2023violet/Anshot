@@ -1,6 +1,7 @@
 //! UI-independent controller: turns pointer/keyboard intents into Editor
 //! commands and drives the render -> delivery handshake. No Slint types here.
 #![forbid(unsafe_code)]
+use crate::check::Review;
 use crate::i18n::t;
 use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF, MAX_ZOOM, MIN_ZOOM};
 use anshot_core::Region;
@@ -88,12 +89,14 @@ pub struct Controller {
     pub shift: bool,
     /// The custom colour used when `style.color == CUSTOM_INK`.
     pub custom: [u8; 4],
+    /// The last privacy check of this document; recognised text lives only here.
+    pub review: Option<Review>,
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { pad: 0, editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255] }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255], review: None }
     }
 }
 
@@ -186,6 +189,7 @@ impl Controller {
         }
         self.delivered = None;
         self.busy = None;
+        self.review = None;
         self.source_name = name;
         self.zoom = Zoom::Fit;
         self.pan = None;
@@ -199,6 +203,7 @@ impl Controller {
         self.busy = None;
         self.delivered = None;
         self.source_name = None;
+        self.review = None;
     }
 
     fn src(&self, p: Point) -> Option<(f64, f64)> {
@@ -757,6 +762,15 @@ impl Controller {
 
     /// The current source and scene, for rendering the exact export image elsewhere
     /// (text recognition); changes nothing.
+    /// Cover the ticked findings in the current redaction style, as one undo step.
+    pub fn apply_review(&mut self) -> Result<usize, EditError> {
+        let Some(review) = self.review.as_ref() else { return Ok(0) };
+        let regions: Vec<Region> = review.items.iter().filter(|i| i.on).map(|i| i.region).collect();
+        let style = if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) };
+        let n = self.editor.as_mut().ok_or(EditError::MissingSource)?.add_redactions(&regions, style)?;
+        self.review = None;
+        Ok(n)
+    }
     pub fn ocr_snapshot(&self) -> Option<(Vec<u8>, anshot_render::Scene)> {
         // Not mid-gesture: a redaction still being drawn is not part of the document yet.
         if self.drag.is_some() || self.text_edit.is_some() { return None; }

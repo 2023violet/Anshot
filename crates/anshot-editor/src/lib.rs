@@ -227,6 +227,22 @@ impl Editor {
         self.next_mask_id=next_id;
         Ok(id)
     }
+    /// Several redactions as one edit: one undo step, all or none.
+    pub fn add_redactions(&mut self,candidates:&[Region],style:RedactStyle)->Result<usize,EditError>{
+        let style=opaque(style);
+        self.ensure_idle()?;
+        if self.masks.len()+self.annotations.len()+candidates.len()>MAX_MASKS {return Err(EditError::MaskLimit);}
+        let mut next=self.snapshot();
+        let mut id=self.next_mask_id;
+        for candidate in candidates {
+            let region=self.normalized(*candidate)?;
+            next.masks.push(Mask{id,region,style});
+            id=id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
+        }
+        self.change(next)?;
+        self.next_mask_id=id;
+        Ok(candidates.len())
+    }
     pub fn set_redaction_style(&mut self,id:u64,style:RedactStyle)->Result<bool,EditError>{
         let style=opaque(style);
         self.ensure_idle()?;
@@ -532,6 +548,14 @@ mod scene_tests{
     #[test] fn translucent_solid_redactions_are_forced_opaque(){
         let mut e=Editor::from_source(FIX.to_vec()).unwrap();
         let id=e.add_redaction(Region::new(0,0,10,10),RedactStyle::Solid([1,2,3,0])).unwrap();
+        let before=e.masks().len();
+        assert_eq!(e.add_redactions(&[Region::new(1,1,5,5),Region::new(6,6,9,9)],RedactStyle::Solid([9,9,9,0])),Ok(2));
+        assert_eq!(e.masks()[before].style,RedactStyle::Solid([9,9,9,255]),"batch fills are opaque too");
+        e.undo().unwrap();
+        assert_eq!(e.masks().len(),before,"a batch is one undo step");
+        assert_eq!(e.add_redactions(&[Region::new(1,1,5,5),Region::new(0,0,0,0)],RedactStyle::SafeMosaic),Err(EditError::NoEffectiveMask));
+        assert_eq!(e.masks().len(),before,"a bad region rejects the whole batch");
+        assert_eq!(e.add_redactions(&vec![Region::new(1,1,5,5);MAX_MASKS+1],RedactStyle::SafeMosaic),Err(EditError::MaskLimit));
         assert_eq!(e.masks()[0].style,RedactStyle::Solid([1,2,3,255]));
         e.set_redaction_style(id,RedactStyle::Solid([9,9,9,10])).unwrap();
         assert_eq!(e.masks()[0].style,RedactStyle::Solid([9,9,9,255]));
