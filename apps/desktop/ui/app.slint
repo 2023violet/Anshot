@@ -40,6 +40,8 @@ export component AppWindow inherits Window {
     in property <[CheckRow]> check-rows;
     in property <[MaskBox]> check-boxes;
     in property <int> check-count;
+    in property <bool> check-recopy; // the list came from a copy: applying copies again
+    in property <bool> check-resave; // the list came from a save: the file still has the old image
     in property <string> dims-text;
     in property <string> zoom-text: "100%";
     in property <bool> zoom-fit: true;
@@ -83,6 +85,7 @@ export component AppWindow inherits Window {
     in property <bool> clear-on-exit;
     in property <bool> pad-redactions: true;
     in property <bool> warn-unredacted: true;
+    in property <bool> check-on-share: true;
     in property <bool> clipboard-private: true;
     in property <int> language-index;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
@@ -333,7 +336,7 @@ export component AppWindow inherits Window {
                 // ---------- privacy check ----------
                 if root.check-state != "": Rectangle {
                     x: parent.width - self.width - 12px; y: 12px; width: 280px;
-                    height: root.check-state == "list" ? min(parent.height - 24px, 420px) : 132px;
+                    height: root.check-state == "list" ? min(parent.height - 24px, 440px) : 132px;
                     border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                     TouchArea { }
                     VerticalLayout { padding: 12px; spacing: 8px;
@@ -358,12 +361,14 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
+                        if root.check-recopy: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("剪贴板里还是刚才那张图。"); }
+                        if root.check-resave: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("保存的文件还是刚才那张图，遮挡后请再保存一次。"); }
                         if root.check-state != "busy": Text { font-size: 11px; color: Theme.mute; wrap: word-wrap;
                             text: @tr("这只是辅助检查，可能有遗漏，姓名和地址找不到。分享前请再看一遍。"); }
                         if root.check-state == "busy": Rectangle { vertical-stretch: 1; }
                         if root.check-state != "busy": HorizontalLayout { spacing: 8px; alignment: end;
                             ActionButton { label: @tr("关闭"); key: ""; kind: 0; clicked => { root.command("check-close"); } }
-                            if root.check-state == "list": ActionButton { label: @tr("遮挡所选（{}）", root.check-count); key: ""; kind: 1; enabled: root.check-count > 0; clicked => { root.command("check-apply"); } }
+                            if root.check-state == "list": ActionButton { label: root.check-recopy ? @tr("遮挡并重新复制（{}）", root.check-count) : @tr("遮挡所选（{}）", root.check-count); key: ""; kind: 1; enabled: root.check-count > 0; clicked => { root.command("check-apply"); } }
                         }
                     }
                 }
@@ -496,6 +501,10 @@ export component AppWindow inherits Window {
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("未遮挡提醒"); width: 84px; }
                             VerticalLayout { alignment: center; Segmented { options: [@tr("提醒"), @tr("不提醒")]; selected: root.warn-unredacted ? 0 : 1; picked(i) => { root.command(i == 0 ? "warn-on" : "warn-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: @tr("分享前检查"); width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: [@tr("复制和保存后检查"), @tr("只手动检查")]; selected: root.check-on-share ? 0 : 1; picked(i) => { root.command(i == 0 ? "autocheck-on" : "autocheck-off"); } } }
                         }
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("剪贴板"); width: 84px; }

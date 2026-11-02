@@ -951,3 +951,33 @@ msgstr "Could not cover"
 
 msgid "可以撤销；检查可能有遗漏"
 msgstr "You can undo this. The check may have missed something."
+
+msgid "已复制 · 发现 {} 处可能的隐私内容"
+msgstr "Copied · {} possible private items"
+
+msgid "已保存 · 发现 {} 处可能的隐私内容"
+msgstr "Saved · {} possible private items"
+
+msgid "这是辅助检查"
+msgstr "This check is only an aid"
+
+msgid "查看"
+msgstr "Review"
+
+msgid "遮挡并重新复制（{}）"
+msgstr "Cover and copy again ({})"
+
+msgid "剪贴板里还是刚才那张图。"
+msgstr "The clipboard still holds the earlier image."
+
+msgid "保存的文件还是刚才那张图，遮挡后请再保存一次。"
+msgstr "The saved file is still the earlier image. Save again after covering."
+
+msgid "分享前检查"
+msgstr "Check before sharing"
+
+msgid "复制和保存后检查"
+msgstr "After copy and save"
+
+msgid "只手动检查"
+msgstr "Manual only"

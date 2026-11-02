@@ -16,12 +16,20 @@ public static class K {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, uint d, IntPtr e);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
   public delegate bool EnumProc(IntPtr h, IntPtr l);
   [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  public static System.Collections.Generic.List<IntPtr> Small(uint pid) {
+    var found = new System.Collections.Generic.List<IntPtr>();
+    EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); RECT r;
+      if (p == pid && IsWindowVisible(h) && GetWindowRect(h, out r) && (long)(r.R - r.L) * (r.B - r.T) < 300000) found.Add(h); return true; }, IntPtr.Zero);
+    return found;
+  }
   public static IntPtr Editor(uint pid) {
     IntPtr best = IntPtr.Zero; long area = 0;
     EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); var sb = new StringBuilder(256); GetWindowText(h, sb, 256);
@@ -132,6 +140,57 @@ $same = python (Join-Path $PSScriptRoot 'check_png.py') same $doc (Join-Path $Ou
 Log "SAME_UNDONE $same"
 Verdict 'check_undo_is_one_step' ("$same" -match 'diff=0$')
 
+# ---- 4. the check after a copy: the warning, its button, and covering plus copying again ----
+Focus-Editor
+Log "COPY size=$(CopyTo 'check-auto-before.png')"
+$warn = Wait-Name $h '^已复制 · 发现' 20
+Log "AUTO warning=$warn"
+Verdict 'auto_check_warns' ($warn -ne '')
+Log "AUTO review=$(Invoke-Named $h '查看')"
+$apply = Wait-Name $h '^遮挡并重新复制' 5
+Shot $h 'check-3-auto.png'
+[System.Windows.Forms.Clipboard]::Clear()
+Log "AUTO apply $apply=$(Invoke-Named $h $apply)"
+$c = $null; $d = (Get-Date).AddSeconds(5)
+while (-not $c -and (Get-Date) -lt $d) { Start-Sleep -Milliseconds 200; $c = [System.Windows.Forms.Clipboard]::GetImage() }
+if ($c) { $c.Save((Join-Path $Out 'check-auto-after.png'), [System.Drawing.Imaging.ImageFormat]::Png); $c.Dispose() }
+# The IP stays: it was unticked in step 2, so the check does not raise it again.
+$read = python (Join-Path $PSScriptRoot 'check_review.py') $doc (Join-Path $Out 'check-auto-after.png') $truth 'phone,id,card,email,key'
+Log $read
+Verdict 'auto_check_recopies_covered' ("$read" -match 'PASS$')
+Start-Sleep -Seconds 4
+Log "AUTO quiet_after=$(-not (Wait-Name $h '^已复制 · 发现' 1))"
+
 if (-not $p.HasExited) { $p.Kill() }
+Start-Sleep -Milliseconds 800
+
+# ---- 5. default settings, tray app: quick copy from a selection, so no editor is on screen; the warning comes as a system toast and its button opens the list ----
+Remove-Item (Join-Path $env:ANSHOT_SETTINGS_DIR 'settings.txt') -ErrorAction SilentlyContinue
+$fixture = Start-Process pwsh -ArgumentList @('-NoProfile', '-STA', '-File', (Join-Path $PSScriptRoot 'synthetic_window.ps1'), '-Image', "`"$doc`"", '-X', 200, '-Y', 150) -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 3
+$p = Start-Process $Exe -ArgumentList '--background' -PassThru
+Start-Sleep -Seconds 3
+[System.Windows.Forms.Clipboard]::Clear()
+Key 0x41 -Ctrl -Shift; Start-Sleep -Milliseconds 900
+[void][K]::SetCursorPos(220, 170); Start-Sleep -Milliseconds 200
+[K]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 80
+foreach ($i in 1..12) { [void][K]::SetCursorPos(220 + 56 * $i, 170 + 28 * $i); Start-Sleep -Milliseconds 25 }
+Start-Sleep -Milliseconds 100; [K]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 400
+Key 0x43 -Ctrl
+$toast = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(20)
+while ($toast -eq [IntPtr]::Zero -and (Get-Date) -lt $d) {
+    Start-Sleep -Milliseconds 200
+    foreach ($w in [K]::Small([uint32]$p.Id)) { if (@(Names $w | Where-Object { $_ -match '发现 \d+ 处' }).Count) { $toast = $w } }
+}
+Log "QUICK toast=$($toast -ne [IntPtr]::Zero) editor_on_screen=$([K]::Editor([uint32]$p.Id) -ne [IntPtr]::Zero)"
+$opened = ($toast -ne [IntPtr]::Zero) -and (Invoke-Named $toast '查看')
+Start-Sleep -Milliseconds 1000
+$h = [K]::Editor([uint32]$p.Id)
+$list = if ($h -ne [IntPtr]::Zero) { Wait-Name $h '^遮挡并重新复制' 5 } else { '' }
+Log "QUICK opened=$opened list=$list"
+Verdict 'quick_copy_toast_opens_list' ($list -ne '')
+if ($h -ne [IntPtr]::Zero) { Shot $h 'check-4-quick.png' }
+if (-not $p.HasExited) { $p.Kill() }
+Stop-Process -Id $fixture.Id -Force -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $log | Set-Content -Encoding utf8 (Join-Path $Out 'check.log')

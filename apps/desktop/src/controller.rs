@@ -91,12 +91,16 @@ pub struct Controller {
     pub custom: [u8; 4],
     /// The last privacy check of this document; recognised text lives only here.
     pub review: Option<Review>,
+    /// What the check after a copy or save found, until the user looks at it.
+    pub pending_review: Option<(Review, Delivery)>,
+    /// Places the user saw and left uncovered: the automatic check stays quiet about them.
+    pub dismissed: Vec<Region>,
 }
 
 impl Default for Controller {
     fn default() -> Self {
         Self { pad: 0, editor: None, tool: Tool::Redact, style: Style::default(), zoom: Zoom::Fit, area: (800.0, 500.0), drag: None,
-            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255], review: None }
+            delivered: None, busy: None, opening: false, source_name: None, text_edit: None, crop_draft: None, pan: None, space_pan: false, shift: false, custom: [0x9b, 0x30, 0xd9, 255], review: None, pending_review: None, dismissed: Vec::new() }
     }
 }
 
@@ -189,7 +193,7 @@ impl Controller {
         }
         self.delivered = None;
         self.busy = None;
-        self.review = None;
+        self.forget_review();
         self.source_name = name;
         self.zoom = Zoom::Fit;
         self.pan = None;
@@ -203,7 +207,17 @@ impl Controller {
         self.busy = None;
         self.delivered = None;
         self.source_name = None;
+        self.forget_review();
+    }
+    /// Recognised text goes with its document.
+    fn forget_review(&mut self) {
         self.review = None;
+        self.pending_review = None;
+        self.dismissed.clear();
+    }
+    /// The user closed the list: these stay as they are.
+    pub fn dismiss_review(&mut self) {
+        if let Some(r) = self.review.take() { self.dismissed.extend(r.items.iter().map(|i| i.region)); }
     }
 
     fn src(&self, p: Point) -> Option<(f64, f64)> {
@@ -768,7 +782,8 @@ impl Controller {
         let regions: Vec<Region> = review.items.iter().filter(|i| i.on).map(|i| i.region).collect();
         let style = if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) };
         let n = self.editor.as_mut().ok_or(EditError::MissingSource)?.add_redactions(&regions, style)?;
-        self.review = None;
+        // Only what stayed unticked was left alone on purpose: undoing a cover must warn again.
+        if let Some(r) = self.review.take() { self.dismissed.extend(r.items.iter().filter(|i| !i.on).map(|i| i.region)); }
         Ok(n)
     }
     pub fn ocr_snapshot(&self) -> Option<(Vec<u8>, anshot_render::Scene)> {

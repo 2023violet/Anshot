@@ -25,6 +25,7 @@ pub struct Settings {
     pub pad_redactions: bool,
     /// A stronger notice when an image without any redaction is copied or saved.
     pub warn_unredacted: bool,
+    pub check_on_share: bool,
     /// Copies stay out of the Windows clipboard history and cloud clipboard.
     pub clipboard_private: bool,
     /// History entries older than this many days are removed (0 = keep).
@@ -53,7 +54,7 @@ pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
     fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false,
-        pad_redactions: true, warn_unredacted: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into() } }
+        pad_redactions: true, warn_unredacted: true, check_on_share: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into() } }
 }
 
 impl Settings {
@@ -73,6 +74,7 @@ impl Settings {
                 ("include_cursor", "false") => s.include_cursor = false,
                 ("pad_redactions", v) => if let Ok(b) = v.parse() { s.pad_redactions = b; },
                 ("warn_unredacted", v) => if let Ok(b) = v.parse() { s.warn_unredacted = b; },
+                ("check_on_share", v) => if let Ok(b) = v.parse() { s.check_on_share = b; },
                 ("clipboard_private", v) => if let Ok(b) = v.parse() { s.clipboard_private = b; },
                 ("clear_on_exit", v) => if let Ok(b) = v.parse() { s.clear_on_exit = b; },
                 ("language", v) => if LANGUAGES.contains(&v) { s.language = v.into(); },
@@ -85,9 +87,9 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\n", self.hotkey.label(), self.hide_after_copy,
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\ncheck_on_share={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\n", self.hotkey.label(), self.hide_after_copy,
             self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor,
-            self.pad_redactions, self.warn_unredacted, self.clipboard_private, self.history_days, self.clear_on_exit, self.language)
+            self.pad_redactions, self.warn_unredacted, self.check_on_share, self.clipboard_private, self.history_days, self.clear_on_exit, self.language)
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -116,7 +118,7 @@ mod tests {
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
         let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true,
-            pad_redactions: false, warn_unredacted: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into() };
+            pad_redactions: false, warn_unredacted: false, check_on_share: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into() };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);

@@ -36,6 +36,11 @@ pub fn to_items(findings: Vec<Finding>, crop: Option<Region>) -> Vec<Item> {
         Item { kind: f.kind, certainty: f.certainty, text: f.text, region, on: true }
     }).collect()
 }
+/// Drop suggestions the user has already seen and left alone (same place on the image).
+pub fn without_dismissed(items: Vec<Item>, dismissed: &[Region]) -> Vec<Item> {
+    let hits = |a: &Region, b: &Region| a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+    items.into_iter().filter(|i| !dismissed.iter().any(|d| hits(&i.region, d))).collect()
+}
 /// Enough of the text to find it on the image, not enough to read it over a shoulder.
 pub fn hint(text: &str) -> String {
     let c: Vec<char> = text.chars().collect();
@@ -133,6 +138,12 @@ mod tests {
         let items = to_items(vec![f], Some(Region::new(300, 50, 200, 500)));
         assert_eq!(items[0].region, Region::new(206, 66, 305, 94));
         assert!(items[0].on, "suggestions start ticked");
+    }
+    #[test]
+    fn dismissed_places_are_not_suggested_again() {
+        let item = |x0| Item { kind: SensitiveKind::Ipv4, certainty: Certainty::Possible, text: String::new(), region: Region::new(x0, 0, x0 + 10, 10), on: true };
+        let left = without_dismissed(vec![item(0), item(100)], &[Region::new(2, 2, 8, 8)]);
+        assert_eq!(left, [item(100)]);
     }
     #[test]
     fn hints_never_show_the_middle() {

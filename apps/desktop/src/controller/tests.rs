@@ -26,6 +26,31 @@ fn drag(c: &mut Controller, a: (f64, f64), b: (f64, f64)) {
 fn editor(c: &Controller) -> &Editor { c.editor.as_ref().unwrap() }
 
 #[test]
+fn applying_a_review_remembers_only_what_stayed_unticked() {
+    use anshot_core::sensitive::{Certainty, SensitiveKind};
+    let mut c = opened(400, 200);
+    let item = |x0, on| crate::check::Item { kind: SensitiveKind::Phone, certainty: Certainty::Confirmed, text: String::new(), region: Region::new(x0, 10, x0 + 50, 30), on };
+    c.review = Some(Review { document: 1, items: vec![item(10, true), item(100, false)] });
+    assert_eq!(c.apply_review(), Ok(1));
+    assert_eq!(editor(&c).masks().len(), 1);
+    assert_eq!(c.dismissed, [Region::new(100, 10, 150, 30)], "a covered item must warn again if the cover is undone");
+    assert!(c.review.is_none());
+}
+
+#[test]
+fn closing_the_list_leaves_the_image_alone_and_a_new_document_forgets_it() {
+    use anshot_core::sensitive::{Certainty, SensitiveKind};
+    let mut c = opened(400, 200);
+    let item = crate::check::Item { kind: SensitiveKind::Email, certainty: Certainty::Confirmed, text: "secret".into(), region: Region::new(10, 10, 60, 30), on: true };
+    c.review = Some(Review { document: 1, items: vec![item.clone()] });
+    c.dismiss_review();
+    assert_eq!((editor(&c).masks().len(), c.dismissed.len()), (0, 1));
+    c.pending_review = Some((Review { document: 1, items: vec![item] }, Delivery::Copy));
+    c.accept_source(SourceCandidate::decode(png(50, 50)).unwrap(), None).unwrap();
+    assert!(c.review.is_none() && c.pending_review.is_none() && c.dismissed.is_empty());
+}
+
+#[test]
 fn draw_move_resize_undo_through_pointer_intents() {
     let mut c = opened(400, 200); // scale 1
     c.pointer_down(at(&c, 10.0, 20.0));
