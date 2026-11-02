@@ -18,9 +18,13 @@ pub enum OcrError {
     Failed(String),
 }
 
+/// One recognised word and its box in the input image's pixels.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OcrWord { pub text: String, pub x: f32, pub y: f32, pub w: f32, pub h: f32 }
+
 /// One recognised line and its box in the input image's pixels.
 #[derive(Debug, Clone, PartialEq)]
-pub struct OcrLine { pub text: String, pub x: f32, pub y: f32, pub h: f32 }
+pub struct OcrLine { pub text: String, pub x: f32, pub y: f32, pub h: f32, pub words: Vec<OcrWord> }
 
 fn engine() -> Result<OcrEngine, OcrError> {
     // Prefer Chinese (it also reads Latin text well), then whatever the profile offers.
@@ -66,11 +70,12 @@ pub fn recognize(rgba: &[u8], w: u32, h: u32) -> Result<Vec<OcrLine>, OcrError> 
         for word in line.Words().map_err(fail)? {
             let r = word.BoundingRect().map_err(fail)?;
             x0 = x0.min(r.X); y0 = y0.min(r.Y); y1 = y1.max(r.Y + r.Height);
-            words.push(word.Text().map_err(fail)?.to_string());
+            words.push(OcrWord { text: word.Text().map_err(fail)?.to_string(), x: r.X, y: r.Y, w: r.Width, h: r.Height });
         }
-        let text = if words.is_empty() { line.Text().map_err(fail)?.to_string() } else { join_words(&words) };
+        let joined: Vec<String> = words.iter().map(|w| w.text.clone()).collect();
+        let text = if joined.is_empty() { line.Text().map_err(fail)?.to_string() } else { join_words(&joined) };
         if y0 == f32::MAX { (x0, y0, y1) = (0.0, 0.0, 0.0); }
-        lines.push(OcrLine { text, x: x0, y: y0, h: y1 - y0 });
+        lines.push(OcrLine { text, x: x0, y: y0, h: y1 - y0, words });
     }
     Ok(sort_lines(lines))
 }
@@ -105,7 +110,7 @@ pub fn sort_lines(mut lines: Vec<OcrLine>) -> Vec<OcrLine> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn l(t: &str, x: f32, y: f32) -> OcrLine { OcrLine { text: t.into(), x, y, h: 20.0 } }
+    fn l(t: &str, x: f32, y: f32) -> OcrLine { OcrLine { text: t.into(), x, y, h: 20.0, words: Vec::new() } }
     #[test]
     fn cjk_words_join_without_spaces_latin_words_with_one() {
         let w = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();

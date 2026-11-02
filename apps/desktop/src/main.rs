@@ -7,6 +7,7 @@ use crate::i18n::{t, tf};
 
 mod canvas;
 mod capture;
+mod check;
 mod color;
 mod controller;
 mod display;
@@ -1544,15 +1545,11 @@ fn apply_language(setting: &str) {
 /// 100 % scale), so regions are upscaled 1.5x in Rust first when that stays affordable.
 fn recognize_text(img: RgbaImage) -> Result<String, String> {
     let (w, h) = img.dimensions();
-    let img = if u64::from(w) * u64::from(h) <= 4_000_000 && w.max(h) * 3 / 2 <= 9_000 {
-        image::imageops::resize(&img, w * 3 / 2, h * 3 / 2, image::imageops::FilterType::Triangle)
-    } else { img };
+    let img = check::upscaled(&img, if check::can_upscale(w, h, 1.5) { 1.5 } else { 1.0 });
     let (w, h) = img.dimensions();
     match anshot_platform_windows::ocr_recognize(img.as_raw(), w, h) {
         Ok(lines) => Ok(lines.into_iter().map(|l| l.text).collect::<Vec<_>>().join("\n")),
-        Err(anshot_platform_windows::OcrError::LanguageMissing) => Err(t("这台电脑没有可用的文字识别语言。请在 Windows 设置 → 时间和语言 → 语言 中添加“中文(简体)”，安装完成后再试。").into()),
-        Err(anshot_platform_windows::OcrError::TooLarge) => Err(t("区域太大，无法识别；请框选小一些的区域。").into()),
-        Err(anshot_platform_windows::OcrError::Failed(_)) => Err(t("识别失败，请重试。").into()),
+        Err(e) => Err(check::ocr_message(&e).into()),
     }
 }
 

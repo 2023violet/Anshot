@@ -11,6 +11,7 @@ pub const COVER: Rgba<u8> = Rgba([17, 24, 39, 255]);
 
 mod clipboard;
 pub use clipboard::{dib_to_png,rgba_to_dibv5,MAX_DIB_BYTES};
+pub mod sensitive;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Region {
