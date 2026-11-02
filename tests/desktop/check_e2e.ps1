@@ -13,6 +13,7 @@ public static class K {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(ref POINT p);
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
@@ -150,11 +151,14 @@ $o = New-Object K+POINT; [void][K]::ClientToScreen($h, [ref]$o)
 $cr = New-Object K+RECT; [void][K]::GetClientRect($h, [ref]$cr)
 $ix = [math]::Round(($cr.R - 900) / 2) + $o.X; $iy = 92 + [math]::Round(($cr.B - 122 - 560) / 2) + $o.Y
 Focus-Editor
-Log "DRAW box=$($b -join ',') origin=$ix,$iy"
+Log "DRAW box=$($b -join ',') origin=$ix,$iy client=$($cr.R)x$($cr.B)"
 [void][K]::SetCursorPos($ix + $b[0] - 3, $iy + $b[1] - 3); Start-Sleep -Milliseconds 200
 [K]::mouse_event(0x2, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 80
 foreach ($i in 1..10) { [void][K]::SetCursorPos($ix + $b[0] - 3 + ($b[2] - $b[0] + 6) * $i / 10, $iy + $b[1] - 3 + ($b[3] - $b[1] + 6) * $i / 10); Start-Sleep -Milliseconds 25 }
-Start-Sleep -Milliseconds 100; [K]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
+Start-Sleep -Milliseconds 100
+$c = New-Object K+POINT; [void][K]::GetCursorPos([ref]$c)
+Log "DRAW pointer_at_release=$($c.X),$($c.Y) expected=$($ix + $b[2] + 3),$($iy + $b[3] + 3)"
+[K]::mouse_event(0x4, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 500
 Log "SAME button=$(Invoke-Named $h '遮住相同内容')"
 $apply = Wait-Name $h '^遮挡所选' 15
 Log "SAME list=$apply rows=$(@(Names $h | Where-Object { $_ -eq '相同内容' }).Count)"
@@ -166,6 +170,37 @@ Log $read
 Verdict 'same_text_covers_every_copy' ("$read" -match 'PASS$')
 Focus-Editor
 Key 0x5A -Ctrl; Key 0x5A -Ctrl; Start-Sleep -Milliseconds 400
+
+# ---- 3c. replace instead of cover: stand-ins read back, the originals do not ----
+Focus-Editor
+Key 0x4B -Ctrl -Shift
+$apply = Wait-Name $h '^遮挡所选' 20
+Log "REPLACE mode=$(Invoke-Named $h '替换成占位文字')"
+Start-Sleep -Milliseconds 300
+Log "REPLACE apply=$(Invoke-Named $h (Wait-Name $h '^遮挡所选' 3))"
+Start-Sleep -Milliseconds 600
+Shot $h 'check-2c-replaced.png'
+Log "COPY size=$(CopyTo 'check-replaced.png')"
+$read = python (Join-Path $PSScriptRoot 'check_review.py') $doc (Join-Path $Out 'check-replaced.png') $truth 'phone,id,card,email,ip,key' replaced
+Log $read
+Focus-Editor
+Key 0x4F -Ctrl -Shift
+$ocr = [IntPtr]::Zero; $d = (Get-Date).AddSeconds(15); $text = ''
+while ((Get-Date) -lt $d -and $text -eq '') {
+    Start-Sleep -Milliseconds 300
+    foreach ($w in [K]::Small([uint32]$p.Id)) {
+        $edit = (Root $w).FindFirst([System.Windows.Automation.TreeScope]::Descendants, ([System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)))
+        $vp = $null
+        if ($edit -and $edit.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp) -and $vp.Current.Value) { $text = $vp.Current.Value; $ocr = $w }
+    }
+}
+$flat = ($text -replace '\s', '')
+$leaks = @('13800138000', '11010519491231002X', '6222020000000000000', 'wangxiaoming', 'ghp_2NiP' | Where-Object { $flat.Contains($_) })
+Log "REPLACE ocr_chars=$($flat.Length) stand_in=$($flat.Contains('example.com')) leaks=$($leaks -join ',')"
+Verdict 'replace_shows_stand_ins_only' (("$read" -match 'PASS$') -and $flat.Contains('example.com') -and $leaks.Count -eq 0)
+if ($ocr -ne [IntPtr]::Zero) { [void](Invoke-Named $ocr '关闭') }
+Focus-Editor
+Key 0x5A -Ctrl; Start-Sleep -Milliseconds 400
 
 # ---- 4. the check after a copy: the warning, its button, and covering plus copying again ----
 Focus-Editor

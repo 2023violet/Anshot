@@ -40,6 +40,9 @@ export component AppWindow inherits Window {
     in property <[CheckRow]> check-rows;
     in property <[MaskBox]> check-boxes;
     in property <int> check-count;
+    in property <bool> check-replace;
+    in-out property <bool> replace-editing;
+    callback replace-commit(string);
     in property <bool> check-recopy; // the list came from a copy: applying copies again
     in property <bool> check-resave; // the list came from a save: the file still has the old image
     in property <string> dims-text;
@@ -209,6 +212,16 @@ export component AppWindow inherits Window {
                         Label { text: "H"; } VerticalLayout { alignment: center; NumberField { value: root.sel-h; } }
                     }
                     Rectangle { horizontal-stretch: 1; }
+                    if root.mask-selected && !root.replace-editing: VerticalLayout { alignment: center; ActionButton { label: @tr("替换为文字"); key: ""; kind: 2; clicked => { root.replace-editing = true; } } }
+                    if root.mask-selected && root.replace-editing: VerticalLayout { alignment: center; Rectangle {
+                        width: 180px; height: 28px; border-radius: 6px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+                        TextInput { x: 8px; width: parent.width - 16px; height: parent.height; vertical-alignment: center; font-size: 12px; color: Theme.ink; single-line: true;
+                            accessible-label: @tr("替换成的文字");
+                            init => { self.focus(); }
+                            accepted => { root.replace-commit(self.text); root.replace-editing = false; keys.focus(); }
+                            key-pressed(e) => { if e.text == Key.Escape { root.replace-editing = false; keys.focus(); return accept; } reject }
+                        }
+                    } }
                     if root.mask-selected: VerticalLayout { alignment: center; ActionButton { label: @tr("遮住相同内容"); key: ""; kind: 2; clicked => { root.command("same-text"); } } }
                     if root.has-selection: VerticalLayout { alignment: center; ActionButton { label: @tr("删除"); key: "Del"; kind: 2; clicked => { root.command("delete"); } } }
                 }
@@ -338,7 +351,7 @@ export component AppWindow inherits Window {
                 // ---------- privacy check ----------
                 if root.check-state != "": Rectangle {
                     x: parent.width - self.width - 12px; y: 12px; width: 280px;
-                    height: root.check-state == "list" ? min(parent.height - 24px, 440px) : 132px;
+                    height: root.check-state == "list" ? min(parent.height - 24px, 480px) : 132px;
                     border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
                     TouchArea { }
                     VerticalLayout { padding: 12px; spacing: 8px;
@@ -363,6 +376,8 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
+                        if root.check-state == "list": HorizontalLayout { alignment: start;
+                            Segmented { options: [@tr("打码"), @tr("替换成占位文字")]; selected: root.check-replace ? 1 : 0; picked(i) => { root.command(i == 0 ? "check-mode-cover" : "check-mode-replace"); } } }
                         if root.check-recopy: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("剪贴板里还是刚才那张图。"); }
                         if root.check-resave: Text { font-size: 11px; color: Theme.ink; wrap: word-wrap; text: @tr("保存的文件还是刚才那张图，遮挡后请再保存一次。"); }
                         if root.check-state != "busy": Text { font-size: 11px; color: Theme.mute; wrap: word-wrap;

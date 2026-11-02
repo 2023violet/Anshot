@@ -70,7 +70,29 @@ pub fn magnify_target(region: &Region, center: (f32, f32), zoom: f32) -> (f32, f
 pub struct Annotation { pub shape: Shape, pub color: [u8; 4] }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Scene { pub redactions: Vec<Redaction>, pub annotations: Vec<Annotation>, pub crop: Option<Region> }
+pub struct Scene { pub redactions: Vec<Redaction>, pub labels: Vec<Label>, pub annotations: Vec<Annotation>, pub crop: Option<Region> }
+
+/// Stand-in text drawn over an opaque redaction. The redaction has already replaced the
+/// pixels, so the text never blends with the source.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Label { pub region: Region, pub text: String, pub ink: [u8; 4] }
+
+const LABEL_FILL: f32 = 0.62;
+const LABEL_INSET: f32 = 2.0;
+const LABEL_MIN_SIZE: f32 = 4.0;
+
+/// Top-left and font size that keep `text` inside `r`; `None` when it would be unreadable.
+fn label_layout(text: &str, r: &Region) -> Option<((f32, f32), f32)> {
+    let (l, t) = (r.x0.min(r.x1) as f32, r.y0.min(r.y1) as f32);
+    let (w, h) = ((r.x1 - r.x0).abs() as f32, (r.y1 - r.y0).abs() as f32);
+    let room = w - LABEL_INSET * 2.0;
+    let mut size = h * LABEL_FILL;
+    let wide = text_extent(text, size).0;
+    if wide > room { size *= room / wide; }
+    if size < LABEL_MIN_SIZE { return None; }
+    let (tw, th) = text_extent(text, size);
+    Some(((l + ((w - tw) / 2.0).max(LABEL_INSET), t + (h - th) / 2.0), size))
+}
 
 fn mix(a: u64) -> u64 {
     let mut z = a.wrapping_add(0x9e37_79b9_7f4a_7c15);
@@ -180,6 +202,19 @@ pub fn render_into(img: &mut RgbaImage, scene: &Scene, scale: f32) {
                 img.put_pixel(x, y, image::Rgba(c));
             }
         }
+    }
+    // 1b. Stand-in text goes on the covers first, so magnifiers and spotlights treat it as
+    // part of the picture.
+    if !scene.labels.is_empty() {
+        let Some(size) = tiny_skia::IntSize::from_wh(w, h) else { return };
+        let Some(mut pm) = Pixmap::from_vec(premultiply(img), size) else { return };
+        for label in &scene.labels {
+            let text = label.text.replace('\n', " ");
+            if let Some((origin, px)) = label_layout(&text, &label.region) { glyphs(&mut pm, &text, origin, px, label.ink, scale); }
+        }
+        let mut data = pm.take();
+        demultiply(&mut data);
+        if let Some(out) = RgbaImage::from_raw(w, h, data) { *img = out; }
     }
     // 2. Spotlights: darken everything outside the union of their regions.
     let spots: Vec<(f32, f32, f32, f32)> = scene.annotations.iter().filter_map(|a| match &a.shape {

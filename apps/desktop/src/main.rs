@@ -515,15 +515,15 @@ impl App {
             let crop = scene.crop;
             let items = anshot_render::render_png(&source, &scene).map_err(|_| t("无法生成图片，请重试。").to_string())
                 .and_then(|png| anshot_core::decode_source(&png).map_err(|_| t("无法生成图片，请重试。").to_string()))
-                .and_then(|img| check::scan(&img).map_err(|e| check::ocr_message(&e).to_string()))
-                .map(|found| check::to_items(found, crop));
+                .and_then(|img| check::scan(&img).map(|found| check::to_items(found, crop, &img)).map_err(|e| check::ocr_message(&e).to_string()))
+                ;
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| {
                     a.check_running = false;
                     // The document was replaced or closed while the worker ran.
                     if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
                         match items {
-                            Ok(items) => a.ctl.review = Some(check::Review { document, items, like: None }),
+                            Ok(items) => a.ctl.review = Some(check::Review { document, items, like: None, replace: false }),
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
                         }
                     }
@@ -542,7 +542,7 @@ impl App {
         self.auto_check_seq += 1;
         let seq = self.auto_check_seq;
         std::thread::spawn(move || {
-            let items = anshot_core::decode_source(&png).ok().and_then(|img| check::scan(&img).ok()).map(|found| check::to_items(found, crop));
+            let items = anshot_core::decode_source(&png).ok().and_then(|img| check::scan(&img).ok().map(|found| check::to_items(found, crop, &img)));
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| if a.auto_check_seq == seq && a.ctl.editor.as_ref().map(|e| e.stamp()) == Some(stamp) {
                     if let Some(items) = items { a.auto_check_done(items, stamp.document_id, kind); }
@@ -555,7 +555,7 @@ impl App {
         if items.is_empty() { return; }
         let n = items.len();
         let title = if kind == Delivery::Copy { tf("已复制 · 发现 {} 处可能的隐私内容", &[&n]) } else { tf("已保存 · 发现 {} 处可能的隐私内容", &[&n]) };
-        self.ctl.pending_review = Some((check::Review { document, items, like: None }, kind));
+        self.ctl.pending_review = Some((check::Review { document, items, like: None, replace: false }, kind));
         self.toast("warn", &title, t("这是辅助检查"), Some((t("查看"), ToastAction::Review)));
     }
     fn open_pending_review(&mut self) {
@@ -564,6 +564,16 @@ impl App {
         self.delivered_unchecked = Some(kind);
         self.clear_toast();
         self.show_editor();
+    }
+    /// Show typed text on the selected redaction, on a fill taken from around it.
+    fn replace_selected(&mut self, text: &str) {
+        let text = text.trim();
+        let (Some((_, r)), Some((base, k))) = (self.ctl.selected_mask(), self.base.as_ref()) else { return };
+        if text.is_empty() { return; }
+        let at = |v: i64| (v as f32 * k).round() as i64;
+        let fill = check::backdrop(base, anshot_core::Region::new(at(r.x0), at(r.y0), at(r.x1), at(r.y1)));
+        if let Err(e) = self.ctl.replace_selected(text, fill) { self.toast("error", t("无法遮挡"), &messages::edit(&e), None); }
+        self.refresh();
     }
     /// Find the selected redaction's text elsewhere. It reads the source pixels, because the
     /// text is covered in the export; only the suggestions leave the worker.
@@ -579,14 +589,13 @@ impl App {
         self.refresh();
         std::thread::spawn(move || {
             let found = anshot_core::decode_source(&source).map_err(|_| t("无法读取图片").to_string())
-                .and_then(|img| check::same_as(&img, region).map_err(|e| check::ocr_message(&e).to_string()))
-                .map(|found| found.map(|f| check::without_dismissed(check::to_items(f, None), &covered)));
+                .and_then(|img| check::same_as(&img, region).map(|found| found.map(|f| check::without_dismissed(check::to_items(f, None, &img), &covered))).map_err(|e| check::ocr_message(&e).to_string()));
             let _ = slint::invoke_from_event_loop(move || {
                 with(|a| {
                     a.check_running = false;
                     if a.ctl.editor.as_ref().map(|e| e.stamp().document_id) == Some(document) {
                         match found {
-                            Ok(Some(items)) if !items.is_empty() => a.ctl.review = Some(check::Review { document, items, like: Some(mask) }),
+                            Ok(Some(items)) if !items.is_empty() => a.ctl.review = Some(check::Review { document, items, like: Some(mask), replace: false }),
                             Ok(Some(_)) => a.toast("warn", t("没有找到相同内容"), t("写法不同或识别有误时找不到"), None),
                             Ok(None) => a.toast("warn", t("框内没有识别到文字"), t("至少要两个字才能查找"), None),
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
@@ -599,6 +608,7 @@ impl App {
     }
     fn check_command(&mut self, c: &str) {
         match c {
+            "check-mode-cover" | "check-mode-replace" => if let Some(r) = self.ctl.review.as_mut() { r.replace = c == "check-mode-replace"; },
             "check-close" => { self.ctl.dismiss_review(); self.delivered_unchecked = None; }
             "check-apply" => match self.ctl.apply_review() {
                 // The image that left is still the uncovered one: replace it.
@@ -616,6 +626,7 @@ impl App {
         let review = self.ctl.review.as_ref();
         ui.set_check_state(if self.check_running { "busy" } else { match review { None => "", Some(r) if r.items.is_empty() => "empty", _ => "list" } }.into());
         let items = review.map_or(&[][..], |r| &r.items[..]);
+        ui.set_check_replace(review.is_some_and(|r| r.replace));
         ui.set_check_recopy(review.is_some() && self.delivered_unchecked == Some(Delivery::Copy));
         ui.set_check_resave(review.is_some() && self.delivered_unchecked == Some(Delivery::Save));
         let rows: Vec<CheckRow> = items.iter().map(|i| CheckRow { label: check::label(i).into(), hint: check::hint(&i.text).into(), on: i.on }).collect();
@@ -1528,6 +1539,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_double_click(|x, y| { with(|a| { a.ctl.edit_text_at(Point { x: x.into(), y: y.into() }); a.refresh(); }); });
     ui.on_text_commit(|t| { with(|a| { a.ctl.commit_text(t.as_str()); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
+    ui.on_replace_commit(|text| { with(|a| a.replace_selected(text.as_str())); });
     ui.on_dialog_choice(|c| { with(|a| a.dialog_choice(c.as_str())); });
     ui.on_picker_hsv(|h, s, v| { with(|a| a.set_picker(h, s, v)); });
     ui.on_picker_hex_edited(|t| { with(|a| if let Some(c) = color::parse_hex(t.as_str()) { let (h, s, v) = color::rgb_to_hsv(c); a.set_picker(h, s, v); }); });

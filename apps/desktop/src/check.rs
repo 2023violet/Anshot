@@ -5,6 +5,7 @@ use anshot_core::sensitive::{merge_findings, same_text, scan_line, Certainty, Fi
 use anshot_core::Region;
 use anshot_platform_windows::{ocr_recognize, OcrError, OcrLine};
 use image::{imageops, RgbaImage};
+use std::collections::HashMap;
 
 /// OCR fails on different values at different sizes, so the union finds more than any one pass
 /// (`spike/ocr/RESULT.md`: 90 % at these three, 78 % at 1.5 alone).
@@ -18,27 +19,69 @@ const TILE_HEIGHT: u32 = 4_000;
 const TILE_OVERLAP: u32 = 200;
 /// Word boxes run tight: 4 px around them covered the glyphs in 97.7 % of the measured cases.
 const BOX_PAD: f32 = 4.0;
+const RING: i64 = 3;
 
 /// One suggestion, in source-image pixels. `text` may contain misreads.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Item { pub kind: SensitiveKind, pub certainty: Certainty, pub text: String, pub region: Region, pub on: bool }
+pub struct Item { pub kind: SensitiveKind, pub certainty: Certainty, pub text: String, pub region: Region, pub on: bool, pub fill: [u8; 4] }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Review {
     pub document: u64,
     pub items: Vec<Item>,
     /// Same-text suggestions copy this redaction's look.
     pub like: Option<u64>,
+    /// Stand-in text instead of a plain cover.
+    pub replace: bool,
 }
 
 /// Findings on the exported image, as suggestions on the source image.
-pub fn to_items(findings: Vec<Finding>, crop: Option<Region>) -> Vec<Item> {
+pub fn to_items(findings: Vec<Finding>, crop: Option<Region>, img: &RgbaImage) -> Vec<Item> {
     let (cx, cy) = crop.map_or((0, 0), |c| (c.x0.min(c.x1), c.y0.min(c.y1)));
     findings.into_iter().map(|f| {
         let (x0, y0, x1, y1) = f.bounds;
-        let region = Region::new(
-            (x0 - BOX_PAD).floor() as i64 + cx, (y0 - BOX_PAD).floor() as i64 + cy,
-            (x1 + BOX_PAD).ceil() as i64 + cx, (y1 + BOX_PAD).ceil() as i64 + cy);
-        Item { kind: f.kind, certainty: f.certainty, text: f.text, region, on: true }
+        let (x0, y0, x1, y1) = ((x0 - BOX_PAD).floor() as i64, (y0 - BOX_PAD).floor() as i64, (x1 + BOX_PAD).ceil() as i64, (y1 + BOX_PAD).ceil() as i64);
+        let fill = backdrop(img, Region::new(x0, y0, x1, y1));
+        Item { kind: f.kind, certainty: f.certainty, text: f.text, region: Region::new(x0 + cx, y0 + cy, x1 + cx, y1 + cy), on: true, fill }
+    }).collect()
+}
+/// The colour around `region`: the per-channel median of a thin ring outside it, always
+/// opaque. Only pixels outside the box are read, so the fill says nothing about what it hides.
+pub fn backdrop(img: &RgbaImage, region: Region) -> [u8; 4] {
+    let (w, h) = (i64::from(img.width()), i64::from(img.height()));
+    let (x0, y0, x1, y1) = (region.x0.min(region.x1), region.y0.min(region.y1), region.x0.max(region.x1), region.y0.max(region.y1));
+    let mut channels: [Vec<u8>; 3] = Default::default();
+    for y in (y0 - RING).max(0)..(y1 + RING).min(h) {
+        for x in (x0 - RING).max(0)..(x1 + RING).min(w) {
+            if x >= x0 && x < x1 && y >= y0 && y < y1 { continue; }
+            let p = img.get_pixel(x as u32, y as u32);
+            for (c, v) in channels.iter_mut().zip(p.0) { c.push(v); }
+        }
+    }
+    let mut out = [255; 4];
+    for (i, c) in channels.iter_mut().enumerate() {
+        c.sort_unstable();
+        out[i] = c.get(c.len() / 2).copied().unwrap_or(255);
+    }
+    out
+}
+/// Black or white text, whichever reads on `fill`.
+pub fn ink_for(fill: [u8; 4]) -> [u8; 4] {
+    let luma = 299 * u32::from(fill[0]) + 587 * u32::from(fill[1]) + 114 * u32::from(fill[2]);
+    if luma > 128_000 { [0x1a, 0x19, 0x15, 255] } else { [0xf7, 0xf7, 0xf4, 255] }
+}
+/// Stand-in text for each item. Never built from the original: identical originals share a
+/// stand-in so the image stays consistent, and different ones count up.
+pub fn stand_ins(items: &[Item]) -> Vec<String> {
+    let mut seen: HashMap<(SensitiveKind, &str), usize> = HashMap::new();
+    let mut count: HashMap<SensitiveKind, usize> = HashMap::new();
+    items.iter().map(|i| {
+        let next = count.entry(i.kind).or_insert(0);
+        let n = *seen.entry((i.kind, i.text.as_str())).or_insert_with(|| { *next += 1; *next - 1 });
+        match i.kind {
+            SensitiveKind::Phone => format!("138 0000 {n:04}"),
+            SensitiveKind::Email => format!("user-{}@example.com", char::from(b'a' + (n % 26) as u8)),
+            _ => t("已隐藏").to_string(),
+        }
     }).collect()
 }
 /// Drop suggestions the user has already seen and left alone (same place on the image).
@@ -156,15 +199,36 @@ mod tests {
     #[test]
     fn items_are_padded_and_return_to_source_pixels() {
         let f = Finding { kind: SensitiveKind::Phone, certainty: Certainty::Confirmed, text: "13800138000".into(), bounds: (10.2, 20.5, 100.1, 40.0) };
-        let items = to_items(vec![f], Some(Region::new(300, 50, 200, 500)));
+        let items = to_items(vec![f], Some(Region::new(300, 50, 200, 500)), &RgbaImage::new(4, 4));
         assert_eq!(items[0].region, Region::new(206, 66, 305, 94));
         assert!(items[0].on, "suggestions start ticked");
     }
     #[test]
     fn dismissed_places_are_not_suggested_again() {
-        let item = |x0| Item { kind: SensitiveKind::Ipv4, certainty: Certainty::Possible, text: String::new(), region: Region::new(x0, 0, x0 + 10, 10), on: true };
+        let item = |x0| Item { kind: SensitiveKind::Ipv4, certainty: Certainty::Possible, text: String::new(), region: Region::new(x0, 0, x0 + 10, 10), on: true, fill: [255; 4] };
         let left = without_dismissed(vec![item(0), item(100)], &[Region::new(2, 2, 8, 8)]);
         assert_eq!(left, [item(100)]);
+    }
+    #[test]
+    fn the_fill_comes_from_around_the_box_only() {
+        let mut img = RgbaImage::from_pixel(40, 40, image::Rgba([200, 210, 220, 255]));
+        for y in 10..20 { for x in 10..30 { img.put_pixel(x, y, image::Rgba([1, 2, 3, 0])); } }
+        assert_eq!(backdrop(&img, Region::new(10, 10, 30, 20)), [200, 210, 220, 255], "what is hidden does not colour the fill");
+        assert_eq!(backdrop(&img, Region::new(38, 38, 90, 90))[3], 255);
+    }
+    #[test]
+    fn ink_contrasts_with_the_fill() {
+        assert_eq!(ink_for([255, 255, 255, 255])[0], 0x1a);
+        assert_eq!(ink_for([30, 30, 30, 255])[0], 0xf7);
+    }
+    #[test]
+    fn stand_ins_hide_the_original_but_keep_it_consistent() {
+        let item = |kind, text: &str| Item { kind, certainty: Certainty::Confirmed, text: text.into(), region: Region::new(0, 0, 1, 1), on: true, fill: [255; 4] };
+        let got = stand_ins(&[item(SensitiveKind::Phone, "13812345678"), item(SensitiveKind::Email, "a@b.cn"), item(SensitiveKind::Phone, "13900001111"), item(SensitiveKind::Phone, "13812345678"), item(SensitiveKind::Email, "c@d.cn")]);
+        assert_eq!(got[..3], ["138 0000 0000", "user-a@example.com", "138 0000 0001"]);
+        assert_eq!(got[3], got[0], "the same number gets the same stand-in");
+        assert_eq!(got[4], "user-b@example.com");
+        assert!(!got.iter().any(|s| s.contains("1234") || s.contains("b.cn")));
     }
     #[test]
     fn hints_never_show_the_middle() {

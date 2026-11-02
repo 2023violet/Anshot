@@ -7,7 +7,7 @@ pub use geometry::{Handle, PixelRect};
 pub use viewport::{Point, Viewport, ViewportError};
 
 use anshot_core::{decode_source, redact, Region, COVER, MAX_PIXELS};
-pub use anshot_render::{Annotation, RedactStyle, Redaction, Scene, Shape};
+pub use anshot_render::{Annotation, Label, RedactStyle, Redaction, Scene, Shape};
 use std::sync::Arc;
 
 const MAX_MASKS: usize = 1024;
@@ -19,8 +19,17 @@ pub struct Stamp { pub document_id: u64, pub revision: u64 }
 pub enum OperationKind { Review, Copy, Save }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Ticket {pub stamp: Stamp, pub operation_id: u64, pub kind: OperationKind}
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Mask {pub id: u64, pub region: Region, pub style: RedactStyle}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaskText {pub text: String, pub ink: [u8;4]}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Mask {pub id: u64, pub region: Region, pub style: RedactStyle, pub text: Option<MaskText>}
+impl Mask {
+    /// Stand-in text only ever sits on a solid cover.
+    pub fn label(&self,region:Region)->Option<Label>{
+        let t=self.text.as_ref().filter(|_|matches!(self.style,RedactStyle::Solid(_)))?;
+        Some(Label{region,text:t.text.clone(),ink:t.ink})
+    }
+}
 /// An annotation object in the same id space and history as masks.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnnotationObject {pub id: u64, pub annotation: Annotation}
@@ -160,6 +169,7 @@ impl Editor {
     pub fn scene(&self)->Scene{
         Scene{
             redactions:self.masks.iter().map(|m|Redaction{region:m.region,style:m.style}).collect(),
+            labels:self.masks.iter().filter_map(|m|m.label(m.region)).collect(),
             annotations:self.annotations.iter().map(|a|a.annotation.clone()).collect(),
             crop:self.crop,
         }
@@ -222,26 +232,38 @@ impl Editor {
         let id=self.next_mask_id;
         let next_id=id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         let mut next=self.snapshot();
-        next.masks.push(Mask{id,region,style});next.selected=Some(id);
+        next.masks.push(Mask{id,region,style,text:None});next.selected=Some(id);
         self.change(next)?;
         self.next_mask_id=next_id;
         Ok(id)
     }
     /// Several redactions as one edit: one undo step, all or none.
     pub fn add_redactions(&mut self,candidates:&[Region],style:RedactStyle)->Result<usize,EditError>{
-        let style=opaque(style);
+        let items:Vec<_>=candidates.iter().map(|r|(*r,style,None)).collect();
+        self.add_masks(&items)
+    }
+    /// The same, each with its own look and optional stand-in text.
+    pub fn add_masks(&mut self,candidates:&[(Region,RedactStyle,Option<MaskText>)])->Result<usize,EditError>{
         self.ensure_idle()?;
         if self.masks.len()+self.annotations.len()+candidates.len()>MAX_MASKS {return Err(EditError::MaskLimit);}
         let mut next=self.snapshot();
         let mut id=self.next_mask_id;
-        for candidate in candidates {
+        for (candidate,style,text) in candidates {
             let region=self.normalized(*candidate)?;
-            next.masks.push(Mask{id,region,style});
+            next.masks.push(Mask{id,region,style:opaque(*style),text:text.clone()});
             id=id.checked_add(1).ok_or(EditError::IdentityOverflow)?;
         }
         self.change(next)?;
         self.next_mask_id=id;
         Ok(candidates.len())
+    }
+    /// Turn a redaction into a solid cover in `fill` carrying stand-in text: one undo step.
+    pub fn set_mask_text(&mut self,id:u64,fill:[u8;4],text:MaskText)->Result<bool,EditError>{
+        let mut next=self.snapshot();
+        let Some(m)=next.masks.iter_mut().find(|m|m.id==id) else {return Ok(false)};
+        m.style=opaque(RedactStyle::Solid(fill));
+        m.text=Some(text);
+        self.change(next)
     }
     pub fn set_redaction_style(&mut self,id:u64,style:RedactStyle)->Result<bool,EditError>{
         let style=opaque(style);

@@ -1,6 +1,8 @@
 """Read an exported image back after the privacy check.
 
-Usage: python tests/desktop/check_review.py <source.png> <export.png> <truth.json> <kinds-covered,comma>
+Usage: python tests/desktop/check_review.py <source.png> <export.png> <truth.json> <kinds-covered,comma> [replaced]
+With `replaced`, covered values hold stand-in text: every glyph pixel of the original must change
+into the two colours of the stand-in, so the solid check becomes a change check.
 PASS needs: no glyph pixel of a covered kind survives, every other value is untouched, and no
 pixel changed more than MARGIN from a covered value (so no suggestion box reached the export).
 """
@@ -14,6 +16,7 @@ MARGIN = 12
 
 def main() -> int:
     src_path, out_path, truth_path, kinds = sys.argv[1:5]
+    replaced = len(sys.argv) > 5
     covered = set(kinds.split(','))
     src = Image.open(src_path).convert('RGB')
     out = Image.open(out_path).convert('RGB')
@@ -32,7 +35,10 @@ def main() -> int:
         if row['kind'] in covered:
             # The filled rectangle replaces every pixel except any that already had its colour.
             solid = out.crop((x0, y0, x1, y1)).getcolors(4)
-            if not solid or len(solid) != 1:
+            if replaced:
+                if not changed:
+                    bad.append(f"{row['kind']} unchanged")
+            elif not solid or len(solid) != 1:
                 bad.append(f"{row['kind']} not covered ({changed}/{total} changed)")
             allowed.paste(255, (x0 - MARGIN, y0 - MARGIN, x1 + MARGIN, y1 + MARGIN))
         elif changed:

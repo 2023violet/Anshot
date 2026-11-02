@@ -20,6 +20,7 @@ pub(crate) fn digest(img: &RgbaImage) -> u64 {
 
 pub(crate) fn golden_scene() -> Scene {
     Scene {
+        labels: Vec::new(),
         redactions: vec![
             Redaction { region: Region::new(20, 30, 140, 60), style: RedactStyle::Solid([0x1a, 0x19, 0x15, 255]) },
             Redaction { region: Region::new(160, 30, 300, 60), style: RedactStyle::SafeMosaic },
@@ -124,6 +125,75 @@ fn golden_scene_digest_is_frozen() {
 
 /// Frozen 2026-10-19 after visual review; tied to tiny-skia 0.11.4, ab_glyph 0.2.32, x86_64.
 const GOLDEN_SCENE_V1: u64 = 0x4140_1843_656f_0559;
+/// Frozen 2026-11-01 after visual review; same pins as above.
+const GOLDEN_SCENE_V4: u64 = 0x6a9e_86c5_263a_f2db;
+
+fn label_scene() -> Scene {
+    let region = Region::new(40, 40, 200, 70);
+    Scene {
+        redactions: vec![Redaction { region, style: RedactStyle::Solid([240, 242, 245, 255]) }],
+        labels: vec![Label { region, text: "user-a@example.com".into(), ink: [26, 25, 21, 255] }],
+        ..Scene::default()
+    }
+}
+
+#[test]
+fn a_label_stays_inside_its_opaque_cover() {
+    let mut img = source(320, 240, 5);
+    let before = img.clone();
+    render_into(&mut img, &label_scene(), 1.0);
+    let (mut ink, mut fill) = (0, 0);
+    for (x, y, p) in img.enumerate_pixels() {
+        if (40..200).contains(&x) && (40..70).contains(&y) {
+            assert_eq!(p.0[3], 255, "the cover stays opaque under its text");
+            if p.0[..3] == [240, 242, 245] { fill += 1 } else { ink += 1 }
+        } else {
+            assert_eq!(p, before.get_pixel(x, y), "nothing changes outside the cover");
+        }
+    }
+    assert!(ink > 100 && fill > ink, "ink {ink} fill {fill}");
+}
+
+#[test]
+fn nothing_of_the_source_shows_through_a_label() {
+    let scene = label_scene();
+    let (mut a, mut b) = (source(320, 240, 1), source(320, 240, 2));
+    render_into(&mut a, &scene, 1.0);
+    render_into(&mut b, &scene, 1.0);
+    for y in 40..70 { for x in 40..200 { assert_eq!(a.get_pixel(x, y), b.get_pixel(x, y)); } }
+}
+
+#[test]
+fn a_long_label_shrinks_and_a_tiny_cover_stays_plain() {
+    let long = Region::new(0, 0, 60, 30);
+    let ((x, _), size) = label_layout("a very long stand-in text", &long).unwrap();
+    assert!(size < 30.0 * LABEL_FILL && x >= LABEL_INSET);
+    assert!(text_extent("a very long stand-in text", size).0 <= 60.0 - LABEL_INSET * 2.0 + 0.5);
+    assert_eq!(label_layout("text", &Region::new(0, 0, 4, 4)), None);
+}
+
+/// The magnifier samples the picture after stand-in text is drawn, never before.
+#[test]
+fn a_magnifier_shows_the_label_not_the_source() {
+    let mut scene = label_scene();
+    scene.annotations.push(Annotation { shape: Shape::Magnify { region: Region::new(40, 40, 120, 70), center: (160.0, 160.0), zoom: 2.0, width: 2.0 }, color: [255, 0, 0, 255] });
+    let (mut a, mut b) = (source(320, 240, 1), source(320, 240, 2));
+    render_into(&mut a, &scene, 1.0);
+    render_into(&mut b, &scene, 1.0);
+    for y in 140..175 { for x in 90..230 { assert_eq!(a.get_pixel(x, y), b.get_pixel(x, y)); } }
+}
+
+/// Frozen render golden for stand-in text (tests/golden/render/scene-v4.png).
+#[test]
+fn golden_scene_v4_digest_is_frozen() {
+    let mut img = source(320, 240, 77);
+    render_into(&mut img, &label_scene(), 1.0);
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN").is_some() {
+        img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v4.png")).unwrap();
+        println!("DIGEST_V4={:#018x}", digest(&img));
+    }
+    assert_eq!(digest(&img), GOLDEN_SCENE_V4, "render output changed; review and re-freeze deliberately");
+}
 
 /// The golden depends on the exact bundled font file.
 #[test]
@@ -138,6 +208,7 @@ const FONT_DIGEST: u64 = 8_555_162_396_145_626_508;
 pub(crate) fn golden_scene_v2() -> Scene {
     let wave: Vec<(f32, f32)> = (0..24).map(|i| (30.0 + i as f32 * 8.0, 190.0 + (i as f32 * 0.6).sin() * 18.0)).collect();
     Scene {
+        labels: Vec::new(),
         redactions: vec![Redaction { region: Region::new(250, 20, 310, 50), style: RedactStyle::SafeMosaic }],
         annotations: vec![
             Annotation { shape: Shape::Ellipse { region: Region::new(20, 20, 140, 90), width: 4.0 }, color: [0xe5, 0x34, 0x2b, 255] },
@@ -186,6 +257,7 @@ const GOLDEN_SCENE_V2: u64 = 0xd654_7732_c6a9_0ce1;
 
 pub(crate) fn golden_scene_v3() -> Scene {
     Scene {
+        labels: Vec::new(),
         redactions: vec![Redaction { region: Region::new(40, 40, 90, 60), style: RedactStyle::SafeMosaic }],
         annotations: vec![
             Annotation { shape: Shape::Spotlight { region: Region::new(20, 20, 120, 100) }, color: [0xe5, 0x34, 0x2b, 255] },

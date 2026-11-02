@@ -1002,3 +1002,18 @@ msgstr "It takes at least two characters to search"
 
 msgid "无法读取图片"
 msgstr "Could not read the image"
+
+msgid "已隐藏"
+msgstr "Hidden"
+
+msgid "替换为文字"
+msgstr "Replace with text"
+
+msgid "替换成的文字"
+msgstr "Replacement text"
+
+msgid "打码"
+msgstr "Cover"
+
+msgid "替换成占位文字"
+msgstr "Replace with placeholder"

@@ -1,13 +1,13 @@
 //! UI-independent controller: turns pointer/keyboard intents into Editor
 //! commands and drives the render -> delivery handshake. No Slint types here.
 #![forbid(unsafe_code)]
-use crate::check::Review;
+use crate::check::{ink_for, stand_ins, Review};
 use crate::i18n::t;
 use crate::canvas::{View, Zoom, HANDLES, HANDLE_HIT_HALF, MAX_ZOOM, MIN_ZOOM};
 use anshot_core::Region;
 use anshot_editor::{
     Annotation, EditError, Editor, GestureKind, GestureTicket, Handle, OperationKind, PixelRect, Point, RedactStyle,
-    Redaction, RenderWork, ReviewKey, ReviewResult, Scene, Shape, SourceCandidate, Stamp, Ticket,
+    MaskText, Redaction, RenderWork, ReviewKey, ReviewResult, Scene, Shape, SourceCandidate, Stamp, Ticket,
 };
 use anshot_render::bounds;
 
@@ -489,6 +489,7 @@ impl Controller {
         let mut scene = e.scene();
         scene.crop = None;
         for (red, (_, r)) in scene.redactions.iter_mut().zip(self.display_masks()) { red.region = r; }
+        scene.labels = e.masks().iter().zip(self.display_masks()).filter_map(|(m, (_, r))| m.label(r)).collect();
         if let Some(Drag::Ann { id, preview, .. }) = &self.drag {
             if let Some(pos) = e.annotations().iter().position(|a| a.id == *id) { scene.annotations[pos] = preview.clone(); }
         }
@@ -779,13 +780,27 @@ impl Controller {
     /// Cover the ticked findings in the current redaction style, as one undo step.
     pub fn apply_review(&mut self) -> Result<usize, EditError> {
         let Some(review) = self.review.as_ref() else { return Ok(0) };
-        let regions: Vec<Region> = review.items.iter().filter(|i| i.on).map(|i| i.region).collect();
-        let like = review.like.and_then(|id| self.editor.as_ref()?.masks().iter().find(|m| m.id == id).map(|m| m.style));
-        let style = like.unwrap_or(if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) });
-        let n = self.editor.as_mut().ok_or(EditError::MissingSource)?.add_redactions(&regions, style)?;
+        let like = review.like.and_then(|id| self.editor.as_ref()?.masks().iter().find(|m| m.id == id).cloned());
+        let style = like.as_ref().map_or(if self.tool == Tool::Mosaic { RedactStyle::SafeMosaic } else { RedactStyle::Solid(SOLIDS[self.style.solid]) }, |m| m.style);
+        let names = stand_ins(&review.items);
+        let masks: Vec<_> = review.items.iter().zip(names).filter(|(i, _)| i.on).map(|(i, name)| {
+            // A copy of a replaced word reads the same; a covered one stays covered.
+            let text = like.as_ref().and_then(|m| m.text.as_ref()).map(|t| t.text.clone()).or(review.replace.then_some(name));
+            match text {
+                Some(text) => (i.region, RedactStyle::Solid(i.fill), Some(MaskText { text, ink: ink_for(i.fill) })),
+                None => (i.region, style, None),
+            }
+        }).collect();
+        let n = self.editor.as_mut().ok_or(EditError::MissingSource)?.add_masks(&masks)?;
         // Only what stayed unticked was left alone on purpose: undoing a cover must warn again.
         if let Some(r) = self.review.take() { self.dismissed.extend(r.items.iter().filter(|i| !i.on).map(|i| i.region)); }
         Ok(n)
+    }
+    /// Show `text` on the selected redaction instead of a plain cover.
+    pub fn replace_selected(&mut self, text: &str, fill: [u8; 4]) -> Result<bool, EditError> {
+        let Some((id, _)) = self.selected_mask() else { return Ok(false) };
+        let text = MaskText { text: text.to_string(), ink: ink_for(fill) };
+        self.editor.as_mut().ok_or(EditError::MissingSource)?.set_mask_text(id, fill, text)
     }
     /// The selected redaction, if one is selected.
     pub fn selected_mask(&self) -> Option<(u64, Region)> {
