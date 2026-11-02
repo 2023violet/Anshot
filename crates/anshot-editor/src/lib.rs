@@ -184,6 +184,14 @@ impl Editor {
         self.frame=frame;self.stamp.revision=revision;self.invalidate();
         Ok(true)
     }
+    /// Frame a document that has not been edited or exported yet, keeping it unedited
+    /// (revision 0): a default style is not an edit to confirm on close.
+    pub fn set_initial_frame(&mut self,frame:Frame)->Result<(),EditError>{
+        if self.stamp.revision!=0 || self.pending.is_some() || self.output.is_some() {return Err(EditError::OperationPending);}
+        anshot_render::frame_layout(self.cut_dimensions(),&frame).map_err(|_|EditError::InvalidImageDimensions)?;
+        self.frame=Some(frame);
+        Ok(())
+    }
     /// Exported image size (after crop and frame).
     pub fn output_dimensions(&self)->(u32,u32){
         anshot_render::output_size(self.dimensions(),&self.scene()).unwrap_or(self.dimensions())

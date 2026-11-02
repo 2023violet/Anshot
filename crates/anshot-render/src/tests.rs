@@ -431,4 +431,16 @@ fn golden_scene_v5_digest_is_frozen() {
 }
 
 /// Frozen 2026-11-02 after visual review.
-const GOLDEN_SCENE_V5: u64 = 0x4576_5fdb_6f21_2e49;
+const GOLDEN_SCENE_V5: u64 = 0x0cb1_1d49_a23f_9748;
+
+/// Timing only (run with --release --ignored): framing a large export.
+#[test]
+#[ignore]
+fn frame_timing_large() {
+    let src = source(4800, 3200, 7);
+    for f in [Frame::default(), Frame { shadow: Step::Large, chrome: Chrome::Browser, ratio: Ratio::R16x9, ..Frame::default() }] {
+        let t = std::time::Instant::now();
+        let out = render_framed(&src, &f).unwrap();
+        println!("FRAME {:?} -> {:?} in {} ms", src.dimensions(), out.dimensions(), t.elapsed().as_millis());
+    }
+}

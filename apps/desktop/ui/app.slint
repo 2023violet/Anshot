@@ -91,6 +91,13 @@ export component AppWindow inherits Window {
     in property <bool> pad-redactions: true;
     in property <bool> warn-unredacted: true;
     in property <bool> check-on-share: true;
+    // beautify panel (ADR 0.5-BEAUTIFY): the canvas then shows the Rust-rendered framed export
+    in property <bool> frame-open; in property <bool> frame-on; in property <bool> frame-fits: true;
+    in property <int> frame-bg; in property <int> frame-padding; in property <int> frame-radius; in property <int> frame-shadow;
+    in property <int> frame-ratio; in property <int> frame-chrome;
+    in-out property <string> frame-text;
+    in property <bool> frame-default;
+    callback frame-text-edited(string);
     in property <bool> clipboard-private: true;
     in property <int> language-index;
     in property <bool> narrow; // canvas width < 900 (set from Rust; avoids layout loops)
@@ -152,6 +159,7 @@ export component AppWindow inherits Window {
                     Rectangle { horizontal-stretch: 1; }
                     VerticalLayout { alignment: center; horizontal-stretch: 0; HorizontalLayout { spacing: 4px;
                         ToolButton { label: @tr("截图历史 Ctrl+H"); d: "M 4 12 A 8 8 0 1 0 6.3 6.3 M 4 4 L 4 8 L 8 8 M 12 8 L 12 12 L 15 14"; clicked => { root.command("history"); } }
+                        ToolButton { label: @tr("美化 Ctrl+Shift+B"); d: "M 3 5 L 21 5 L 21 19 L 3 19 Z M 7 9 L 17 9 L 17 15 L 7 15 Z"; selected: root.frame-open; enabled: root.has-document; clicked => { root.command("frame"); } }
                         ToolButton { label: @tr("分享前检查 Ctrl+Shift+K"); d: "M 12 3 L 19 6 L 19 12 Q 19 18 12 21 Q 5 18 5 12 L 5 6 Z M 9 12 L 11 14 L 15 10"; enabled: root.has-document; clicked => { root.command("check"); } }
                         ToolButton { label: @tr("识别文字 Ctrl+Shift+O"); d: "M 4 7 L 4 4 L 7 4 M 17 4 L 20 4 L 20 7 M 20 17 L 20 20 L 17 20 M 7 20 L 4 20 L 4 17 M 8 9 L 16 9 M 12 9 L 12 16"; enabled: root.has-document; clicked => { root.command("ocr"); } }
                         ToolButton { label: @tr("钉到桌面 Ctrl+T"); d: "M 9 4 L 15 4 M 10 4 L 10 10 L 7 13 L 17 13 L 14 10 L 14 4 M 12 13 L 12 20"; enabled: root.has-document; clicked => { root.command("pin"); } }
@@ -244,7 +252,7 @@ export component AppWindow inherits Window {
                         opacity: root.opening ? 0.4 : 1.0; accessible-role: image; accessible-label: @tr("图片画布（已遮挡 {} 处）", root.mask-count); }
                 }
                 // Crop: the excluded image area is dimmed (it will not be exported).
-                if root.crop-visible: Rectangle {
+                if root.crop-visible && !root.frame-open: Rectangle {
                     x: root.img-x; y: root.img-y; width: root.img-w; height: root.img-h; clip: true;
                     property <length> cx: root.crop.x - root.img-x; property <length> cy: root.crop.y - root.img-y;
                     property <color> dim: root.crop-active ? #26251e99 : #26251ed9;
@@ -259,7 +267,7 @@ export component AppWindow inherits Window {
                         if root.crop-active: Rectangle { y: parent.height * 2 / 3; height: 1px; background: #ffffff80; }
                     }
                 }
-                if root.sel-visible: Rectangle {
+                if root.sel-visible && !root.frame-open: Rectangle {
                     x: root.sel.x - 2px; y: root.sel.y - 2px; width: root.sel.w + 4px; height: root.sel.h + 4px;
                     border-width: 1px; border-color: Theme.select-bg;
                     Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-width: 1px; border-color: white; }
@@ -276,7 +284,7 @@ export component AppWindow inherits Window {
                 }
 
                 TouchArea {
-                    enabled: root.has-document && root.dialog == "" && !root.text-editing;
+                    enabled: root.has-document && root.dialog == "" && !root.text-editing && !root.frame-open;
                     mouse-cursor: root.tool == "select" ? default : root.tool == "text" ? text : crosshair;
                     pointer-event(e) => {
                         if e.button == PointerEventButton.left && e.kind == PointerEventKind.down { keys.focus(); root.pointer-down(self.mouse-x, self.mouse-y); }
@@ -392,6 +400,77 @@ export component AppWindow inherits Window {
                     }
                 }
 
+                // ---------- beautify ----------
+                if root.frame-open: Rectangle {
+                    x: parent.width - self.width - 12px; y: 12px; width: 300px;
+                    height: min(parent.height - 24px, frame-layout.preferred-height);
+                    border-radius: 12px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+                    TouchArea { }
+                    property <[brush]> backgrounds: [
+                        @linear-gradient(135deg, #e8e6df 0%, #c9c6bb 100%), @linear-gradient(135deg, #ff8a4c 0%, #f54e00 100%),
+                        @linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%), @linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%),
+                        @linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%), @linear-gradient(135deg, #232526 0%, #414345 100%),
+                        #ffffff, #1a1915];
+                    property <[string]> background-names: [@tr("晨雾"), @tr("暖橙"), @tr("海盐"), @tr("薄荷"), @tr("暮紫"), @tr("夜空"), @tr("纯白"), @tr("石墨")];
+                    property <[string]> steps: [@tr("无"), @tr("小"), @tr("中"), @tr("大")];
+                    ScrollView {
+                    frame-layout := VerticalLayout { padding: 12px; spacing: 10px;
+                        HorizontalLayout { spacing: 8px;
+                            Text { text: @tr("美化"); font-size: 13px; font-weight: 500; color: Theme.ink; vertical-alignment: center; }
+                            Rectangle { horizontal-stretch: 1; }
+                            VerticalLayout { alignment: center; Segmented { options: [@tr("关"), @tr("开")]; selected: root.frame-on ? 1 : 0; picked(i) => { root.command(i == 1 ? "frame-on" : "frame-off"); } } }
+                        }
+                        Label { text: @tr("背景"); }
+                        HorizontalLayout { spacing: 4px; alignment: start;
+                            for b[i] in backgrounds: Rectangle {
+                                width: 26px; height: 26px; border-radius: 8px; background: b;
+                                border-width: root.frame-bg == i ? 2px : 1px; border-color: root.frame-bg == i ? Theme.brand : Theme.line-strong;
+                                accessible-role: button; accessible-label: background-names[i]; accessible-action-default => { root.command("frame-bg-" + i); }
+                                TouchArea { clicked => { root.command("frame-bg-" + i); } }
+                            }
+                            Rectangle {
+                                width: auto-text.preferred-width + 12px; height: 26px; border-radius: 8px; background: Theme.bg-card;
+                                border-width: root.frame-bg == 8 ? 2px : 1px; border-color: root.frame-bg == 8 ? Theme.brand : Theme.line-strong;
+                                accessible-role: button; accessible-label: @tr("自动取色"); accessible-action-default => { root.command("frame-bg-8"); }
+                                TouchArea { clicked => { root.command("frame-bg-8"); } }
+                                auto-text := Text { text: @tr("自动"); font-size: 11px; color: Theme.ink; accessible-role: none; }
+                            }
+                        }
+                        HorizontalLayout { spacing: 8px;
+                            Label { text: @tr("留白"); width: 40px; }
+                            VerticalLayout { alignment: center; Segmented { options: steps; selected: root.frame-padding; picked(i) => { root.command("frame-pad-" + i); } } }
+                        }
+                        HorizontalLayout { spacing: 8px;
+                            Label { text: @tr("圆角"); width: 40px; }
+                            VerticalLayout { alignment: center; Segmented { options: steps; selected: root.frame-radius; picked(i) => { root.command("frame-radius-" + i); } } }
+                        }
+                        HorizontalLayout { spacing: 8px;
+                            Label { text: @tr("阴影"); width: 40px; }
+                            VerticalLayout { alignment: center; Segmented { options: steps; selected: root.frame-shadow; picked(i) => { root.command("frame-shadow-" + i); } } }
+                        }
+                        Label { text: @tr("比例（截图居中，不裁切）"); }
+                        HorizontalLayout { alignment: start; Segmented { options: [@tr("自由"), "1:1", "4:3", "16:9", "3:4", "9:16"]; selected: root.frame-ratio; picked(i) => { root.command("frame-ratio-" + i); } } }
+                        Label { text: @tr("外框"); }
+                        HorizontalLayout { alignment: start; Segmented { options: [@tr("无"), "macOS", "Windows", @tr("浏览器")]; selected: root.frame-chrome; picked(i) => { root.command("frame-chrome-" + i); } } }
+                        if root.frame-chrome != 0: Rectangle {
+                            height: 28px; border-radius: 6px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
+                            TextInput { x: 8px; width: parent.width - 16px; height: parent.height; vertical-alignment: center; font-size: 12px; color: Theme.ink; single-line: true;
+                                text: root.frame-text; accessible-label: root.frame-chrome == 3 ? @tr("地址栏文字") : @tr("标题文字");
+                                edited => { root.frame-text = self.text; root.frame-text-edited(self.text); }
+                                accepted => { keys.focus(); }
+                                key-pressed(e) => { if e.text == Key.Escape { keys.focus(); return accept; } reject }
+                            }
+                            if root.frame-text == "": Text { x: 8px; text: root.frame-chrome == 3 ? @tr("地址栏文字（可留空）") : @tr("标题文字（可留空）"); font-size: 12px; color: Theme.mute; accessible-role: none; }
+                        }
+                        if !root.frame-fits: Text { font-size: 11px; color: Theme.error; wrap: word-wrap; text: @tr("图片太大，无法美化：复制和保存会是不带美化的原样。"); }
+                        Text { font-size: 11px; color: Theme.mute; wrap: word-wrap;
+                            text: @tr("预览时暂停编辑。外框文字只由你输入，不会保存到设置里。"); }
+                        HorizontalLayout { alignment: end;
+                            ActionButton { label: @tr("完成"); key: "Esc"; kind: 1; clicked => { root.command("frame"); } } }
+                    }
+                    }
+                }
+
                 // ---------- toast ----------
                 if root.toast-kind != "": Rectangle {
                     x: parent.width - self.width - 16px; y: parent.height - self.height - 16px;
@@ -487,6 +566,10 @@ export component AppWindow inherits Window {
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("鼠标指针"); width: 84px; }
                             VerticalLayout { alignment: center; Segmented { options: [@tr("不截入"), @tr("截入图片")]; selected: root.include-cursor ? 1 : 0; picked(i) => { root.command(i == 1 ? "cursor-on" : "cursor-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: @tr("新截图"); width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: [@tr("不美化"), @tr("按上次的样式美化")]; selected: root.frame-default ? 1 : 0; picked(i) => { root.command(i == 1 ? "framedef-on" : "framedef-off"); } } }
                         }
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("开机启动"); width: 84px; }

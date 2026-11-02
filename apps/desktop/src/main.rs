@@ -7,6 +7,7 @@ use crate::i18n::{t, tf};
 use anshot_core::sensitive::SensitiveKind;
 use std::cell::Cell;
 
+mod beautify;
 mod canvas;
 mod capture;
 mod check;
@@ -105,6 +106,12 @@ struct App {
     system_toast_seq: u64,
     /// The redaction the stand-in input belongs to.
     replace_target: Cell<Option<u64>>,
+    /// The beautify panel is open: the canvas shows the framed export and editing pauses.
+    frame_open: bool,
+    /// Chrome text of this document: typed by the user, memory only, never saved.
+    frame_text: String,
+    /// The framed preview of one document revision.
+    framed_cache: RefCell<Option<((u64, anshot_editor::Stamp), Image)>>,
 }
 
 struct LongShot {
@@ -193,6 +200,18 @@ impl App {
             let mut img = base.clone();
             anshot_render::render_into(&mut img, &ctl.display_scene(), *k);
             ui.set_preview(to_image(&img));
+        }
+        self.push_frame(&ui);
+        if self.frame_open {
+            if let Some((img, (pw, ph))) = self.framed_preview() {
+                let (aw, ah) = ctl.area();
+                let s = ((aw - 48.0) / pw).min((ah - 48.0) / ph).clamp(0.01, 1.0);
+                ui.set_img_x(((aw - pw * s) / 2.0) as f32);
+                ui.set_img_y(((ah - ph * s) / 2.0) as f32);
+                ui.set_img_w((pw * s) as f32);
+                ui.set_img_h((ph * s) as f32);
+                ui.set_preview(img);
+            }
         }
         let mb = |(x, y, w, h): (f64, f64, f64, f64)| MaskBox { x: x as f32, y: y as f32, w: w as f32, h: h as f32, selected: true };
         match ctl.selection_box() {
@@ -300,6 +319,12 @@ impl App {
         self.after_copy = AfterCopy::Stay;
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
+        self.frame_text.clear();
+        if self.settings.frame_default {
+            let frame = self.settings.frame_style.frame("");
+            // A frame that cannot fit this image is skipped quietly; the panel says why.
+            if let Some(e) = self.ctl.editor.as_mut() { let _ = e.set_initial_frame(frame); }
+        }
         self.clear_toast();
         match then {
             Some(Delivery::Copy) => { self.start(Delivery::Copy); }
@@ -404,6 +429,7 @@ impl App {
             }
         }
         if is(Key::Escape) && self.ctl.review.is_some() && !self.ctl.dragging() && self.ctl.tool != Tool::Crop { self.check_command("check-close"); return true; }
+        if is(Key::Escape) && self.frame_open { self.frame_command("frame"); return true; }
         if other { return false; } // Alt / Win combinations are not ours.
         if ctrl {
             // Some platforms deliver Ctrl+letter as a control character.
@@ -426,6 +452,8 @@ impl App {
             self.refresh();
             return true;
         }
+        // The preview shows the framed result: nothing on the canvas can be edited there.
+        if self.frame_open { return false; }
         let step = if shift { 10 } else { 1 };
         if self.ctl.tool == Tool::Crop {
             if is(Key::Return) { self.ctl.confirm_crop(); self.refresh(); return true; }
@@ -517,6 +545,7 @@ impl App {
     // ---- privacy check: suggestions only; nothing changes until the user applies them ----
     fn run_check(&mut self) {
         if self.check_running { return; }
+        self.frame_open = false;
         let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
         let document = self.ctl.generation();
         let covers = self.ctl.covers_in_output();
@@ -552,12 +581,15 @@ impl App {
         // One check at a time: a newer delivery waits and replaces any older one still waiting.
         if self.auto_check_running { self.auto_check_next = Some((png, kind)); return; }
         let document = self.ctl.generation();
-        let Some((source, crop)) = self.ctl.delivery_source() else { return };
+        let Some((source, crop, (ix, iy, iw, ih))) = self.ctl.delivery_source() else { return };
         let covers = self.ctl.covers_in_output();
         self.auto_check_running = true;
         std::thread::spawn(move || {
             let decode = |bytes: &[u8]| anshot_core::decode_source(bytes).ok();
-            let done = decode(&png).zip(decode(&source)).and_then(|(export, source)| check::check_export(&export, crop, &source, &covers).ok());
+            // A framed delivery: only the screenshot inside it (not the background or chrome text).
+            let inner = |img: RgbaImage| if (ix, iy, iw, ih) == (0, 0, img.width(), img.height()) { Some(img) }
+                else if ix + iw <= img.width() && iy + ih <= img.height() { Some(image::imageops::crop_imm(&img, ix, iy, iw, ih).to_image()) } else { None };
+            let done = decode(&png).and_then(inner).zip(decode(&source)).and_then(|(export, source)| check::check_export(&export, crop, &source, &covers).ok());
             drop(source);
             let _ = slint::invoke_from_event_loop(move || {
                 // An edit made meanwhile changes nothing: this image has already left.
@@ -658,6 +690,87 @@ impl App {
             },
         }
         self.refresh();
+    }
+    // ---- beautify (ADR 0.5-BEAUTIFY): a frame around the export, drawn by Rust ----
+    /// The document's choices, or the remembered ones while it is unframed.
+    fn frame_style(&self) -> beautify::Style {
+        self.ctl.editor.as_ref().and_then(|e| e.frame()).map_or(self.settings.frame_style, beautify::Style::of)
+    }
+    fn set_frame(&mut self, on: bool, style: beautify::Style) {
+        let Some(e) = self.ctl.editor.as_mut() else { return };
+        match e.set_frame(on.then(|| style.frame(&self.frame_text))) {
+            Ok(_) => {}
+            Err(EditError::InvalidImageDimensions) => self.toast("warn", t("图片太大，无法美化"), t("美化后会超过 2400 万像素；复制和保存不受影响"), None),
+            Err(err) => self.toast("error", t("无法美化"), &messages::edit(&err), None),
+        }
+        if style != self.settings.frame_style { self.settings.frame_style = style; self.persist(); }
+    }
+    fn frame_command(&mut self, c: &str) {
+        let mut s = self.frame_style();
+        let pick = |prefix: &str| c.strip_prefix(prefix).and_then(|i| i.parse::<usize>().ok());
+        match c {
+            "frame" => {
+                self.frame_open = !self.frame_open && self.ctl.editor.is_some();
+                if self.frame_open {
+                    if self.ctl.review.is_some() { self.ctl.dismiss_review(); }
+                    self.ctl.cancel_drag();
+                    self.ctl.deselect();
+                }
+            }
+            "frame-on" => self.set_frame(true, s),
+            "frame-off" => self.set_frame(false, s),
+            _ => {
+                if let Some(i) = pick("frame-bg-") { s.background = i.min(beautify::AUTO); }
+                else if let Some(i) = pick("frame-pad-") { s.padding = i.min(3); }
+                else if let Some(i) = pick("frame-radius-") { s.radius = i.min(3); }
+                else if let Some(i) = pick("frame-shadow-") { s.shadow = i.min(3); }
+                else if let Some(i) = pick("frame-ratio-") { s.ratio = i.min(anshot_render::Ratio::ALL.len() - 1); }
+                else if let Some(i) = pick("frame-chrome-") { s.chrome = i.min(3); }
+                else { return; }
+                // Picking any option means "beautify with this".
+                self.set_frame(true, s);
+            }
+        }
+        self.refresh();
+    }
+    fn frame_text_edited(&mut self, text: &str) {
+        self.frame_text = text.chars().filter(|c| !c.is_control()).take(200).collect();
+        if self.ctl.editor.as_ref().is_some_and(|e| e.frame().is_some()) { let s = self.frame_style(); self.set_frame(true, s); }
+        self.refresh();
+    }
+    /// The framed export at preview resolution (same renderer as the export), cached per revision.
+    fn framed_preview(&self) -> Option<(Image, (f64, f64))> {
+        let e = self.ctl.editor.as_ref()?;
+        let frame = e.scene().frame?;
+        let key = (self.ctl.generation(), e.stamp());
+        let size = |img: &Image| (f64::from(img.size().width), f64::from(img.size().height));
+        if let Some((k, img)) = self.framed_cache.borrow().as_ref() { if *k == key { return Some((img.clone(), size(img))); } }
+        let (base, k) = self.base.as_ref()?;
+        let mut img = base.clone();
+        anshot_render::render_into(&mut img, &self.ctl.display_scene(), *k);
+        if let Some(c) = e.crop() {
+            let at = |v: i64| (v as f32 * k).round() as i64;
+            let (l, t, r, b) = anshot_core::Region::new(at(c.x0), at(c.y0), at(c.x1), at(c.y1)).clipped(img.width(), img.height())?;
+            img = image::imageops::crop_imm(&img, l, t, r - l, b - t).to_image();
+        }
+        let out = to_image(&anshot_render::render_framed(&img, &frame).ok()?);
+        let dims = size(&out);
+        *self.framed_cache.borrow_mut() = Some((key, out.clone()));
+        Some((out, dims))
+    }
+    fn push_frame(&self, ui: &AppWindow) {
+        let e = self.ctl.editor.as_ref();
+        let s = self.frame_style();
+        ui.set_frame_open(self.frame_open && e.is_some());
+        ui.set_frame_on(e.is_some_and(|e| e.frame().is_some()));
+        ui.set_frame_fits(e.is_none_or(|e| e.frame_fits()));
+        ui.set_frame_bg(s.background as i32);
+        ui.set_frame_padding(s.padding as i32);
+        ui.set_frame_radius(s.radius as i32);
+        ui.set_frame_shadow(s.shadow as i32);
+        ui.set_frame_ratio(s.ratio as i32);
+        ui.set_frame_chrome(s.chrome as i32);
+        if ui.get_frame_text() != self.frame_text.as_str() { ui.set_frame_text(self.frame_text.as_str().into()); }
     }
     fn push_check(&self, ui: &AppWindow) {
         let review = self.ctl.review.as_ref();
@@ -1132,7 +1245,7 @@ impl App {
     fn pin_document(&mut self) {
         let Some(e) = self.ctl.editor.as_ref() else { return };
         let Some(src) = e.source_bytes().map(<[u8]>::to_vec) else { return };
-        let scene = e.scene();
+        let scene = anshot_render::Scene { frame: None, ..e.scene() };
         std::thread::spawn(move || {
             let img = anshot_render::render_png(&src, &scene).ok().and_then(|png| anshot_core::decode_source(&png).ok());
             let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
@@ -1235,6 +1348,7 @@ impl App {
         ui.set_pad_redactions(s.pad_redactions);
         ui.set_warn_unredacted(s.warn_unredacted);
         ui.set_check_on_share(s.check_on_share);
+        ui.set_frame_default(s.frame_default);
         ui.set_clipboard_private(s.clipboard_private);
         ui.set_language_index(settings::LANGUAGES.iter().position(|l| *l == s.language).unwrap_or(0) as i32);
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); t.set_delay_secs(s.delay_secs as i32); }
@@ -1381,7 +1495,7 @@ fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
     let in_about = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "about")).unwrap_or(false);
     let settings_cmd = cmd.starts_with("autocheck-") || cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
-        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-");
+        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-") || cmd.starts_with("framedef-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1455,6 +1569,9 @@ fn command(cmd: &str) {
                     "history" => a.open_history(),
                     "ocr" => a.ocr_document(),
                     "check" => a.run_check(),
+                    c if c == "frame" || c.starts_with("frame-") => a.frame_command(c),
+                    "framedef-on" => { a.settings.frame_default = true; a.persist(); a.push_settings(); }
+                    "framedef-off" => { a.settings.frame_default = false; a.persist(); a.push_settings(); }
                     "same-text" => a.run_same_text(),
                     c if c.starts_with("check-") => a.check_command(c),
                     "pin" => a.pin_document(),
@@ -1507,6 +1624,7 @@ fn main() -> Result<(), slint::PlatformError> {
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
         pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false, auto_check_running: false, auto_check_next: None, system_toast_seq: 0, replace_target: Cell::new(None),
+        frame_open: false, frame_text: String::new(), framed_cache: RefCell::new(None),
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1579,6 +1697,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_text_commit(|t| { with(|a| { a.ctl.commit_text(t.as_str()); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_replace_commit(|text| { with(|a| a.replace_selected(text.as_str())); });
+    ui.on_frame_text_edited(|text| { with(|a| a.frame_text_edited(text.as_str())); });
     ui.on_dialog_choice(|c| { with(|a| a.dialog_choice(c.as_str())); });
     ui.on_picker_hsv(|h, s, v| { with(|a| a.set_picker(h, s, v)); });
     ui.on_picker_hex_edited(|t| { with(|a| if let Some(c) = color::parse_hex(t.as_str()) { let (h, s, v) = color::rgb_to_hsv(c); a.set_picker(h, s, v); }); });
@@ -1589,6 +1708,7 @@ fn main() -> Result<(), slint::PlatformError> {
             match c {
                 Some('o') if shift => { command("ocr"); return true; }
                 Some('k') if shift => { command("check"); return true; }
+                Some('b') if shift => { command("frame"); return true; }
                 Some('o') => { command("open"); return true; }
                 Some('v') => { command("paste"); return true; }
                 Some('s') => { command("save"); return true; }

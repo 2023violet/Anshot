@@ -34,6 +34,10 @@ pub struct Settings {
     pub clear_on_exit: bool,
     /// UI language: "auto" (follow Windows), "zh" or "en".
     pub language: String,
+    /// New documents start beautified with `frame_style`.
+    pub frame_default: bool,
+    /// The last beautify choices (never the chrome text).
+    pub frame_style: crate::beautify::Style,
 }
 
 /// Choices offered for `language`.
@@ -54,7 +58,8 @@ pub const RECENT_COLORS: usize = 6;
 
 impl Default for Settings {
     fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false,
-        pad_redactions: true, warn_unredacted: true, check_on_share: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into() } }
+        pad_redactions: true, warn_unredacted: true, check_on_share: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into(),
+        frame_default: false, frame_style: crate::beautify::Style::default() } }
 }
 
 impl Settings {
@@ -79,6 +84,8 @@ impl Settings {
                 ("clear_on_exit", v) => if let Ok(b) = v.parse() { s.clear_on_exit = b; },
                 ("language", v) => if LANGUAGES.contains(&v) { s.language = v.into(); },
                 ("history_days", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_DAYS.contains(n)) { s.history_days = n; },
+                ("frame_default", v) => if let Ok(b) = v.parse() { s.frame_default = b; },
+                ("frame_style", v) => if let Some(f) = crate::beautify::Style::parse(v) { s.frame_style = f; },
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
             }
@@ -87,9 +94,9 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\ncheck_on_share={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\n", self.hotkey.label(), self.hide_after_copy,
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\ncheck_on_share={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\nframe_default={}\nframe_style={}\n", self.hotkey.label(), self.hide_after_copy,
             self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor,
-            self.pad_redactions, self.warn_unredacted, self.check_on_share, self.clipboard_private, self.history_days, self.clear_on_exit, self.language)
+            self.pad_redactions, self.warn_unredacted, self.check_on_share, self.clipboard_private, self.history_days, self.clear_on_exit, self.language, self.frame_default, self.frame_style.render())
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -118,11 +125,12 @@ mod tests {
     #[test]
     fn round_trips_and_ignores_unknown_or_bad_values() {
         let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true,
-            pad_redactions: false, warn_unredacted: false, check_on_share: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into() };
+            pad_redactions: false, warn_unredacted: false, check_on_share: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into(),
+            frame_default: true, frame_style: crate::beautify::Style { background: 8, padding: 1, radius: 0, shadow: 3, ratio: 4, chrome: 2 } };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\nlanguage=fr\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\nlanguage=fr\nframe_default=1\nframe_style=0,0,0,0,9,0\n");
         assert_eq!(odd, Settings::default());
     }
 }

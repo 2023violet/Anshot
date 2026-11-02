@@ -81,9 +81,14 @@ fn frame_is_a_document_property_outside_the_undo_history() {
     assert_eq!(e.output_dimensions(),(100,50));
     assert!(e.can_undo());
     // A new document starts unframed.
-    e.set_frame(Some(f)).unwrap();
+    e.set_frame(Some(f.clone())).unwrap();
     e.replace_document(80,60).unwrap();
     assert_eq!(e.frame(),None);
+    // A default frame on a fresh document is not an edit; once edited it must go through set_frame.
+    e.set_initial_frame(f.clone()).unwrap();
+    assert_eq!((e.stamp().revision,e.frame()),(0,Some(&f)));
+    e.add_mask(Region::new(1,1,9,9)).unwrap();
+    assert!(e.set_initial_frame(f).is_err());
 }
 
 #[test]

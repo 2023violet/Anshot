@@ -1029,3 +1029,114 @@ msgstr "The saved file is still the earlier image. Save it again."
 
 msgid "截图历史里也存着那张图，可在历史中删除。"
 msgstr "Capture history also holds that image; you can delete it there."
+
+msgid "不美化"
+msgstr "Off"
+
+msgid "关"
+msgstr "Off"
+
+msgid "开"
+msgstr "On"
+
+msgid "图片太大，无法美化"
+msgstr "Too large to beautify"
+
+msgid "图片太大，无法美化：复制和保存会是不带美化的原样。"
+msgstr "Too large to beautify: copies and saves go out without it."
+
+msgid "美化后会超过 2400 万像素；复制和保存不受影响"
+msgstr "It would pass 24 megapixels; copying and saving still work"
+
+msgid "无法美化"
+msgstr "Couldn't beautify"
+
+msgid "圆角"
+msgstr "Corners"
+
+msgid "留白"
+msgstr "Padding"
+
+msgid "阴影"
+msgstr "Shadow"
+
+msgid "背景"
+msgstr "Background"
+
+msgid "外框"
+msgstr "Window"
+
+msgid "无"
+msgstr "None"
+
+msgid "小"
+msgstr "Small"
+
+msgid "大"
+msgstr "Large"
+
+msgid "自由"
+msgstr "Free"
+
+msgid "浏览器"
+msgstr "Browser"
+
+msgid "比例（截图居中，不裁切）"
+msgstr "Ratio (centred, never cut)"
+
+msgid "地址栏文字"
+msgstr "Address text"
+
+msgid "地址栏文字（可留空）"
+msgstr "Address text (optional)"
+
+msgid "标题文字"
+msgstr "Title text"
+
+msgid "标题文字（可留空）"
+msgstr "Title text (optional)"
+
+msgid "晨雾"
+msgstr "Mist"
+
+msgid "暖橙"
+msgstr "Ember"
+
+msgid "海盐"
+msgstr "Sea salt"
+
+msgid "薄荷"
+msgstr "Mint"
+
+msgid "暮紫"
+msgstr "Dusk"
+
+msgid "夜空"
+msgstr "Night"
+
+msgid "纯白"
+msgstr "White"
+
+msgid "石墨"
+msgstr "Graphite"
+
+msgid "自动"
+msgstr "Auto"
+
+msgid "自动取色"
+msgstr "Colours from the image"
+
+msgid "美化"
+msgstr "Beautify"
+
+msgid "美化 Ctrl+Shift+B"
+msgstr "Beautify Ctrl+Shift+B"
+
+msgid "新截图"
+msgstr "New captures"
+
+msgid "按上次的样式美化"
+msgstr "Beautify with the last style"
+
+msgid "预览时暂停编辑。外框文字只由你输入，不会保存到设置里。"
+msgstr "Editing pauses while previewing. Window text is only what you type and is never saved in the settings."

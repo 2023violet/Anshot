@@ -7,7 +7,7 @@
 use crate::{glyphs, paint, rounded, text_extent};
 use anshot_core::MAX_PIXELS;
 use image::RgbaImage;
-use tiny_skia::{Color, FillRule, GradientStop, LinearGradient, Mask, PathBuilder, Pixmap, Point, Rect, SpreadMode, Stroke, Transform};
+use tiny_skia::{FillRule, Mask, PathBuilder, Pixmap, Rect, Stroke, Transform};
 
 /// Two colours of a top-left to bottom-right gradient (equal colours give a solid fill),
 /// or colours taken from the export's own outer ring.
@@ -138,24 +138,16 @@ pub fn auto_colors(img: &RgbaImage) -> ([u8; 4], [u8; 4]) {
     ([light[0], light[1], light[2], 255], [dark[0], dark[1], dark[2], 255])
 }
 
-fn color(c: [u8; 4]) -> Color { Color::from_rgba8(c[0], c[1], c[2], 255) }
-
 /// The export framed as `frame` says; every output pixel is opaque.
 pub fn render_framed(img: &RgbaImage, frame: &Frame) -> Result<RgbaImage, String> {
     let lay = frame_layout(img.dimensions(), frame)?;
     let (cw, ch) = lay.canvas;
     let mut pm = Pixmap::new(cw, ch).ok_or("canvas too large")?;
-    let full = Rect::from_xywh(0.0, 0.0, cw as f32, ch as f32).ok_or("empty canvas")?;
 
-    // 1. Background.
+    // 1. Background: top-left to bottom-right, computed directly (a shader is far slower
+    // on tens of megapixels).
     let (from, to) = match frame.background { Background::Gradient(a, b) => (a, b), Background::Auto => auto_colors(img) };
-    let mut bg = paint(from);
-    if from != to {
-        bg.shader = LinearGradient::new(Point::from_xy(0.0, 0.0), Point::from_xy(cw as f32, ch as f32),
-            vec![GradientStop::new(0.0, color(from)), GradientStop::new(1.0, color(to))], SpreadMode::Pad, Transform::identity())
-            .ok_or("gradient")?;
-    }
-    pm.fill_rect(full, &bg, Transform::identity(), None);
+    gradient(&mut pm, from, to);
 
     let (wx, wy, ww, wh) = (lay.bar.0 as f32, lay.bar.1 as f32, lay.bar.2 as f32, (lay.bar.3 + lay.image.3) as f32);
     let window = Rect::from_xywh(wx, wy, ww, wh).ok_or("empty window")?;
@@ -173,6 +165,27 @@ pub fn render_framed(img: &RgbaImage, frame: &Frame) -> Result<RgbaImage, String
     let mut data = pm.take();
     for p in data.chunks_exact_mut(4) { p[3] = 255; }
     RgbaImage::from_raw(cw, ch, data).ok_or_else(|| "frame buffer".into())
+}
+
+/// Fill with `from` at the top-left corner blending to `to` at the bottom-right: each pixel
+/// centre is projected onto the diagonal.
+fn gradient(pm: &mut Pixmap, from: [u8; 4], to: [u8; 4]) {
+    // 257 steps are finer than 8-bit colour can show between any two colours.
+    let lut: Vec<[u8; 4]> = (0..=256u32).map(|w| {
+        let mix = |k: usize| ((u32::from(from[k]) * (256 - w) + u32::from(to[k]) * w + 128) >> 8) as u8;
+        [mix(0), mix(1), mix(2), 255]
+    }).collect();
+    let (cw, ch) = (pm.width() as usize, pm.height() as usize);
+    let (dx, dy) = (cw as f32, ch as f32);
+    let len2 = dx * dx + dy * dy;
+    let data = pm.data_mut();
+    for (y, row) in data.chunks_exact_mut(cw * 4).enumerate() {
+        let ty = (y as f32 + 0.5) * dy / len2;
+        for (x, px) in row.chunks_exact_mut(4).enumerate() {
+            let w = (((x as f32 + 0.5) * dx / len2 + ty) * 256.0 + 0.5) as i32;
+            px.copy_from_slice(&lut[w.clamp(0, 256) as usize]);
+        }
+    }
 }
 
 /// Copy the export into its rectangle: exact where the clip fully covers a pixel, blended
@@ -210,14 +223,23 @@ fn shadow(pm: &mut Pixmap, window: Rect, radius: f32, blur: f32, alpha: f32) {
     let mut m: Vec<f32> = small.data().iter().map(|&v| f32::from(v) / 255.0).collect();
     let rad = ((blur / k) / 2.0).round().max(1.0) as usize;
     for _ in 0..3 { box_blur(&mut m, sw as usize, sh as usize, rad); }
+    // Only the band the blur can reach, minus the window's inside (painted over later).
+    let reach = blur * 2.0 + k * 2.0;
+    let span = |a: f32, b: f32, n: u32| ((a.floor().max(0.0) as u32).min(n), (b.ceil().max(0.0) as u32).min(n));
+    let (x0, x1) = span(window.left() - reach, window.right() + reach, cw);
+    let (y0, y1) = span(window.top() + blur / 2.0 - reach, window.bottom() + blur / 2.0 + reach, ch);
+    let inset = radius + 1.0;
+    let (il, ir) = span(window.left() + inset, window.right() - inset, cw);
+    let (it, ib) = span(window.top() + inset, window.bottom() - inset, ch);
     let data = pm.data_mut();
-    for y in 0..ch {
-        for x in 0..cw {
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if x >= il && x < ir && y >= it && y < ib { continue; }
             let (fx, fy) = ((x as f32 + 0.5) / k - 0.5, (y as f32 + 0.5) / k - 0.5);
             let a = bilinear(&m, sw as usize, sh as usize, fx, fy) * alpha;
             if a <= 0.0 { continue; }
             let i = (y * cw + x) as usize * 4;
-            for c in &mut data[i..i + 3] { *c = (f32::from(*c) * (1.0 - a)).round() as u8; }
+            for c in &mut data[i..i + 3] { *c = (f32::from(*c) * (1.0 - a) + 0.5) as u8; }
         }
     }
 }

@@ -810,9 +810,11 @@ impl Controller {
     }
     /// What a check of the delivered image needs. Unlike `ocr_snapshot` this also answers
     /// during a gesture: the image has already left either way.
-    pub fn delivery_source(&self) -> Option<(Vec<u8>, Option<Region>)> {
+    /// Also where the cropped export sits in the delivered image (all of it unless framed).
+    pub fn delivery_source(&self) -> Option<(Vec<u8>, Option<Region>, (u32, u32, u32, u32))> {
         let e = self.editor.as_ref()?;
-        Some((e.source_bytes()?.to_vec(), e.scene().crop))
+        let scene = e.scene();
+        Some((e.source_bytes()?.to_vec(), scene.crop, anshot_render::image_rect(e.dimensions(), &scene)?))
     }
     /// Covers that reach the exported image.
     pub fn covers_in_output(&self) -> Vec<Region> {
@@ -830,7 +832,8 @@ impl Controller {
         // Not mid-gesture: a redaction still being drawn is not part of the document yet.
         if self.drag.is_some() || self.text_edit.is_some() { return None; }
         let e = self.editor.as_ref()?;
-        Some((e.source_bytes()?.to_vec(), e.scene()))
+        // The screenshot only: background and chrome text are not the user's content.
+        Some((e.source_bytes()?.to_vec(), anshot_render::Scene { frame: None, ..e.scene() }))
     }
 
     // ---- delivery: render on a worker, then deliver the exact rendered PNG ----
