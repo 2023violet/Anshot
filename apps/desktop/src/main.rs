@@ -204,7 +204,9 @@ impl App {
         self.push_frame(&ui);
         if self.frame_open {
             if let Some((img, (pw, ph))) = self.framed_preview() {
+                // Centred in the room left of the panel (300 px wide, 12 px from the edge).
                 let (aw, ah) = ctl.area();
+                let aw = if aw > 700.0 { aw - 324.0 } else { aw };
                 let s = ((aw - 48.0) / pw).min((ah - 48.0) / ph).clamp(0.01, 1.0);
                 ui.set_img_x(((aw - pw * s) / 2.0) as f32);
                 ui.set_img_y(((ah - ph * s) / 2.0) as f32);
@@ -731,6 +733,8 @@ impl App {
                 self.set_frame(true, s);
             }
         }
+        // Keys belong to the canvas again: a focused text box would take Ctrl+C for itself.
+        if let Some(ui) = self.ui() { ui.invoke_focus_keys(); }
         self.refresh();
     }
     fn frame_text_edited(&mut self, text: &str) {

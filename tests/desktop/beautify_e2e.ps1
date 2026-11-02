@@ -100,7 +100,7 @@ function Set-Text([IntPtr] $h, [string] $name, [string] $text) {
     if ($el -and $el.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$pat)) { $pat.SetValue($text); Start-Sleep -Milliseconds 600; return $true }
     $false
 }
-function Frame([string] $a, [string] $b, [string] $ratio, [string] $out) { python (Join-Path $PSScriptRoot 'check_frame.py') inner (Join-Path $Out $a) (Join-Path $Out $b) $ratio (Join-Path $Out $out) }
+function Frame([string] $a, [string] $b, [string] $ratio, [string] $inner) { python (Join-Path $PSScriptRoot 'check_frame.py') inner (Join-Path $Out $a) (Join-Path $Out $b) $ratio (Join-Path $Out $inner) }
 function Start-App([string] $file) {
     $script:p = Start-Process $Exe -ArgumentList "`"$file`"" -PassThru
     $d = (Get-Date).AddSeconds(20); $script:h = [IntPtr]::Zero
@@ -124,7 +124,7 @@ Start-App $doc
 Log "COPY size=$(CopyTo 'frame-plain.png')"
 $same = python (Join-Path $PSScriptRoot 'check_png.py') same $doc (Join-Path $Out 'frame-plain.png')
 Log "PLAIN $same"
-Verdict 'frame_off_is_plain' ($same -match 'SAME')
+Verdict 'frame_off_is_plain' ($same -match 'SAME diff=0')
 
 # ---- 2. cover everything the check finds, then frame: the covers are kept inside ----
 Focus-Editor
@@ -159,6 +159,7 @@ Verdict 'framed_check_reads_the_screenshot' ($audit -ne '' -and $found -eq '')
 $secret = 'tel 13912345678 example.com/frame-e2e'
 Log "CHROME $(Invoke-Named $h '浏览器')"
 Log "TEXT $(Set-Text $h '地址栏文字' $secret)"
+Key 0x0D # Enter hands the keyboard back to the canvas, so Ctrl+C copies the image
 Start-Sleep -Milliseconds 800
 Shot $h 'beautify-2-browser.png'
 Log "COPY size=$(CopyTo 'frame-browser.png')"
@@ -167,8 +168,8 @@ Log $f
 $wide = python (Join-Path $PSScriptRoot 'check_png.py') same (Join-Path $Out 'frame-16x9.png') (Join-Path $Out 'frame-browser.png')
 $audit = Wait-Name $h '^已核对 \d+ 处遮挡' 20
 $found = Wait-Name $h '发现 \d+ 处' 1
-Log "AUTO audit=$audit found=$found chrome_differs=$($wide -notmatch 'SAME')"
-Verdict 'chrome_text_is_not_checked' (($f -match 'PASS') -and $audit -ne '' -and $found -eq '' -and $wide -notmatch 'SAME')
+Log "AUTO audit=$audit found=$found chrome_differs=$($wide -notmatch 'SAME diff=0')"
+Verdict 'chrome_text_is_not_checked' (($f -match 'PASS') -and $audit -ne '' -and $found -eq '' -and $wide -notmatch 'SAME diff=0')
 
 # ---- 4. undo takes back the covers, not the frame; switching off restores the plain export ----
 Focus-Editor
@@ -181,10 +182,12 @@ Verdict 'undo_keeps_the_frame' ($f -match 'PASS')
 Focus-Editor
 Key 0x42 -Ctrl -Shift
 Log "OFF $(Invoke-Named $h '关')"
+Shot $h 'beautify-4-off.png'
+Log "FOCUS $([System.Windows.Automation.AutomationElement]::FocusedElement.Current.Name)|$([System.Windows.Automation.AutomationElement]::FocusedElement.Current.ControlType.ProgrammaticName)"
 Log "COPY size=$(CopyTo 'frame-off.png')"
 $same = python (Join-Path $PSScriptRoot 'check_png.py') same $doc (Join-Path $Out 'frame-off.png')
 Log "OFF $same"
-Verdict 'frame_off_restores_the_plain_export' ($same -match 'SAME')
+Verdict 'frame_off_restores_the_plain_export' ($same -match 'SAME diff=0')
 if (-not $p.HasExited) { $p.Kill() }
 Start-Sleep -Milliseconds 800
 

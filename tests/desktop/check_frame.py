@@ -42,7 +42,11 @@ def inner(plain_path, framed_path, ratio, out):
             found = (x0, y0)
             break
     if found:
-        Image.fromarray(framed[found[1]:found[1] + h, found[0]:found[0] + w].astype(np.uint8)).save(out)
+        # The rounded corners are the frame's (checked above to be the only difference); the
+        # read-back of covers then sees the rest exactly as delivered.
+        part = framed[found[1]:found[1] + h, found[0]:found[0] + w].copy()
+        part[~mask] = plain[~mask]
+        Image.fromarray(part.astype(np.uint8)).save(out)
     ok = found is not None and ok_ratio
     print(f"FRAME size={fw}x{fh} plain={w}x{h} at={found} ratio_ok={ok_ratio} {'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1
