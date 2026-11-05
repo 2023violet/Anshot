@@ -19,7 +19,7 @@
 | 冷启动截一帧（含创建与读回） | 34–44 ms | 65–84 ms | 107–121 ms（进程内第一次 425 ms） |
 | 与 GDI 的像素差异（SDR，合成图） | — | 0 | 0 |
 | 第一帧 | 即时 | **每次第一帧都是空的**（`LastPresentTime = 0`，约 98.6% 像素不同），要丢掉再取下一帧 | 正常 |
-| 屏幕边框 | 无 | 无 | Windows 10 上会画**黄色边框**；`IsBorderRequired(false)` 在 19045 上不支持（`E_NOINTERFACE`），屏幕上边缘实测出现黄色像素 |
+| 屏幕边框 | 无 | 无 | 在 Windows 10 22H2（Build 19045）实测环境下，截图时屏幕边缘出现**黄色边框**（实测到黄色像素）；`IsBorderRequired` 接口不可用，返回 `E_NOINTERFACE`。该属性按官方文档要求 Build 20348 起（Windows Server 2022、Windows 11）才提供（DOCUMENTED）；Windows 11 上无边框捕获所需的授权，以及未打包桌面程序是否适用，均未实测（NOT_VERIFIED） |
 | HDR | 只能 8 位；HDR 屏上会失真（DOCUMENTED，未实测） | `DuplicateOutput1` 可取 FP16（DOCUMENTED，未实测） | 可取 FP16（DOCUMENTED，未实测） |
 | 多显卡 / 多显示器 | 一次调用拿整个虚拟桌面 | 按显卡和输出分别复制，要找对显卡；本机输出在 Intel 上 | 按显示器分别建采集对象 |
 | 代码量 | 小，同步 | 中，要处理访问丢失和空帧 | 大，WinRT + D3D11，异步取帧 |
@@ -55,7 +55,7 @@
 
 ## 提议（待用户决定）
 - 在 Windows 11 结果出来之前，不更换截屏接口。在 SDR 上，三者截到的像素完全相同，GDI 最快、最简单。
-- **WGC 不宜直接替换 GDI。** Windows 10 上每次截图都会闪黄色边框（去不掉），冷启动也最慢。若采用，只在 Windows 11 且能去掉边框时使用。
+- **WGC 不宜直接替换 GDI。** 在实测的 Windows 10 22H2（19045）上每次截图都会出现黄色边框且无法关闭，冷启动也最慢。若采用，只在提供 `IsBorderRequired` 的系统（Windows 11）上、并实测确认能去掉边框后使用。
 - **DXGI 适合作为 HDR 路径**，但要丢掉空的第一帧、找对显卡、处理访问丢失。
 - 不论最后选哪个，都先加 HDR 检测（`IDXGIOutput6::GetDesc1`），至少在 HDR 屏上如实提示颜色可能不同。
 
