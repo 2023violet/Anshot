@@ -58,8 +58,9 @@ pub fn frame_rendered() {
     });
 }
 
-/// How the capture ended (cancel, done, pin, ocr, long, error).
-pub fn outcome(o: &'static str) { RUN.with(|r| if let Some(run) = r.borrow_mut().as_mut() { run.outcome = o; }); }
+/// How the capture ended (cancel, done, pin, ocr, long, error). The first one set stands, so
+/// a failure that then cancels is still recorded as an error.
+pub fn outcome(o: &'static str) { RUN.with(|r| if let Some(run) = r.borrow_mut().as_mut() { if run.outcome == "other" { run.outcome = o; } }); }
 
 /// The capture is over: one line with everything recorded.
 pub fn end(still_visible: usize) {

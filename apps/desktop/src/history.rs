@@ -52,7 +52,7 @@ impl History {
         let Ok(rd) = std::fs::read_dir(&self.dir) else { return Vec::new() };
         let mut v: Vec<Entry> = rd.filter_map(Result::ok).filter_map(|d| {
             let name = d.file_name().into_string().ok()?;
-            let ms = name.strip_prefix(PREFIX).or_else(|| name.strip_prefix(PREFIX_020))?.strip_suffix(".png")?.split('-').next()?.parse().ok()?;
+            let ms = entry_millis(&name)?;
             d.file_type().ok()?.is_file().then(|| Entry { path: d.path(), millis: ms })
         }).collect();
         v.sort_by(|a, b| b.millis.cmp(&a.millis).then_with(|| b.path.cmp(&a.path)));
@@ -76,6 +76,15 @@ impl History {
     pub fn read(&self, e: &Entry) -> Result<Vec<u8>, String> {
         crate::platform::read_image_file(&e.path)
     }
+}
+
+/// The time in a name Anshot wrote: `anshot-` or `sr-`, 13 digits, `-`, 3 digits, `.png`.
+/// Anything else (say `sr-2024-trip.png` put there by hand) is not ours and never removed.
+fn entry_millis(name: &str) -> Option<u64> {
+    let rest = name.strip_prefix(PREFIX).or_else(|| name.strip_prefix(PREFIX_020))?.strip_suffix(".png")?;
+    let (ms, seq) = rest.split_once('-')?;
+    let digits = |s: &str, n: usize| s.len() == n && s.bytes().all(|b| b.is_ascii_digit());
+    (digits(ms, 13) && digits(seq, 3)).then(|| ms.parse().ok()).flatten()
 }
 
 /// Relative age for the history list ("刚刚", "5 分钟前", "3 天前"); no time zone needed.
@@ -202,6 +211,23 @@ mod tests {
         h.clear();
         assert!(ours(&dir).is_empty());
         assert!(dir.join("keep-me.png").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn only_names_anshot_wrote_are_entries() {
+        for ours in ["anshot-1800000000000-000.png", "sr-1700000000000-999.png"] { assert!(entry_millis(ours).is_some(), "{ours}"); }
+        for not in ["sr-2024-trip.png", "anshot-1800000000000.png", "anshot-180000000000-000.png", "anshot-1800000000000-00.png",
+                    "anshot-1800000000000-000.jpg", "anshot-18000000000x0-000.png", "copy of anshot-1800000000000-000.png"] {
+            assert_eq!(entry_millis(not), None, "{not}");
+        }
+        let dir = tmp("names");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("sr-2024-trip.png"), b"a holiday").unwrap();
+        let h = History::at(dir.clone());
+        h.prune_age(1, 1_800_000_000_000);
+        h.clear();
+        assert!(dir.join("sr-2024-trip.png").exists(), "a file that only looks like ours is left alone");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

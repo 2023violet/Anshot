@@ -94,7 +94,7 @@ pub fn windows_build()->String{"unknown".into()}
 #[cfg(windows)]
 mod screen;
 #[cfg(windows)]
-pub use screen::{ui_language_is_chinese,capture,capture_ex,exclude_from_capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};
+pub use screen::{ui_language_is_chinese,capture,capture_ex,exclude_from_capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,window_visible,HotkeyHandle};
 
 #[cfg(not(windows))]
 pub fn monitors()->std::io::Result<Vec<Monitor>>{Err(std::io::Error::new(std::io::ErrorKind::Unsupported,"screen adapter requires Windows"))}
@@ -120,6 +120,8 @@ pub fn foreground_window()->isize{0}
 pub fn restore_foreground(_hwnd:isize){}
 #[cfg(not(windows))]
 pub fn wait_for_compositor(){}
+#[cfg(not(windows))]
+pub fn window_visible(_hwnd:isize)->bool{false}
 #[cfg(not(windows))]
 pub struct HotkeyHandle;
 #[cfg(not(windows))]

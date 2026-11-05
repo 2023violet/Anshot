@@ -97,6 +97,12 @@ impl Drop for Bitmap { fn drop(&mut self) {
     unsafe { DeleteObject(self.0) };
 } }
 
+/// Whether Windows itself still shows `hwnd` (not what a UI toolkit believes).
+pub fn window_visible(hwnd: isize) -> bool {
+    // SAFETY: plain query; a stale handle just returns false.
+    hwnd != 0 && unsafe { windows_sys::Win32::UI::WindowsAndMessaging::IsWindowVisible(hwnd as HWND) } != 0
+}
+
 /// Keep one of our own windows out of every screen capture (ours and other programs'):
 /// toasts, the countdown and the long-screenshot panel (pins are not excluded; they step
 /// aside while Anshot freezes the screen). Windows 10 2004 or later;

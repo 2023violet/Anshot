@@ -958,7 +958,7 @@ impl App {
             Ok(m) => m,
             Err(_) => { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
         };
-        let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
+        let Some(area) = capture::union(&monitors) else { diag::outcome("error"); self.cancel_capture(); return };
         let frozen = match anshot_platform_windows::capture_ex(area, self.settings.include_cursor) {
             Ok(c) => c,
             Err(_) => { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
@@ -1132,7 +1132,8 @@ impl App {
         let mut still_visible = 0;
         for (win, _) in self.overlays.drain(..) {
             let _ = win.hide();
-            if win.window().is_visible() { still_visible += 1; }
+            // The OS window, not Slint's own flag: a window that stays on screen must show here.
+            if diag::enabled() && hwnd_of(win.window()).is_some_and(anshot_platform_windows::window_visible) { still_visible += 1; }
             // Do not keep frozen screen pixels around between captures.
             win.set_shot(Image::default());
             win.set_has_selection(false);

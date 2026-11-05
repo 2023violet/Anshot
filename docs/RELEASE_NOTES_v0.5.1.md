@@ -13,7 +13,7 @@
 
 ## 本版内容
 - **修复：截图历史超过 200 张时没有完全按设置清理。** 以前清理只看最新的 200 张，“截图历史”张数和“历史保留”天数都可能落空。现在会检查文件夹里安截的全部历史图片，不碰其他文件。
-  - **升级后注意：** 第一次启动或保存时，过去本该删除却遗留下来的旧图片会被一次性删除，范围以你当前的设置为准。想保留的话，请在升级前从历史中另存。
+  - **升级后注意：** 过去本该删除却遗留下来的旧图片会被一次性删除：超过保留天数的在下次启动时删除，超过张数的在下次存入历史时删除，范围以你当前的设置为准。想保留的话，请在升级前从历史中另存。主要影响把上限设为 200 张、或设了保留天数，并且历史曾超过 200 张的情况。
 - **新增：截图诊断（默认关闭）。** 只有设置了环境变量 `ANSHOT_DIAGNOSE_DIR` 时，安截才写诊断文件，内容只有耗时和显示器信息，不含画面、窗口标题、路径或文字。仓库里的 `tools/diagnose/anshot-diagnose.ps1` 可以在出问题的电脑上一键运行，详见 `tools/diagnose/README.md`。
 
 ## 已知问题与兼容性说明
@@ -42,7 +42,7 @@
 
 ## What's in it
 - **Fixed: with more than 200 history images, clean-up did not follow your settings.** It only looked at the newest 200, so neither the count nor the age limit was fully applied. It now covers every Anshot history image in the folder, and nothing else.
-  - **After upgrading:** the first time Anshot starts or saves to history, old images that should already have been removed are deleted in one go, as your current settings say. Save any you want to keep before upgrading.
+  - **After upgrading:** old images that should already have been removed are deleted in one go: those past the age limit at the next start, those past the count at the next save to history, as your current settings say. Save any you want to keep before upgrading. This mainly affects a 200-image limit or an age limit, with more than 200 images ever stored.
 - **New: capture diagnostics, off by default.** Only with the environment variable `ANSHOT_DIAGNOSE_DIR` set does Anshot write a diagnostics file: timings and display facts only, never pixels, window titles, paths or text. `tools/diagnose/anshot-diagnose.ps1` in the repository runs it on an affected machine; see `tools/diagnose/README.md`.
 
 ## Known issues and compatibility

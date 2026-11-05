@@ -85,6 +85,7 @@ New-Item -ItemType Directory -Force $out, "$work\settings", "$work\history" | Ou
 'hide_after_copy=false' | Set-Content "$work\settings\settings.txt"
 $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $results = New-Object System.Collections.Generic.List[string]
+$script:app = $null
 
 function Start-Anshot([string] $renderer, [string] $file) {
     $psi = New-Object System.Diagnostics.ProcessStartInfo $Exe
@@ -95,10 +96,21 @@ function Start-Anshot([string] $renderer, [string] $file) {
     if ($renderer) { $psi.EnvironmentVariables['SLINT_BACKEND'] = $renderer }
     $psi.Arguments = if ($file) { "`"$file`"" } else { '--background' }
     $p = [System.Diagnostics.Process]::Start($psi)
+    $script:app = $p
     [AD]::AppPid = [uint32]$p.Id
     Start-Sleep -Seconds 4
-    $p
+    if ($p.HasExited) { throw 'Anshot closed right after starting (exit code ' + $p.ExitCode + '). Nothing more was sent.' }
 }
+function Stop-Anshot { if ($script:app -and -not $script:app.HasExited) { $script:app.Kill(); $script:app.WaitForExit(5000) | Out-Null }; Start-Sleep -Seconds 1 }
+# Never type into other windows: after the first round the capture must have reached Anshot.
+function Check-First([int] $focus) {
+    $diag = Join-Path $out 'anshot-diag.txt'
+    $captures = if (Test-Path $diag) { @(Get-Content $diag | Where-Object { $_ -like 'capture *' }).Count } else { 0 }
+    # Only Anshot's own record counts: any window of the started process could take focus.
+    if ($captures -le $script:seen) { throw 'The capture hotkey did not reach Anshot (another program may use Ctrl+Shift+A). Stopped; no more keys were sent.' }
+    $script:seen = $captures
+}
+$script:seen = 0
 function One-Round([string] $tag, [int] $n) {
     [void][AD]::SetCursorPos([int]($b.Width / 2), [int]($b.Height / 2))
     Start-Sleep -Milliseconds 500
@@ -117,6 +129,7 @@ function One-Round([string] $tag, [int] $n) {
     $focus = if ([AD]::FocusAt -ge 0) { [math]::Round([AD]::FocusAt - $t0) } else { -1 }
     $line = "round $tag #$n focus_ms=$focus black_samples=$($black.Count) black_span_ms=$span brightness_before=$([math]::Round($base)) brightness_after_esc=$([math]::Round($afterEsc))"
     $results.Add($line); Write-Host $line
+    $focus
 }
 
 Write-Host "Results go to $out" -ForegroundColor Cyan
@@ -124,32 +137,36 @@ Write-Host 'Please do not touch the mouse or keyboard until asked.' -ForegroundC
 Start-Sleep -Seconds 3
 try {
     foreach ($variant in @(@('default', ''), @('software', 'winit-software'))) {
-        $app = Start-Anshot $variant[1] ''
-        for ($i = 1; $i -le $Rounds; $i++) { One-Round "hotkey-$($variant[0])" $i }
-        if (-not $app.HasExited) { $app.Kill() }; Start-Sleep -Seconds 1
+        Start-Anshot $variant[1] ''
+        for ($i = 1; $i -le $Rounds; $i++) { $f = One-Round "hotkey-$($variant[0])" $i; if ($i -eq 1) { Check-First $f } }
+        Stop-Anshot
     }
     # Editor open: a small generated picture, not a screenshot.
     $img = Join-Path $work 'pattern.png'
     $bmp = New-Object System.Drawing.Bitmap 640, 400
     $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::FromArgb(230, 230, 220)); $g.Dispose()
     $bmp.Save($img, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
-    $app = Start-Anshot '' $img
-    for ($i = 1; $i -le [math]::Min($Rounds, 10); $i++) { One-Round 'editor-default' $i }
-    if (-not $app.HasExited) { $app.Kill() }; Start-Sleep -Seconds 1
+    Start-Anshot '' $img
+    for ($i = 1; $i -le [math]::Min($Rounds, 10); $i++) { $f = One-Round 'editor-default' $i; if ($i -eq 1) { Check-First $f } }
+    Stop-Anshot
     # Tray: by hand.
     if ($SkipTray) { throw 'skip-tray' }
-    $app = Start-Anshot '' ''
+    Start-Anshot '' ''
     Write-Host ''
     Write-Host 'Now please start 5 captures from the Anshot tray icon yourself:' -ForegroundColor Yellow
     Write-Host '  click the icon (in the hidden-icons area if needed), wait until the screen settles, press Esc.' -ForegroundColor Yellow
     Write-Host '  If the screen stays black, wait 10 s, then press Esc; if that does nothing, right-click.' -ForegroundColor Yellow
     [void](Read-Host 'Press Enter here when you have done the 5 tray captures')
+    Write-Host 'The diagnostics file now has one capture line per tray capture.'
     $results.Add("tray-manual answered=" + (Read-Host 'Did the screen go black or change colour? (y/n)'))
     $results.Add("tray-manual recovered_by=" + (Read-Host 'If so, what brought it back? (esc / rightclick / taskmanager / reboot / none)'))
-    if (-not $app.HasExited) { $app.Kill() }
-} catch { if ($_.Exception.Message -ne 'skip-tray') { throw } } finally {
+    Stop-Anshot
+} catch {
+    if ($_.Exception.Message -ne 'skip-tray') { $results.Add('stopped: ' + $_.Exception.Message); Write-Host $_.Exception.Message -ForegroundColor Red }
+} finally {
     $results | Set-Content -Encoding UTF8 (Join-Path $out 'rounds.txt')
-    Get-Process -Id ([AD]::AppPid) -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Only the Anshot this script started, and only if it is still running.
+    Stop-Anshot
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }
 Write-Host ''
