@@ -80,6 +80,18 @@ pub struct Monitor {pub bounds:ScreenRect,pub work:ScreenRect,pub primary:bool}
 pub struct Capture {pub area:ScreenRect,pub rgba:Vec<u8>}
 
 #[cfg(windows)]
+mod display;
+#[cfg(windows)]
+pub use display::{display_facts,windows_build,DisplayFacts};
+#[cfg(not(windows))]
+#[derive(Clone,Debug,PartialEq,Eq)]
+pub struct DisplayFacts {pub bounds:ScreenRect,pub hdr:Option<bool>,pub bits_per_color:u32,pub adapter:String}
+#[cfg(not(windows))]
+pub fn display_facts()->Vec<DisplayFacts>{Vec::new()}
+#[cfg(not(windows))]
+pub fn windows_build()->String{"unknown".into()}
+
+#[cfg(windows)]
 mod screen;
 #[cfg(windows)]
 pub use screen::{ui_language_is_chinese,capture,capture_ex,exclude_from_capture,claim_single_instance,cursor,foreground_window,monitors,restore_foreground,shift_down,spawn_hotkey,visible_windows,wait_for_compositor,HotkeyHandle};

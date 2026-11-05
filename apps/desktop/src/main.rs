@@ -13,6 +13,7 @@ mod capture;
 mod check;
 mod color;
 mod controller;
+mod diag;
 mod display;
 mod history;
 mod i18n;
@@ -920,15 +921,16 @@ impl App {
         let Some((win, _, left)) = self.countdown.as_mut() else { return };
         *left = left.saturating_sub(1);
         win.set_remaining(*left as i32);
-        if *left == 0 { self.stop_countdown(); self.begin_capture(); }
+        if *left == 0 { self.stop_countdown(); self.begin_capture("delayed"); }
     }
     fn stop_countdown(&mut self) {
         if let Some((win, timer, _)) = self.countdown.take() { timer.stop(); let _ = win.hide(); }
     }
 
     // ---- capture (02 S1) ----
-    fn begin_capture(&mut self) {
+    fn begin_capture(&mut self, source: &'static str) {
         if self.session.is_some() || self.capture_pending || self.long.is_some() { return; }
+        diag::start(source);
         // A capture started by hand replaces a delayed one that is still counting down.
         self.stop_countdown();
         if let Some(t) = self.toast_win.as_ref() { let _ = t.hide(); }
@@ -951,26 +953,29 @@ impl App {
         });
     }
     fn freeze_screen(&mut self) {
+        diag::mark("wait", None);
         let monitors = match anshot_platform_windows::monitors() {
             Ok(m) => m,
-            Err(_) => { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
+            Err(_) => { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法读取显示器信息，请重试"), None); return; }
         };
         let Some(area) = capture::union(&monitors) else { self.cancel_capture(); return };
         let frozen = match anshot_platform_windows::capture_ex(area, self.settings.include_cursor) {
             Ok(c) => c,
-            Err(_) => { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
+            Err(_) => { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("系统拒绝读取屏幕（锁屏或安全桌面时无法截图）"), None); return; }
         };
+        diag::mark("grab", Some(format!("{}x{}", area.w, area.h)));
         let session = capture::Session::new(frozen, monitors.clone(), anshot_platform_windows::visible_windows());
         let mut overlays = Vec::new();
         for (i, m) in monitors.iter().copied().enumerate() {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
-            let Some(pixels) = session.crop(m.bounds) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("显示器区域无效"), None); return; };
+            let Some(pixels) = session.crop(m.bounds) else { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("显示器区域无效"), None); return; };
             if self.overlay_pool.len() <= i {
-                let Some(win) = new_overlay(i) else { self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法创建截图窗口"), None); return; };
+                let Some(win) = new_overlay(i) else { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("无法创建截图窗口"), None); return; };
                 self.overlay_pool.push(win);
             }
             let win = self.overlay_pool[i].clone_strong();
             win.set_shot(to_image(&pixels));
+            diag::mark("prepared", Some(format!("monitor{i}")));
             win.set_size_open(false);
             let place = |w: &CaptureOverlay| {
                 w.window().set_position(slint::PhysicalPosition::new(m.bounds.x, m.bounds.y));
@@ -979,6 +984,7 @@ impl App {
             place(&win);
             let _ = win.show();
             place(&win); // re-apply after a possible per-monitor DPI change on show
+            diag::mark("shown", Some(format!("monitor{i} {}x{} scale={:.2}", m.bounds.w, m.bounds.h, win.window().scale_factor())));
             overlays.push((win, m));
         }
         if overlays.is_empty() { self.cancel_capture(); return; }
@@ -1008,6 +1014,7 @@ impl App {
             "pin" => self.pin_selection(),
             "ocr" => {
                 let Some(s) = self.session.as_ref() else { return };
+                diag::outcome("ocr");
                 let area = s.confirm_area();
                 let pixels = area.and_then(|r| s.crop(r));
                 if area.is_some() { self.last_region = area; }
@@ -1122,17 +1129,21 @@ impl App {
         self.cursor_timer.stop();
         let hidden = (std::mem::take(&mut self.hidden_for_capture), std::mem::take(&mut self.ocr_hidden));
         self.show_hidden(hidden);
+        let mut still_visible = 0;
         for (win, _) in self.overlays.drain(..) {
             let _ = win.hide();
+            if win.window().is_visible() { still_visible += 1; }
             // Do not keep frozen screen pixels around between captures.
             win.set_shot(Image::default());
             win.set_has_selection(false);
             win.set_has_hover(false);
         }
         self.session = None;
+        diag::end(still_visible);
     }
     /// Esc / right click: put back whatever was on screen before the hotkey.
     fn cancel_capture(&mut self) {
+        diag::outcome("cancel");
         self.end_capture();
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
     }
@@ -1140,6 +1151,7 @@ impl App {
     /// Overlay "pin": the selected screen pixels become a pin at the same place.
     fn pin_selection(&mut self) {
         let Some(s) = self.session.as_ref() else { return };
+        diag::outcome("pin");
         let area = s.confirm_area();
         let pixels = area.and_then(|r| s.crop(r));
         if area.is_some() { self.last_region = area; }
@@ -1152,6 +1164,7 @@ impl App {
     /// Leave the frozen overlay, keep the selected region, and stitch live captures of it
     /// while the user scrolls the real window underneath.
     fn start_long_shot(&mut self) {
+        diag::outcome("long");
         if self.long.is_some() { return; }
         let Some(s) = self.session.as_ref() else { return };
         let Some(region) = s.selection else { return };
@@ -1353,6 +1366,7 @@ impl App {
     /// through the same Rust render and delivery path (the editor stays hidden for a copy).
     fn finish_capture(&mut self, then: Option<Delivery>) {
         let Some(s) = self.session.as_ref() else { return };
+        diag::outcome("done");
         let area = s.confirm_area();
         let pixels = area.and_then(|r| s.crop(r));
         if area.is_some() { self.last_region = area; }
@@ -1372,7 +1386,7 @@ impl App {
         if let Some(h) = self.hotkey.take() { h.stop(); }
         let key = self.settings.hotkey;
         match anshot_platform_windows::spawn_hotkey(key, || {
-            let _ = slint::invoke_from_event_loop(|| { with(|a| a.begin_capture()); });
+            let _ = slint::invoke_from_event_loop(|| { with(|a| a.begin_capture("hotkey")); });
         }) {
             Ok(h) => { self.hotkey = Some(h); self.push_settings(); true }
             Err(_) => {
@@ -1570,7 +1584,7 @@ fn command(cmd: &str) {
         "paste" => spawn_open(platform::read_clipboard(), Some(t("剪贴板图片.png").into())),
         // The app never connects anywhere: the default browser opens the release page.
         "check-update" => { let _ = std::process::Command::new("explorer").arg(RELEASES_URL).spawn(); }
-        "capture" => { with(|a| a.begin_capture()); }
+        "capture" => { with(|a| a.begin_capture("editor")); }
         "save-dir" => {
             if let Some(dir) = picker(platform::pick_folder) { with(|a| { a.settings.save_dir = Some(dir); a.persist(); }); }
         }
@@ -1680,7 +1694,7 @@ fn main() -> Result<(), slint::PlatformError> {
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
         let tray = Tray::new()?;
-        tray.on_capture(|| { with(|a| a.begin_capture()); });
+        tray.on_capture(|| { with(|a| a.begin_capture("tray")); });
         tray.on_delayed_capture(|| { with(|a| a.start_countdown()); });
         tray.on_open_image(|| { with(|a| a.show_editor()); command("open"); });
         tray.on_show_editor(|| { with(|a| a.show_editor()); });
@@ -1795,6 +1809,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     with(|a| {
         apply_language(&a.settings.language);
+        diag::header();
         // "Clear on exit" also runs at start: a crash, a kill or a log-off may skip the exit path.
         if a.settings.clear_on_exit && a.resident { if let Some(h) = a.history() { h.clear(); } }
         a.apply_privacy(); a.push_settings(); a.refresh();
@@ -1937,6 +1952,10 @@ fn hwnd_of(w: &slint::Window) -> Option<isize> {
 /// One pooled overlay window for monitor `i`, with its callbacks wired.
 fn new_overlay(i: usize) -> Option<CaptureOverlay> {
     let win = CaptureOverlay::new().ok()?;
+    // Diagnostics only: when the overlay has really drawn a frame (not available everywhere).
+    if diag::enabled() {
+        let _ = win.window().set_rendering_notifier(|state, _| { if matches!(state, slint::RenderingState::AfterRendering) { diag::frame_rendered(); } });
+    }
     win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
     win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
     win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });

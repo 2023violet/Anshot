@@ -24,6 +24,11 @@ ignore = [
     # (include_bytes!), never user-supplied fonts. Revisit if any vulnerability
     # advisory names ttf-parser/ab_glyph, or if user fonts are ever accepted.
     { id = "RUSTSEC-2026-0192", reason = "unmaintained only; parses the bundled font, never user input" },
+    # pin-utils 0.1.1 is declared unmaintained (2026-11); no safe upgrade exists. It
+    # arrives only through spin_on in slint-build (build script) and slint-macros
+    # (proc-macro), so it runs at compile time and is not part of the shipped exe.
+    # Revisit when Slint drops spin_on, or if any vulnerability advisory names it.
+    { id = "RUSTSEC-2026-0441", reason = "unmaintained only; build-time (Slint build script and proc-macro), not shipped" },
 ]
 
 [licenses]
