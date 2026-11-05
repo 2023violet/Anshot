@@ -2,8 +2,15 @@
 
 ## 0.5.1 — 未发布 / unreleased
 
+### 新增 / Added
+- 截图诊断（默认关闭）：只有设置环境变量 `ANSHOT_DIAGNOSE_DIR` 时，安截才在该文件夹写 `anshot-diag.txt`，记录每次截图各阶段的耗时，以及显示器尺寸、缩放、HDR 状态、色深、显卡和 Windows 版本；不记录画面、窗口标题、路径或文字。配套的 `tools/diagnose/anshot-diagnose.ps1` 可在出问题的电脑上一键运行。/ Capture diagnostics, off by default: only with `ANSHOT_DIAGNOSE_DIR` set does Anshot write `anshot-diag.txt` there (timings of each capture step and display facts such as size, scaling, HDR, colour depth, adapter and Windows build; never pixels, window titles, paths or text). `tools/diagnose/anshot-diagnose.ps1` runs it on an affected machine.
+
 ### 修复 / Fixed
 - 截图历史超过 200 张时，张数上限和保留天数都没有完全执行：清理只看了历史窗口列出的最新 200 张。现在清理会检查文件夹里安截的全部历史图片（不碰其他文件）。**升级后第一次保存或启动时，过去本应删除却遗留下来的旧图片会被一次性删除**，删除范围以你当前的“截图历史”和“历史保留”设置为准。/ With more than 200 history images, neither the count limit nor the age limit was fully applied: clean-up only looked at the newest 200. It now covers every Anshot history image in the folder (nothing else). **After upgrading, old images that should already have been removed are deleted in one go** the first time Anshot saves to history or starts, as your current history settings say.
+- 依赖审计：`pin-utils`（Slint 构建期依赖，不进入程序）被标为无人维护，暂无替代版本，已按规则记录忽略原因。/ Dependency audit: `pin-utils`, a build-time dependency of Slint not shipped in the program, is now unmaintained; the exception is recorded with its reason.
+
+### 已知问题 / Known issues
+- Windows 11 上有启动截图时短暂黑屏、显示闪烁的反馈，原因还在排查，本版没有修复。截图选择模式下选区以外会主动变暗，这是界面设计，不代表系统亮度被修改。/ Reports from Windows 11 of a brief black screen and flicker when a capture starts are still under investigation and not fixed in this version. Outside the selection the capture overlay deliberately dims the screen; the system brightness is not changed.
 
 ## 0.5.0 — 2026-11-02
 

@@ -4,7 +4,7 @@
 
 **Screenshot, annotate, redact, share on Windows — what you cover is really gone from the export.**
 
-> Version 0.5.0, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
+> Version 0.5.1, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
 > "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese).
 
 Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover private parts with a solid block or a **safe mosaic**, then copy or save in one key. Covered areas are replaced by pixels that carry **no information from the original**, and the export is a freshly encoded PNG without source metadata. What the canvas shows is exactly what is exported.
@@ -21,14 +21,14 @@ From [Releases](https://github.com/2023violet/Anshot/releases):
 
 | File | What it is |
 |---|---|
-| `Anshot-0.5.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
-| `Anshot-0.5.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
+| `Anshot-0.5.1-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
+| `Anshot-0.5.1-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
 | `SHA256SUMS.txt` / `release-metadata.json` | Checksums and build facts (commit, toolchain, an explicit "unsigned" statement) |
 
 **About "Windows protected your PC".** The app is not signed with a paid certificate, so SmartScreen may block the first start. Make sure the file comes from this repository's Releases and that its checksum matches, then choose "More info → Run anyway":
 
 ```powershell
-Get-FileHash .\Anshot-0.5.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
+Get-FileHash .\Anshot-0.5.1-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 ```
 
 **Upgrade.** Run the newer installer over the old one; it closes a running copy first.
@@ -123,6 +123,8 @@ All machine checks were run by the development agent with real OS mouse and keyb
 - a 1-hour run of repeated captures.
 
 Measured numbers (0.5.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.3 MB, program 34.6 MB; start-up 673–1053 ms; hotkey to overlay 65–75 ms from the tray; opening a 6000×4000 image 860 ms, copying it 1519 ms, peak memory 587 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Load on the machine varied a lot that day: measured back to back, both 0.4.0 and 0.5.0 had 2–3 s start-ups, both copied in 1.5–1.8 s, and peak memory was the same. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
+
+**Windows 11:** there are reports of a brief black screen and flicker when a capture starts; the cause is under investigation and not fixed. Outside the selection the capture overlay deliberately dims the screen; system brightness is not changed. To help diagnose it, see [`tools/diagnose`](tools/diagnose/README.md).
 
 See the [QA report](ui-design/07_UI_QA_REPORT.md) (Chinese).
 
