@@ -186,3 +186,11 @@
 - M4 / M5 自动取色与窗口外框在 M1 的渲染模块中实现。
 - M6 e2e `beautify_e2e.ps1` 与 `check_frame.py`（1f798a7、6de59d8，含 e2e 发现的焦点问题修复）；代理安全与代码审查的修复（aa03343）；版本 0.5.0（dc3cfc8）。
 候选构建（提交 dc3cfc86aad9828d8d189a4e590da9f9d755a366，打包时工作区干净）：exe `290570171276279192ff601b4586cf204295e196fa60a61f2529abfb871d8d52`（36,283,392 字节），setup `0ca2063c338cf4005acefdd7a661a6037946a22dc83ecf83c1624649e2be88ad`（17,104,021 字节），zip `a32b330a9d740a87477758ec67307d7a93d27342689adbec443bee7483301d57`。测试结果见 07 §11。用户 2026-11-02 说“发布”后按此构建发布。
+
+## B11 — 0.5.1 维护版（代理实施，2026-11-05；用户目标授权）
+按路线评审修订版（NEXT-02、NEXT-03）实施：
+- 4070582 截屏接口比较 spike 与黑屏探测（不进产品），报告 `docs/decisions/CAPTURE_API_COMPARISON.md`；ebe596c 收窄 WGC 黄框结论。
+- 8920ceb 历史清理遍历全部条目，不再受历史窗口 200 条显示上限影响。
+- ba9fe9f `diag.rs`（`ANSHOT_DIAGNOSE_DIR` 才写，只有耗时与显示器信息）、平台 `display_facts` / `windows_build`、`tools/diagnose/anshot-diagnose.ps1`。
+- 7aea42c 版本 0.5.1 与发布说明（已知问题）；7912413 代理审查修复。
+构建：提交 791241316a49fe7c2a011c44fc09048ea0158ff0，exe `dbf6c1bb9b1e4dc23be955241ba41a4763dc0e90b4dfc6dada86a73a9cf0f63c`。测试结果见 07 §12。

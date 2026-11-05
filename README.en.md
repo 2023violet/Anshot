@@ -122,7 +122,7 @@ All machine checks were run by the development agent with real OS mouse and keyb
 - install / upgrade / uninstall;
 - a 1-hour run of repeated captures.
 
-Measured numbers (0.5.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer 16.3 MB, program 34.6 MB; start-up 673–1053 ms; hotkey to overlay 65–75 ms from the tray; opening a 6000×4000 image 860 ms, copying it 1519 ms, peak memory 587 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Load on the machine varied a lot that day: measured back to back, both 0.4.0 and 0.5.0 had 2–3 s start-ups, both copied in 1.5–1.8 s, and peak memory was the same. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
+Measured numbers (0.5.1, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer and program sizes are on the release page; start-up 528–630 ms; hotkey to overlay 41 ms from the tray; opening a 6000×4000 image 806 ms, copying it 1165 ms, peak memory 593 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Machine load differed between measuring days, so not every difference between versions is the program's. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
 
 **Windows 11:** there are reports of a brief black screen and flicker when a capture starts; the cause is under investigation and not fixed. Outside the selection the capture overlay deliberately dims the screen; system brightness is not changed. To help diagnose it, see [`tools/diagnose`](tools/diagnose/README.md).
 

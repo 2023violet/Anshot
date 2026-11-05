@@ -1,0 +1,9 @@
+EXE sha256=dbf6c1bb9b1e4dc23be955241ba41a4763dc0e90b4dfc6dada86a73a9cf0f63c path=Anshot.exe
+STARTUP_MS runs=630,540,528
+HOTKEY_TO_OVERLAY_MS mode=tray runs=41,41,41
+HOTKEY_TO_OVERLAY_MS mode=editor_open runs=120,110,70
+OPEN_24MP_MS from_launch=806
+COPY_24MP_MS ctrl_c_to_clipboard=1165
+COPY_24MP size=6000x4000
+MEMORY_24MP peak_working_set_mb=593
+NETWORK endpoints_seen=0 
