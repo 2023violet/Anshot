@@ -39,8 +39,16 @@ impl History {
         Ok(path)
     }
 
-    /// Our entries, newest first. Anything else in the folder is ignored and left alone.
+    /// Our entries for the history dialog, newest first, at most `MAX_LISTED`. Anything else
+    /// in the folder is ignored and left alone.
     pub fn list(&self) -> Vec<Entry> {
+        let mut v = self.all();
+        v.truncate(MAX_LISTED);
+        v
+    }
+    /// Every entry of ours, newest first. The limits apply to all of them: more than the
+    /// dialog shows can be on disk (a second instance, copied files, 0.2.0 leftovers).
+    fn all(&self) -> Vec<Entry> {
         let Ok(rd) = std::fs::read_dir(&self.dir) else { return Vec::new() };
         let mut v: Vec<Entry> = rd.filter_map(Result::ok).filter_map(|d| {
             let name = d.file_name().into_string().ok()?;
@@ -48,29 +56,21 @@ impl History {
             d.file_type().ok()?.is_file().then(|| Entry { path: d.path(), millis: ms })
         }).collect();
         v.sort_by(|a, b| b.millis.cmp(&a.millis).then_with(|| b.path.cmp(&a.path)));
-        v.truncate(MAX_LISTED);
         v
     }
 
+    /// Keep only the newest `limit` entries. One pass: a locked file is skipped, not retried.
     pub fn prune(&self, limit: usize) {
-        // Repeat so entries beyond the listing cap are pruned too.
-        loop {
-            let list = self.list();
-            let extra: Vec<Entry> = list.into_iter().skip(limit).collect();
-            if extra.is_empty() { break; }
-            let removed = extra.iter().filter(|e| std::fs::remove_file(&e.path).is_ok()).count();
-            // A locked or read-only file must not keep this loop (on the UI thread) spinning.
-            if removed == 0 || limit >= MAX_LISTED { break; }
-        }
+        for e in self.all().into_iter().skip(limit) { let _ = std::fs::remove_file(&e.path); }
     }
     pub fn clear(&self) { self.prune(0); }
     /// Remove entries older than `days` days (0 = keep), judged by the time in the name.
     pub fn prune_age(&self, days: u32, now_ms: u64) {
         if days == 0 { return; }
         let cutoff = now_ms.saturating_sub(u64::from(days) * 86_400_000);
-        for e in self.list().into_iter().filter(|e| e.millis < cutoff) { let _ = std::fs::remove_file(&e.path); }
+        for e in self.all().into_iter().filter(|e| e.millis < cutoff) { let _ = std::fs::remove_file(&e.path); }
     }
-    pub fn remove(&self, e: &Entry) { if self.list().contains(e) { let _ = std::fs::remove_file(&e.path); } }
+    pub fn remove(&self, e: &Entry) { if self.all().contains(e) { let _ = std::fs::remove_file(&e.path); } }
 
     /// Bounded read; the bytes still go through Core intake before use.
     pub fn read(&self, e: &Entry) -> Result<Vec<u8>, String> {
@@ -134,6 +134,75 @@ mod tests {
         h.prune_age(1, now);
         assert_eq!(h.list().len(), 1);
         h.clear();
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// `n` entries one minute apart ending at `newest`, alternating the 0.2.0 and current
+    /// name forms, plus a file that is not ours.
+    fn filled(tag: &str, n: u64, newest: u64) -> (PathBuf, History) {
+        let dir = tmp(tag);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("keep-me.png"), b"not ours").unwrap();
+        for i in 0..n {
+            let ms = newest - i * 60_000;
+            let name = if i % 2 == 0 { format!("anshot-{ms:013}-000.png") } else { format!("sr-{ms:013}-000.png") };
+            std::fs::write(dir.join(name), [0u8]).unwrap();
+        }
+        (dir.clone(), History::at(dir))
+    }
+    fn ours(dir: &std::path::Path) -> Vec<u64> {
+        let mut v: Vec<u64> = std::fs::read_dir(dir).unwrap().filter_map(|d| {
+            let n = d.ok()?.file_name().into_string().ok()?;
+            n.strip_prefix(PREFIX).or_else(|| n.strip_prefix(PREFIX_020))?.split('-').next()?.parse().ok()
+        }).collect();
+        v.sort_unstable_by(|a, b| b.cmp(a));
+        v
+    }
+
+    #[test]
+    fn the_count_limit_holds_past_the_listing_cap() {
+        let now = 1_800_000_000_000u64;
+        for n in [201u64, 250, 500] {
+            let (dir, h) = filled(&format!("cap{n}"), n, now);
+            h.prune(200);
+            let left = ours(&dir);
+            assert_eq!(left.len(), 200, "{n} entries, limit 200");
+            assert_eq!((left[0], left[199]), (now, now - 199 * 60_000), "the newest are kept");
+            h.prune(50);
+            assert_eq!(ours(&dir).len(), 50);
+            assert!(dir.join("keep-me.png").exists());
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn the_age_limit_reaches_entries_past_the_listing_cap() {
+        // 500 entries, one minute apart: the oldest 300 are past a 1-day limit only if the
+        // clock says so; put "now" so that exactly the newest 10 are inside the last day.
+        let newest = 1_800_000_000_000u64;
+        let (dir, h) = filled("age500", 500, newest);
+        let now = newest - 9 * 60_000 + 86_400_000 - 1;
+        h.prune_age(1, now);
+        assert_eq!(ours(&dir).len(), 10);
+        assert!(dir.join("keep-me.png").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+        // 201 entries: only the very oldest (the 201st) is past the limit.
+        let (dir, h) = filled("age201", 201, newest);
+        h.prune_age(1, newest - 199 * 60_000 + 86_400_000 - 1);
+        let left = ours(&dir);
+        assert_eq!(left.len(), 200);
+        assert_eq!(*left.last().unwrap(), newest - 199 * 60_000);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn clear_and_the_listing_still_work_past_the_cap() {
+        let (dir, h) = filled("clear500", 500, 1_800_000_000_000);
+        assert_eq!(h.list().len(), MAX_LISTED, "the dialog still lists at most the cap");
+        h.clear();
+        assert!(ours(&dir).is_empty());
+        assert!(dir.join("keep-me.png").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

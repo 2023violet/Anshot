@@ -1,5 +1,10 @@
 # 更新日志 / Changelog
 
+## 0.5.1 — 未发布 / unreleased
+
+### 修复 / Fixed
+- 截图历史超过 200 张时，张数上限和保留天数都没有完全执行：清理只看了历史窗口列出的最新 200 张。现在清理会检查文件夹里安截的全部历史图片（不碰其他文件）。**升级后第一次保存或启动时，过去本应删除却遗留下来的旧图片会被一次性删除**，删除范围以你当前的“截图历史”和“历史保留”设置为准。/ With more than 200 history images, neither the count limit nor the age limit was fully applied: clean-up only looked at the newest 200. It now covers every Anshot history image in the folder (nothing else). **After upgrading, old images that should already have been removed are deleted in one go** the first time Anshot saves to history or starts, as your current history settings say.
+
 ## 0.5.0 — 2026-11-02
 
 ### 新增 / Added
