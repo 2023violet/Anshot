@@ -23,7 +23,7 @@
 - 如果退出截图模式后仍有显示异常，请先完全退出安截（托盘图标右键 → 退出），再通过 GitHub Issues 提供 Windows 版本、显示器缩放比例、HDR 状态和复现步骤；可以附上诊断包生成的两个文本文件。无需提供含个人信息的屏幕截图。
 - 其余限制同 0.5.0：未做真人可用性测试；系统缩放、多显示器、HDR、Windows 11、讲述人未验证；未签名、无自动更新；名称未做商标清查。
 
-完整说明见 README 与 [CHANGELOG](../CHANGELOG.md)。
+构建：提交 7912413（`release-metadata.json`）；之后的提交只改文档和测试证据。完整说明见 README 与 [CHANGELOG](../CHANGELOG.md)。
 
 ---
 
@@ -52,4 +52,4 @@
 - If the display still looks wrong after leaving the capture overlay, exit Anshot completely (tray icon → Exit), then open a GitHub issue with your Windows version, display scaling, HDR state and steps; you can attach the two text files from the diagnostic kit. Screenshots with personal information are not needed.
 - Other limits are as in 0.5.0: no human usability testing; scaling, multi-monitor, HDR, Windows 11 and Narrator are not verified; unsigned, no auto-update; the name has not been trademark-cleared.
 
-See the README and the [CHANGELOG](../CHANGELOG.md).
+Built from commit 7912413 (`release-metadata.json`); later commits change only docs and test evidence. See the README and the [CHANGELOG](../CHANGELOG.md).

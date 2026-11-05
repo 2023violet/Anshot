@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-## 0.5.1 — 未发布 / unreleased
+## 0.5.1 — 2026-11-05
 
 ### 新增 / Added
 - 截图诊断（默认关闭）：只有设置环境变量 `ANSHOT_DIAGNOSE_DIR` 时，安截才在该文件夹写 `anshot-diag.txt`，记录每次截图各阶段的耗时，以及显示器尺寸、缩放、HDR 状态、色深、显卡和 Windows 版本；不记录画面、窗口标题、路径或文字。配套的 `tools/diagnose/anshot-diagnose.ps1` 可在出问题的电脑上一键运行。/ Capture diagnostics, off by default: only with `ANSHOT_DIAGNOSE_DIR` set does Anshot write `anshot-diag.txt` there (timings of each capture step and display facts such as size, scaling, HDR, colour depth, adapter and Windows build; never pixels, window titles, paths or text). `tools/diagnose/anshot-diagnose.ps1` runs it on an affected machine.

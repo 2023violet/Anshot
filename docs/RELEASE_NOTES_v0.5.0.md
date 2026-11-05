@@ -23,6 +23,13 @@
 - **设置**：常规 → 新截图，可按上次的样式自动美化（默认关）。外框文字不会被记住，也不写进设置。
 - **修复**：pulldown-cmark 升到 0.13.6（两个安全公告只涉及安截不使用的 Markdown 维基链接选项）。
 
+## 已知问题与兼容性说明（2026-11-05 补充）
+- Anshot v0.5.0 已在 Windows 10、单显示器、100% 缩放环境完成主要实机验证。
+- 目前收到 Windows 11 环境下启动截图时短暂黑屏、显示闪烁的反馈，问题正在排查，尚未确定根因。
+- 截图选择模式下，选区以外的画面会主动变暗，这是当前界面设计，不代表系统亮度设置被修改。
+- 如果退出截图模式后仍存在显示异常，建议先完全退出 Anshot，并通过 GitHub Issues 提供 Windows 版本、显示器缩放比例、HDR 状态及复现步骤。无需提供包含个人信息的屏幕截图。
+- 0.5.1 修复了截图历史超过 200 张时的清理问题，并提供截图诊断包，建议升级。
+
 ## 已知限制
 - 外框是简化的示意样式，不追求和真实系统一模一样。
 - 成品超过 2400 万像素时会先缩小留白，仍放不下就提示并不美化（复制和保存照常）。
@@ -59,6 +66,13 @@
 - **Checks read only the capture:** the check after copying or saving reads the capture area, not the background or the chrome text.
 - **Settings:** General → New captures can beautify with the last style (off by default). Window text is never remembered or written to the settings.
 - **Fixed:** pulldown-cmark 0.13.6 (two advisories about a Markdown option Anshot does not use).
+
+## Known issues and compatibility (added 2026-11-05)
+- Anshot v0.5.0 has been tested mainly on Windows 10 with one monitor at 100% scaling.
+- We have reports from Windows 11 of a brief black screen and flicker when a capture starts. The cause is still under investigation.
+- In the capture overlay, everything outside the selection is deliberately dimmed; the system brightness is not changed.
+- If the display still looks wrong after leaving the capture overlay, exit Anshot completely and open a GitHub issue with your Windows version, display scaling, HDR state and steps. Screenshots with personal information are not needed.
+- 0.5.1 fixes history clean-up beyond 200 images and adds a capture diagnostic kit; upgrading is recommended.
 
 ## Known limits
 - The window chrome is a simplified sketch, not a faithful copy of any system.
