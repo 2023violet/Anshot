@@ -1,0 +1,30 @@
+EXE sha256=6654003366464f29ab5ad87e68191447ffc38b3e0780dc5962f713a9c9f6a49d path=anshot.exe
+COVER 遮挡所选（6）=True
+COPY size=900x560
+STEP1 notice=已加入第 1 步 共 1 步 covered=True
+VERDICT editor_adds_a_step=PASS
+STEP2 notice=已加入第 2 步 共 2 步 title_kept=True
+VERDICT overlay_adds_a_raw_step=PASS
+BURST on=连拍已打开 截图选好区域后按 Enter 直接加入步骤
+STEP3 notice=已加入第 3 步 共 3 步 title_kept=True
+VERDICT burst_enter_adds_a_step=PASS
+PANEL rows=3 unedited=2
+MOVE True
+BACKDROP True
+CAPTION True
+JOIN True
+TITLE 步骤图 3 步.png — 安截 Anshot
+COPY size=932x1194
+FIND edited=FOUND 16 312 toolbar=FOUND 336 76 burst=FOUND 346 948 OPAQUE yes
+VERDICT joined_keeps_each_step_and_the_order=PASS
+AUTO 
+LIMIT notice=最多 20 步 先拼合或删除一些步骤 count=20 / 20 步
+VERDICT twenty_steps_at_most=PASS
+EDIT True
+UPDATE True
+STEPEDIT banner=正在编辑第 1 步 updated=已更新第 1 步 共 20 步 count=20 / 20 步
+VERDICT edit_step_updates_in_place=PASS
+DISK history=2 ABSENT 3 style=steps_style=0,1,1,1,2,0
+VERDICT steps_stay_in_memory=PASS
+RESTART empty=还没有步骤
+VERDICT restart_has_no_steps=PASS

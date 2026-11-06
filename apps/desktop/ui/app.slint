@@ -538,13 +538,14 @@ export component AppWindow inherits Window {
                                                 Image { source: row.thumb; image-fit: contain; width: parent.width; height: parent.height; accessible-role: none; } } }
                                         VerticalLayout { spacing: 4px; horizontal-stretch: 1;
                                             Rectangle { height: 24px; border-radius: 6px; background: Theme.bg-card; border-width: 1px; border-color: Theme.line-strong;
-                                                TextInput { x: 6px; width: parent.width - 12px; height: parent.height; vertical-alignment: center; font-size: 12px; color: Theme.ink; single-line: true;
+                                                cap := TextInput { x: 6px; width: parent.width - 12px; height: parent.height; vertical-alignment: center; font-size: 12px; color: Theme.ink; single-line: true;
                                                     text: row.caption; accessible-label: @tr("第 {} 步的说明", i + 1);
                                                     edited => { root.step-caption-edited(row.id, self.text); }
                                                     accepted => { keys.focus(); }
                                                     key-pressed(e) => { if e.text == Key.Escape { keys.focus(); return accept; } reject }
                                                 }
-                                                if row.caption == "": Text { x: 6px; text: @tr("说明（可留空）"); font-size: 12px; color: Theme.mute; accessible-role: none; }
+                                                // The typed text, not the row: rows are rebuilt only when steps change.
+                                                if cap.text == "": Text { x: 6px; text: @tr("说明（可留空）"); font-size: 12px; color: Theme.mute; accessible-role: none; }
                                             }
                                             HorizontalLayout { spacing: 2px; height: 20px;
                                                 if row.raw: Text { text: @tr("未编辑"); font-size: 11px; color: Theme.primary; vertical-alignment: center; }
@@ -568,7 +569,9 @@ export component AppWindow inherits Window {
                         HorizontalLayout { spacing: 8px;
                             Label { text: @tr("间距"); width: 40px; }
                             VerticalLayout { alignment: center; Segmented { options: [@tr("小"), @tr("中"), @tr("大")]; selected: root.steps-gap; picked(i) => { root.command("steps-gap-" + i); } } }
-                            Label { text: @tr("背景"); width: 32px; }
+                        }
+                        HorizontalLayout { spacing: 8px;
+                            Label { text: @tr("背景"); width: 40px; }
                             VerticalLayout { alignment: center; Segmented { options: [@tr("白"), @tr("浅"), @tr("深")]; selected: root.steps-bg; picked(i) => { root.command("steps-bg-" + i); } } }
                         }
                         HorizontalLayout { spacing: 8px;

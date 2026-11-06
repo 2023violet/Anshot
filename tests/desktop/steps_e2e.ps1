@@ -223,6 +223,19 @@ Start-Sleep -Milliseconds 800
 $count = Wait-Name $h '^20 / 20 步' 3
 Log "LIMIT notice=$full count=$count"
 Verdict 'twenty_steps_at_most' ($full -ne '' -and $count -ne '')
+
+# ---- 5b. edit a step: it opens with a banner, and "update" replaces it in place ----
+Log "EDIT $(Invoke-Named $h '编辑 1')"
+$banner = Wait-Name $h '^正在编辑第 1 步' 10
+Start-Sleep -Milliseconds 800
+Shot $h 'steps-3-editing.png'
+Log "UPDATE $(Invoke-Named $h '更新这一步')"
+$updated = Wait-Name $h '^已更新第 1 步' 8
+Focus-Editor
+Key 0x4A -Ctrl -Shift
+$still = Wait-Name $h '^20 / 20 步' 5
+Log "STEPEDIT banner=$banner updated=$updated count=$still"
+Verdict 'edit_step_updates_in_place' ($banner -ne '' -and $updated -ne '' -and $still -ne '')
 if (-not $p.HasExited) { $p.Kill() }
 Start-Sleep -Milliseconds 800
 
@@ -239,6 +252,8 @@ Start-App $doc
 Focus-Editor
 Key 0x4A -Ctrl -Shift
 $empty = Wait-Name $h '^还没有步骤' 5
+Start-Sleep -Milliseconds 600
+Shot $h 'steps-4-empty.png'
 Log "RESTART empty=$empty"
 Verdict 'restart_has_no_steps' ($empty -ne '')
 } finally {
