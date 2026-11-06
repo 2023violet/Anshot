@@ -21,6 +21,7 @@ mod messages;
 mod platform;
 mod reveal;
 mod settings;
+mod steps;
 mod stitch;
 
 use canvas::Zoom;

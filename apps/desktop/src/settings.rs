@@ -40,6 +40,8 @@ pub struct Settings {
     pub frame_style: crate::beautify::Style,
     /// Say once per run when a display is in HDR (captures can misbehave there).
     pub hdr_notice: bool,
+    /// The last step image layout (never the captions).
+    pub steps_style: anshot_render::StepsStyle,
 }
 
 /// Choices offered for `language`.
@@ -61,7 +63,7 @@ pub const RECENT_COLORS: usize = 6;
 impl Default for Settings {
     fn default() -> Self { Self { hotkey: Hotkey::CtrlShiftA, hide_after_copy: true, save_dir: None, recent_colors: Vec::new(), history_limit: 50, delay_secs: 3, include_cursor: false,
         pad_redactions: true, warn_unredacted: true, check_on_share: true, clipboard_private: true, history_days: 0, clear_on_exit: false, language: "auto".into(),
-        frame_default: false, frame_style: crate::beautify::Style::default(), hdr_notice: true } }
+        frame_default: false, frame_style: crate::beautify::Style::default(), hdr_notice: true, steps_style: anshot_render::StepsStyle::default() } }
 }
 
 impl Settings {
@@ -88,6 +90,7 @@ impl Settings {
                 ("history_days", v) => if let Some(n) = v.parse().ok().filter(|n| HISTORY_DAYS.contains(n)) { s.history_days = n; },
                 ("frame_default", v) => if let Ok(b) = v.parse() { s.frame_default = b; },
                 ("hdr_notice", v) => if let Ok(b) = v.parse() { s.hdr_notice = b; },
+                ("steps_style", v) => if let Some(st) = crate::steps::parse_style(v) { s.steps_style = st; },
                 ("frame_style", v) => if let Some(f) = crate::beautify::Style::parse(v) { s.frame_style = f; },
                 ("recent_colors", v) => s.recent_colors = v.split(',').filter_map(crate::color::parse_hex).take(RECENT_COLORS).collect(),
                 _ => {}
@@ -97,9 +100,9 @@ impl Settings {
     }
     pub fn render(&self) -> String {
         let recent: Vec<String> = self.recent_colors.iter().map(|c| crate::color::to_hex(*c)).collect();
-        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\ncheck_on_share={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\nframe_default={}\nframe_style={}\nhdr_notice={}\n", self.hotkey.label(), self.hide_after_copy,
+        format!("hotkey={}\nhide_after_copy={}\nsave_dir={}\nrecent_colors={}\nhistory_limit={}\ndelay={}\ninclude_cursor={}\npad_redactions={}\nwarn_unredacted={}\ncheck_on_share={}\nclipboard_private={}\nhistory_days={}\nclear_on_exit={}\nlanguage={}\nframe_default={}\nframe_style={}\nhdr_notice={}\nsteps_style={}\n", self.hotkey.label(), self.hide_after_copy,
             self.save_dir.as_ref().map(|p| p.display().to_string()).unwrap_or_default(), recent.join(","), self.history_limit, self.delay_secs, self.include_cursor,
-            self.pad_redactions, self.warn_unredacted, self.check_on_share, self.clipboard_private, self.history_days, self.clear_on_exit, self.language, self.frame_default, self.frame_style.render(), self.hdr_notice)
+            self.pad_redactions, self.warn_unredacted, self.check_on_share, self.clipboard_private, self.history_days, self.clear_on_exit, self.language, self.frame_default, self.frame_style.render(), self.hdr_notice, crate::steps::render_style(&self.steps_style))
     }
     fn file() -> Option<PathBuf> {
         let dir = std::env::var_os("ANSHOT_SETTINGS_DIR").map(PathBuf::from)
@@ -129,11 +132,12 @@ mod tests {
     fn round_trips_and_ignores_unknown_or_bad_values() {
         let mut s = Settings { hotkey: Hotkey::PrintScreen, hide_after_copy: false, save_dir: Some(PathBuf::from(r"D:\截图")), recent_colors: Vec::new(), history_limit: 200, delay_secs: 10, include_cursor: true,
             pad_redactions: false, warn_unredacted: false, check_on_share: false, clipboard_private: false, history_days: 7, clear_on_exit: true, language: "en".into(),
-            frame_default: true, frame_style: crate::beautify::Style { background: 8, padding: 1, radius: 0, shadow: 3, ratio: 4, chrome: 2 }, hdr_notice: false };
+            frame_default: true, frame_style: crate::beautify::Style { background: 8, padding: 1, radius: 0, shadow: 3, ratio: 4, chrome: 2 }, hdr_notice: false,
+            steps_style: anshot_render::StepsStyle { arrangement: anshot_render::Arrangement::Grid, gap: anshot_render::Gap::Small, badges: false, captions: false, backdrop: anshot_render::Backdrop::Light, uniform: true } };
         for c in [[1, 2, 3, 255], [4, 5, 6, 255], [1, 2, 3, 255]] { s.remember_color(c); }
         assert_eq!(s.recent_colors, vec![[1, 2, 3, 255], [4, 5, 6, 255]]);
         assert_eq!(Settings::parse(&s.render()), s);
-        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\nlanguage=fr\nframe_default=1\nframe_style=0,0,0,0,9,0\n");
+        let odd = Settings::parse("hotkey=Ctrl+Q\nhide_after_copy=maybe\nnoise\nfoo=bar\nhistory_limit=7\ndelay=4\ninclude_cursor=yes\nhistory_days=3\npad_redactions=maybe\nlanguage=fr\nframe_default=1\nframe_style=0,0,0,0,9,0\nsteps_style=0,9,1,1,0,0\n");
         assert_eq!(odd, Settings::default());
     }
 }
