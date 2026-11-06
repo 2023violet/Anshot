@@ -1,0 +1,56 @@
+EXE sha256=b9be43bdb3c5e8edda23efe8c7f86cb92fdcf1ba6df0db938507ded03a978850 path=Anshot.exe
+CHECK head=发现 6 处可能的隐私内容 seconds=0.9
+CHECK missing= rows=6
+VERDICT check_finds_all=PASS
+COPY size=900x560
+SAME_BEFORE SAME diff=0
+UNTICK ip=True
+APPLY 遮挡所选（5）=True
+COPY size=900x560
+REVIEW covered=['card', 'email', 'id', 'key', 'phone'] problems=[] stray_pixels=0 PASS
+VERDICT check_covers_ticked_only=PASS
+COPY size=900x560
+SAME_UNDONE SAME diff=0
+VERDICT check_undo_is_one_step=PASS
+DRAW box=100,372,140,392 origin=226,240 client=1180x760
+DRAW pointer_at_release=369,635 expected=369,635
+SAME button=True
+SAME list=遮挡所选（1） rows=1
+SAME apply=True
+COPY size=900x560
+REVIEW covered=['name'] problems=[] stray_pixels=0 PASS
+VERDICT same_text_covers_every_copy=PASS
+REPLACE mode=True
+REPLACE apply=True
+COPY size=900x560
+REVIEW covered=['card', 'email', 'id', 'ip', 'key', 'phone'] problems=[] stray_pixels=0 PASS
+REPLACE after_copy=已核对 6 处遮挡：成品里识别不出 这是辅助检查
+VERDICT stand_ins_do_not_warn=PASS
+REPLACE ocr_chars=97 stand_in=True leaks=
+VERDICT replace_shows_stand_ins_only=PASS
+COPY size=900x560
+AUTO warning=已复制 · 发现 5 处可能的隐私内容 这是辅助检查
+VERDICT auto_check_warns=PASS
+AUTO review=True
+AUTO apply 遮挡并重新复制（5）=True
+REVIEW covered=['card', 'email', 'id', 'key', 'phone'] problems=[] stray_pixels=0 PASS
+VERDICT auto_check_recopies_covered=PASS
+AUDIT done=已核对 5 处遮挡：成品里识别不出 这是辅助检查
+VERDICT audit_vouches_for_covers=PASS
+AUTO quiet_after=True
+DRAW box=100,372,140,392 origin=304,318 client=1180x760
+DRAW pointer_at_release=447,713 expected=447,713
+COPY size=900x560
+LEAK warning=已复制 · 发现 7 处可能的隐私内容 这是辅助检查 review=True
+LEAK same_rows=1
+VERDICT audit_reports_uncovered_copy=PASS
+SETTING tab=True
+SETTING off=True
+VERDICT autocheck_setting_saves=PASS
+SETTING copy=900x560
+VERDICT autocheck_off_is_quiet=PASS
+QUICK toast=True editor_on_screen=False
+QUICK opened=True list=遮挡并重新复制（6）
+VERDICT quick_copy_toast_opens_list=PASS
+DISK files=10 kinds=.pngx10 hits=0
+VERDICT nothing_read_is_on_disk=PASS

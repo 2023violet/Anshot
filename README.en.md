@@ -122,12 +122,12 @@ Architecture (Rust trust boundary). The UI only sends intents and shows what Rus
 All machine checks were run by the development agent with real OS mouse and keyboard input:
 - unit tests and frozen goldens;
 - 35 groups of end-to-end cases, with the clipboard read back by another process and compared pixel by pixel;
-- 14 check-before-sharing cases and 9 beautify cases on a synthetic fake-data page;
+- 14 check-before-sharing cases, 8 beautify cases and 8 step image cases on a synthetic fake-data page;
 - Chinese IME input and performance;
 - install / upgrade / uninstall;
 - a 1-hour run of repeated captures.
 
-Measured numbers (0.5.1, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer and program sizes are on the release page; start-up 528–630 ms; hotkey to overlay 41 ms from the tray; opening a 6000×4000 image 806 ms, copying it 1165 ms, peak memory 593 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Machine load differed between measuring days, so not every difference between versions is the program's. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
+Measured numbers (0.6.0, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer and program sizes are on the release page; start-up 505–523 ms; hotkey to overlay 35–40 ms from the tray; opening a 6000×4000 image 862 ms, copying it 1112 ms, peak memory 594 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Machine load differed between measuring days, so not every difference between versions is the program's. Beautifying a 4800×3200 capture takes about 0.5 s and joining ten 1080p steps about 0.7 s (render unit timing, release build).
 
 **HDR (Windows 11):** on a Windows 11 24H2 PC with an AMD Radeon 780M, captures with HDR on went black for seconds and left the screen dim; with HDR off they did not (measured by the user). The mechanism is not known and it is **not fixed**. Since 0.6.0 the capture overlay appears only once drawn, the dimming fades in, and a notice appears once when HDR is on (it can be turned off). Win+Alt+B toggles HDR; Win+Ctrl+Shift+B restores a dim screen. Outside the selection the capture overlay deliberately dims the screen; system brightness is not changed. To help diagnose it, see [`tools/diagnose`](tools/diagnose/README.md).
 

@@ -1,0 +1,9 @@
+e2e exit=0 seconds=412
+check exit=0 seconds=67
+beautify exit=0 seconds=46
+steps exit=0 seconds=87
+ime exit=0 seconds=12
+perf exit=0 seconds=26
+install exit=0 seconds=48
+soak exit=0 seconds=3609
+DONE

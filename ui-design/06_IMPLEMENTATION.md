@@ -194,3 +194,15 @@
 - ba9fe9f `diag.rs`（`ANSHOT_DIAGNOSE_DIR` 才写，只有耗时与显示器信息）、平台 `display_facts` / `windows_build`、`tools/diagnose/anshot-diagnose.ps1`。
 - 7aea42c 版本 0.5.1 与发布说明（已知问题）；7912413 代理审查修复。
 构建：提交 791241316a49fe7c2a011c44fc09048ea0158ff0，exe `dbf6c1bb9b1e4dc23be955241ba41a4763dc0e90b4dfc6dada86a73a9cf0f63c`。测试结果见 07 §12。
+
+## B12 — 0.6.0 步骤图（含 0.5.2；代理实施，2026-11-06；用户目标授权）
+按用户 2026-11-06 批准的 0.6.0 计划（M0–M6）实施，决定见 `docs/decisions/ADR_0_6_STEPS.md`：
+- 0.5.2（0221bad、0cd9e84）截图层隐身到首帧画完、遮罩渐入、HDR 提示、诊断对照组；未单独发布，并入 0.6.0。
+- M0（2d13370）PRD v0.6 修订、ADR、02 v0.6 增补流程、04 v1.5 token。
+- M1（a27e86e）`anshot-render/src/steps.rs`：`StepsStyle`、`steps_layout`、`render_steps`、`render_steps_preview`；标题行在截图上方，不缩放时逐像素保留；超过 2400 万像素整体缩小，到下限（0.25）仍放不下报错；冻结金样本 `scene-v6`。缩小用 `imageops::thumbnail`（Triangle 在 opt-level "s" 下 10 步 1080p 要 6 秒，改后 0.68 秒）。
+- M2（8675e9c）`apps/desktop/src/steps.rs`：内存里的步骤（PNG 字节、缩略图、预览替身），最多 20 步；设置 `steps_style`（不含说明）。
+- M3–M5（dc05776）三个入口、步骤栏、Rust 渲染的预览（后台线程、只渲染最新请求）、拼合、编辑这一步、连拍、托盘、退出确认、`steps_e2e.ps1` 与 `check_steps.py`。面板互斥沿用各打开点的开关，没有改成计划里的“当前面板”枚举。
+- 代理审查修复（6a50119）：失败的打开不再留下“编辑第 N 步”的关联；每步 25 MB、合计 1 亿像素、拼合文件 25 MB 的上限；渲染中的步骤计入上限；撤销删除受上限约束；未改动放回的步骤保留“未编辑”。
+- 实机 e2e 发现（e0c58b3）：说明输入框的占位文字跟着行数据而不是输入内容，输入后文字重叠；间距和背景同行在 300 px 面板里放不下。e2e 增加“编辑这一步”。
+- 版本与文档（de07b72）。
+构建：提交 de07b72c743c3ff395dd807b823b77c99ab19daf，exe `b9be43bdb3c5e8edda23efe8c7f86cb92fdcf1ba6df0db938507ded03a978850`，setup `71ddcc60f87ef27efd52f7e0a8666450b89919275e3168be1bed4730e7644457`，zip `a40d3832f72364bb06cb1620c638234b4c7cd097347af4ceb419939fc5e25575`。测试结果见 07 §13。
