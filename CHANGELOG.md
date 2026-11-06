@@ -1,5 +1,18 @@
 # 更新日志 / Changelog
 
+## 0.5.2 — 未发布 / unreleased
+
+### 改进 / Improved
+- 截图层画好之后才出现在屏幕上：窗口先“隐身”渲染，第一帧画完（最迟 300 毫秒）才显示，不会露出还没画内容的窗口。/ The capture overlay appears only once it has drawn its picture: it renders cloaked and is shown after its first frame (300 ms at the latest).
+- 选区以外的变暗改为 120 毫秒渐入，不再一下子压暗。/ The dimming outside the selection fades in over 120 ms instead of snapping on.
+
+### 新增 / Added
+- 显示器开着 HDR 时，截图后提示一次（可选“不再提示”，或在设置 → 常规关闭）：在一台 Windows 11 24H2 + AMD Radeon 780M 电脑上，开着 HDR 截图会黑屏几秒、之后屏幕偏暗；关掉 HDR 后不再出现（用户实测）。Win+Alt+B 可切换 HDR，屏幕偏暗时 Win+Ctrl+Shift+B 可恢复。/ After a capture, once per run, a notice when a display is in HDR (turn it off with "Don't show again" or in Settings → General). On a Windows 11 24H2 PC with an AMD Radeon 780M, captures with HDR on went black for seconds and left the screen dim; with HDR off they did not (measured by the user). Win+Alt+B toggles HDR; Win+Ctrl+Shift+B restores a dim screen.
+- 诊断包增加对照组（`-Groups`）：不隐身、不变暗、截图层高 1 像素，只在诊断开启时生效。/ The diagnostic kit gains comparison groups (`-Groups`): no cloak, no dimming, overlay 1 px taller; they work only with diagnostics on.
+
+### 已知问题 / Known issues
+- HDR 开启时的黑屏和偏暗：触发条件已实测（HDR），具体机制未确定；本版加了提示和诊断对照组，**没有消除问题本身**。/ Black screen and dimming with HDR on: the trigger is measured (HDR), the mechanism is not known; this version adds the notice and the comparison groups and **does not remove the problem itself**.
+
 ## 0.5.1 — 2026-11-05
 
 ### 新增 / Added

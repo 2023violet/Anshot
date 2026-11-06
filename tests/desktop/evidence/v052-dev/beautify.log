@@ -1,0 +1,35 @@
+EXE sha256=7c2c5e64790e90265f46b7912b0c3d2b2f3ae6e7de9c1fabbb5131ed12ada1b8 path=anshot.exe
+COPY size=900x560
+PLAIN SAME diff=0
+VERDICT frame_off_is_plain=PASS
+COVER 遮挡所选（6）=True
+COPY size=900x560
+PANEL shown=True
+ON True
+RATIO True
+COPY size=1252x704
+FRAME size=1252x704 plain=900x560 at=(176, 72) ratio_ok=True PASS
+REVIEW covered=['card', 'email', 'id', 'ip', 'key', 'phone'] problems=[] stray_pixels=0 PASS
+VERDICT framed_copy_keeps_the_export=PASS
+AUTO audit=已核对 6 处遮挡：成品里识别不出 这是辅助检查 found=
+VERDICT framed_check_reads_the_screenshot=PASS
+CHROME True
+TEXT True
+COPY size=1309x736
+FRAME size=1309x736 plain=900x560 at=(204, 104) ratio_ok=True PASS
+AUTO audit=已核对 6 处遮挡：成品里识别不出 这是辅助检查 found= chrome_differs=True
+VERDICT chrome_text_is_not_checked=PASS
+COPY size=1309x736
+FRAME size=1309x736 plain=900x560 at=(204, 104) ratio_ok=True PASS
+VERDICT undo_keeps_the_frame=PASS
+OFF True
+FOCUS ● fake-doc.png — 安截 Anshot|ControlType.Window
+COPY size=900x560
+OFF SAME diff=0
+VERDICT frame_off_restores_the_plain_export=PASS
+SAVED style=frame_style=0,2,2,2,3,3 files=7 text_hits=0
+VERDICT style_saved_text_not=PASS
+BIG on=True
+BIG notice=图片太大，无法美化 美化后会超过 2400 万像素；复制和保存不受影响 copy=6000x4000
+BIG style_kept=True
+VERDICT too_large_is_refused=PASS
