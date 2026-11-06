@@ -97,6 +97,7 @@ export component AppWindow inherits Window {
     in property <int> frame-ratio; in property <int> frame-chrome;
     in-out property <string> frame-text;
     in property <bool> frame-default;
+    in property <bool> hdr-notice: true;
     callback frame-text-edited(string);
     in property <bool> clipboard-private: true;
     in property <int> language-index;
@@ -570,6 +571,10 @@ export component AppWindow inherits Window {
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("新截图"); width: 84px; }
                             VerticalLayout { alignment: center; Segmented { options: [@tr("不美化"), @tr("按上次的样式美化")]; selected: root.frame-default ? 1 : 0; picked(i) => { root.command(i == 1 ? "framedef-on" : "framedef-off"); } } }
+                        }
+                        HorizontalLayout { spacing: 12px;
+                            Label { text: @tr("HDR 提示"); width: 84px; }
+                            VerticalLayout { alignment: center; Segmented { options: [@tr("提示"), @tr("不提示")]; selected: root.hdr-notice ? 0 : 1; picked(i) => { root.command(i == 0 ? "hdrnote-on" : "hdrnote-off"); } } }
                         }
                         HorizontalLayout { spacing: 12px;
                             Label { text: @tr("开机启动"); width: 84px; }

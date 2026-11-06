@@ -20,6 +20,11 @@ fn dir() -> Option<&'static PathBuf> {
 
 pub fn enabled() -> bool { dir().is_some() }
 
+/// An experiment switch (`NAME=1`), honoured only while diagnostics are on.
+pub fn switch(name: &str) -> bool { enabled() && std::env::var(name).is_ok_and(|v| v == "1") }
+
+const SWITCHES: [&str; 3] = ["ANSHOT_DIAG_NO_CLOAK", "ANSHOT_DIAG_NO_SCRIM", "ANSHOT_DIAG_OVERLAY_PAD"];
+
 fn write(line: &str) {
     let Some(d) = dir() else { return };
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(d.join("anshot-diag.txt")) {
@@ -33,8 +38,9 @@ pub fn header() {
     let displays: Vec<String> = anshot_platform_windows::display_facts().iter().map(|d| format!(
         "{}x{}@{},{} hdr={} bits={} adapter=\"{}\"", d.bounds.w, d.bounds.h, d.bounds.x, d.bounds.y,
         d.hdr.map_or("unknown", |h| if h { "on" } else { "off" }), d.bits_per_color, d.adapter.replace('"', "'"))).collect();
-    write(&format!("start version={} os=\"{}\" renderer={} displays=[{}]", env!("CARGO_PKG_VERSION"), anshot_platform_windows::windows_build(),
-        std::env::var("SLINT_BACKEND").unwrap_or_else(|_| "default".into()), displays.join("; ")));
+    let on: Vec<&str> = SWITCHES.iter().copied().filter(|s| switch(s)).collect();
+    write(&format!("start version={} os=\"{}\" renderer={} switches=[{}] displays=[{}]", env!("CARGO_PKG_VERSION"), anshot_platform_windows::windows_build(),
+        std::env::var("SLINT_BACKEND").unwrap_or_else(|_| "default".into()), on.join(","), displays.join("; ")));
 }
 
 /// A capture starts: `source` is tray, hotkey, editor or delayed.

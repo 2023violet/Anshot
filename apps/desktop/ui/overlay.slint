@@ -34,6 +34,12 @@ export component CaptureOverlay inherits Window {
     in property <string> notice;
     // The toolbar's size panel (ratios and an exact W × H) is open.
     in-out property <bool> size-open;
+    // Shown on screen (Rust sets it once the first frame is up): the dimming then fades in.
+    in property <bool> revealed: true;
+    // Diagnostics only: the dimming can be switched off for an experiment.
+    in property <bool> scrim: true;
+    property <float> dim: root.revealed && root.scrim ? 1 : 0;
+    animate dim { duration: 120ms; easing: ease-out; }
 
     callback pointer-down(length, length);
     callback pointer-move(length, length);
@@ -60,10 +66,10 @@ export component CaptureOverlay inherits Window {
 
         // Dim everything except the selection (or hovered window).
         property <Box> lit: root.has-selection ? root.selection : root.has-hover ? root.hover : { x: 0, y: 0, w: 0, h: 0 };
-        Rectangle { x: 0; y: 0; width: parent.width; height: lit.y; background: Theme.scrim; }
-        Rectangle { x: 0; y: lit.y + lit.h; width: parent.width; height: parent.height - lit.y - lit.h; background: Theme.scrim; }
-        Rectangle { x: 0; y: lit.y; width: lit.x; height: lit.h; background: Theme.scrim; }
-        Rectangle { x: lit.x + lit.w; y: lit.y; width: parent.width - lit.x - lit.w; height: lit.h; background: Theme.scrim; }
+        Rectangle { x: 0; y: 0; width: parent.width; height: lit.y; background: Theme.scrim; opacity: root.dim; }
+        Rectangle { x: 0; y: lit.y + lit.h; width: parent.width; height: parent.height - lit.y - lit.h; background: Theme.scrim; opacity: root.dim; }
+        Rectangle { x: 0; y: lit.y; width: lit.x; height: lit.h; background: Theme.scrim; opacity: root.dim; }
+        Rectangle { x: lit.x + lit.w; y: lit.y; width: parent.width - lit.x - lit.w; height: lit.h; background: Theme.scrim; opacity: root.dim; }
 
         if root.has-selection || root.has-hover: Rectangle {
             x: lit.x - 1px; y: lit.y - 1px; width: lit.w + 2px; height: lit.h + 2px; border-width: 1px; border-color: white;

@@ -1152,3 +1152,21 @@ msgstr "Finish the text first"
 
 msgid "按 Enter 完成或 Esc 取消"
 msgstr "Press Enter to finish or Esc to cancel"
+
+msgid "显示器开着 HDR"
+msgstr "A display is in HDR"
+
+msgid "截图时可能黑屏或之后偏暗 · Win+Alt+B 可关闭 HDR"
+msgstr "Captures may go black or leave the screen dim · Win+Alt+B turns HDR off"
+
+msgid "不再提示"
+msgstr "Don't show again"
+
+msgid "HDR 提示"
+msgstr "HDR notice"
+
+msgid "提示"
+msgstr "Show"
+
+msgid "不提示"
+msgstr "Don't show"

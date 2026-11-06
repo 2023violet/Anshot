@@ -14,9 +14,13 @@
 # window titles or file contents.
 #
 # Usage: right-click > Run with PowerShell, or:
-#   powershell -ExecutionPolicy Bypass -File anshot-diagnose.ps1 [-Exe <Anshot.exe>] [-Rounds 30]
+#   powershell -ExecutionPolicy Bypass -File anshot-diagnose.ps1 [-Exe <Anshot.exe>] [-Rounds 30] [-Groups default,software]
+# Groups (one variable each; the switches work only together with diagnostics):
+#   default   as shipped                       software  SLINT_BACKEND=winit-software
+#   nocloak   overlay shown before its frame    noscrim   overlay without the dimming
+#   pad       overlay 1 px taller than the display
 # Do not touch the mouse or keyboard while it runs, except when it asks you to.
-param([string] $Exe = "$env:LOCALAPPDATA\Programs\Anshot\Anshot.exe", [int] $Rounds = 30, [switch] $SkipTray, [string] $OutDir = [Environment]::GetFolderPath('Desktop'))
+param([string] $Exe = "$env:LOCALAPPDATA\Programs\Anshot\Anshot.exe", [int] $Rounds = 30, [string[]] $Groups = @('default', 'software'), [switch] $SkipTray, [string] $OutDir = [Environment]::GetFolderPath('Desktop'))
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $Exe)) { Write-Host "Anshot.exe not found at $Exe. Pass -Exe <path>." -ForegroundColor Red; exit 1 }
 if (Get-Process -Name Anshot -ErrorAction SilentlyContinue) {
@@ -87,13 +91,19 @@ $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $results = New-Object System.Collections.Generic.List[string]
 $script:app = $null
 
-function Start-Anshot([string] $renderer, [string] $file) {
+$GroupEnv = @{
+    'default' = @{}; 'software' = @{ SLINT_BACKEND = 'winit-software' }
+    'nocloak' = @{ ANSHOT_DIAG_NO_CLOAK = '1' }; 'noscrim' = @{ ANSHOT_DIAG_NO_SCRIM = '1' }; 'pad' = @{ ANSHOT_DIAG_OVERLAY_PAD = '1' }
+}
+$Groups = @($Groups | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+foreach ($g in $Groups) { if (-not $GroupEnv.ContainsKey($g)) { Write-Host "Unknown group '$g'. Use: $($GroupEnv.Keys -join ', ')" -ForegroundColor Red; exit 1 } }
+function Start-Anshot([string] $group, [string] $file) {
     $psi = New-Object System.Diagnostics.ProcessStartInfo $Exe
     $psi.UseShellExecute = $false
     $psi.EnvironmentVariables['ANSHOT_SETTINGS_DIR'] = "$work\settings"
     $psi.EnvironmentVariables['ANSHOT_HISTORY_DIR'] = "$work\history"
     $psi.EnvironmentVariables['ANSHOT_DIAGNOSE_DIR'] = $out
-    if ($renderer) { $psi.EnvironmentVariables['SLINT_BACKEND'] = $renderer }
+    foreach ($k in $GroupEnv[$group].Keys) { $psi.EnvironmentVariables[$k] = $GroupEnv[$group][$k] }
     $psi.Arguments = if ($file) { "`"$file`"" } else { '--background' }
     $p = [System.Diagnostics.Process]::Start($psi)
     $script:app = $p
@@ -136,9 +146,9 @@ Write-Host "Results go to $out" -ForegroundColor Cyan
 Write-Host 'Please do not touch the mouse or keyboard until asked.' -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 try {
-    foreach ($variant in @(@('default', ''), @('software', 'winit-software'))) {
-        Start-Anshot $variant[1] ''
-        for ($i = 1; $i -le $Rounds; $i++) { $f = One-Round "hotkey-$($variant[0])" $i; if ($i -eq 1) { Check-First $f } }
+    foreach ($group in $Groups) {
+        Start-Anshot $group ''
+        for ($i = 1; $i -le $Rounds; $i++) { $f = One-Round "hotkey-$group" $i; if ($i -eq 1) { Check-First $f } }
         Stop-Anshot
     }
     # Editor open: a small generated picture, not a screenshot.
@@ -146,12 +156,12 @@ try {
     $bmp = New-Object System.Drawing.Bitmap 640, 400
     $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::FromArgb(230, 230, 220)); $g.Dispose()
     $bmp.Save($img, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
-    Start-Anshot '' $img
+    Start-Anshot 'default' $img
     for ($i = 1; $i -le [math]::Min($Rounds, 10); $i++) { $f = One-Round 'editor-default' $i; if ($i -eq 1) { Check-First $f } }
     Stop-Anshot
     # Tray: by hand.
     if ($SkipTray) { throw 'skip-tray' }
-    Start-Anshot '' ''
+    Start-Anshot 'default' ''
     Write-Host ''
     Write-Host 'Now please start 5 captures from the Anshot tray icon yourself:' -ForegroundColor Yellow
     Write-Host '  click the icon (in the hidden-icons area if needed), wait until the screen settles, press Esc.' -ForegroundColor Yellow

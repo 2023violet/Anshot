@@ -97,6 +97,16 @@ impl Drop for Bitmap { fn drop(&mut self) {
     unsafe { DeleteObject(self.0) };
 } }
 
+/// Cloak or uncloak `hwnd`: a cloaked window is still rendered and composed but not shown,
+/// so it can draw its first frame before anyone sees it. Returns false if refused.
+pub fn set_cloaked(hwnd: isize, cloaked: bool) -> bool {
+    use windows_sys::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_CLOAK};
+    if hwnd == 0 { return false; }
+    let value: i32 = i32::from(cloaked);
+    // SAFETY: a 4-byte BOOL owned by this frame; a bad handle just fails.
+    unsafe { DwmSetWindowAttribute(hwnd as HWND, DWMWA_CLOAK as u32, (&value as *const i32).cast(), 4) == 0 }
+}
+
 /// Whether Windows itself still shows `hwnd` (not what a UI toolkit believes).
 pub fn window_visible(hwnd: isize) -> bool {
     // SAFETY: plain query; a stale handle just returns false.

@@ -19,6 +19,7 @@ mod history;
 mod i18n;
 mod messages;
 mod platform;
+mod reveal;
 mod settings;
 mod stitch;
 
@@ -43,7 +44,7 @@ enum Pending { Replace(SourceCandidate, RgbaImage, Option<String>, Option<Delive
 enum AfterCopy { Stay, Close, Quit }
 
 #[derive(Clone, Copy)]
-enum ToastAction { Retry(Delivery), Review }
+enum ToastAction { Retry(Delivery), Review, MuteHdr }
 
 /// One image that left, with what is needed to check it, taken when it left: a later
 /// change (frame, crop, covers) must not move the area that is read.
@@ -127,6 +128,8 @@ struct App {
     frame_text: String,
     /// The framed preview of one document revision.
     framed_cache: RefCell<Option<((u64, anshot_editor::Stamp), Image)>>,
+    /// The HDR notice was shown this run.
+    hdr_noticed: bool,
 }
 
 struct LongShot {
@@ -966,6 +969,9 @@ impl App {
         diag::mark("grab", Some(format!("{}x{}", area.w, area.h)));
         let session = capture::Session::new(frozen, monitors.clone(), anshot_platform_windows::visible_windows());
         let mut overlays = Vec::new();
+        // The overlay under the pointer takes the keyboard (again once it is revealed).
+        let focus_index = anshot_platform_windows::cursor().and_then(|(x, y)| monitors.iter().position(|m| m.bounds.contains(x, y))).unwrap_or(0);
+        let pad = u32::from(diag::switch("ANSHOT_DIAG_OVERLAY_PAD"));
         for (i, m) in monitors.iter().copied().enumerate() {
             // Overlay i must serve monitor i; on any failure abort the capture cleanly.
             let Some(pixels) = session.crop(m.bounds) else { diag::outcome("error"); self.end_capture(); self.restore_editor = false; self.show_editor(); self.toast("error", t("无法截图"), t("显示器区域无效"), None); return; };
@@ -974,20 +980,25 @@ impl App {
                 self.overlay_pool.push(win);
             }
             let win = self.overlay_pool[i].clone_strong();
+            win.set_scrim(!diag::switch("ANSHOT_DIAG_NO_SCRIM"));
             win.set_shot(to_image(&pixels));
             diag::mark("prepared", Some(format!("monitor{i}")));
             win.set_size_open(false);
             let place = |w: &CaptureOverlay| {
                 w.window().set_position(slint::PhysicalPosition::new(m.bounds.x, m.bounds.y));
-                w.window().set_size(slint::PhysicalSize::new(m.bounds.w as u32, m.bounds.h as u32));
+                w.window().set_size(slint::PhysicalSize::new(m.bounds.w as u32, m.bounds.h as u32 + pad));
             };
             place(&win);
+            // Shown cloaked where possible: the screen never shows the overlay before its picture.
+            let cloaked = reveal::hide_until_drawn(i, &win, hwnd_of(win.window()), i == focus_index);
             let _ = win.show();
             place(&win); // re-apply after a possible per-monitor DPI change on show
+            if !cloaked { reveal::reveal_now(&win); }
             diag::mark("shown", Some(format!("monitor{i} {}x{} scale={:.2}", m.bounds.w, m.bounds.h, win.window().scale_factor())));
             overlays.push((win, m));
         }
         if overlays.is_empty() { self.cancel_capture(); return; }
+        reveal::arm_fallback();
         // Keyboard input (Esc, Enter, R, Shift+C) must reach the overlay before any click:
         // bring the one under the pointer to the front (allowed right after our hotkey).
         let under = anshot_platform_windows::cursor().and_then(|(x, y)| overlays.iter().find(|(_, m)| m.bounds.contains(x, y)));
@@ -1140,7 +1151,21 @@ impl App {
             win.set_has_hover(false);
         }
         self.session = None;
+        // After hiding: uncloaking a hidden overlay shows nothing.
+        reveal::finish();
         diag::end(still_visible);
+        self.hdr_notice();
+    }
+    /// Once per run, after a capture: a display in HDR is where captures went black or left
+    /// the screen dim (Windows 11 24H2 with an AMD 780M; MEASURED by the user). Asked of the
+    /// system only until it has been said.
+    fn hdr_notice(&mut self) {
+        if !self.settings.hdr_notice || self.hdr_noticed { return; }
+        if !anshot_platform_windows::display_facts().iter().any(|d| d.hdr == Some(true)) { return; }
+        self.hdr_noticed = true;
+        slint::Timer::single_shot(Duration::from_millis(400), || { with(|a| {
+            a.toast("warn", t("显示器开着 HDR"), t("截图时可能黑屏或之后偏暗 · Win+Alt+B 可关闭 HDR"), Some((t("不再提示"), ToastAction::MuteHdr)));
+        }); });
     }
     /// Esc / right click: put back whatever was on screen before the hotkey.
     fn cancel_capture(&mut self) {
@@ -1415,6 +1440,7 @@ impl App {
         ui.set_warn_unredacted(s.warn_unredacted);
         ui.set_check_on_share(s.check_on_share);
         ui.set_frame_default(s.frame_default);
+        ui.set_hdr_notice(s.hdr_notice);
         ui.set_clipboard_private(s.clipboard_private);
         ui.set_language_index(settings::LANGUAGES.iter().position(|l| *l == s.language).unwrap_or(0) as i32);
         if let Some(t) = self.tray.as_ref() { t.set_hotkey_label(s.hotkey.label().into()); t.set_delay_secs(s.delay_secs as i32); }
@@ -1561,7 +1587,7 @@ fn command(cmd: &str) {
     let in_settings = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "settings")).unwrap_or(false);
     let in_about = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "about")).unwrap_or(false);
     let settings_cmd = cmd.starts_with("autocheck-") || cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
-        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-") || cmd.starts_with("framedef-");
+        || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-") || cmd.starts_with("framedef-") || cmd.starts_with("hdrnote-");
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1638,6 +1664,8 @@ fn command(cmd: &str) {
                     c if c == "frame" || c.starts_with("frame-") => a.frame_command(c),
                     "framedef-on" => { a.settings.frame_default = true; a.persist(); a.push_settings(); }
                     "framedef-off" => { a.settings.frame_default = false; a.persist(); a.push_settings(); }
+                    "hdrnote-on" => { a.settings.hdr_notice = true; a.persist(); a.push_settings(); }
+                    "hdrnote-off" => { a.settings.hdr_notice = false; a.persist(); a.push_settings(); }
                     "same-text" => a.run_same_text(),
                     c if c.starts_with("check-") => a.check_command(c),
                     "pin" => a.pin_document(),
@@ -1666,7 +1694,7 @@ fn command(cmd: &str) {
                     "save-dir-clear" => { a.settings.save_dir = None; a.persist(); }
                     "autostart-on" => a.set_autostart(true),
                     "autostart-off" => a.set_autostart(false),
-                    "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } Some(ToastAction::Review) => a.open_pending_review(), None => {} },
+                    "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } Some(ToastAction::Review) => a.open_pending_review(), Some(ToastAction::MuteHdr) => { a.settings.hdr_notice = false; a.persist(); a.clear_toast(); } None => {} },
                     _ => {}
                 }
                 a.refresh();
@@ -1690,7 +1718,7 @@ fn main() -> Result<(), slint::PlatformError> {
         settings: settings::Settings::load(), hotkey: None, restore_editor: false, capture_pending: false,
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
         pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false, auto_check_running: false, auto_check_next: None, system_toast_seq: 0, replace_target: Cell::new(None),
-        frame_open: false, frame_text: String::new(), framed_cache: RefCell::new(None),
+        frame_open: false, frame_text: String::new(), framed_cache: RefCell::new(None), hdr_noticed: false,
     }));
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
@@ -1953,10 +1981,7 @@ fn hwnd_of(w: &slint::Window) -> Option<isize> {
 /// One pooled overlay window for monitor `i`, with its callbacks wired.
 fn new_overlay(i: usize) -> Option<CaptureOverlay> {
     let win = CaptureOverlay::new().ok()?;
-    // Diagnostics only: when the overlay has really drawn a frame (not available everywhere).
-    if diag::enabled() {
-        let _ = win.window().set_rendering_notifier(|state, _| { if matches!(state, slint::RenderingState::AfterRendering) { diag::frame_rendered(); } });
-    }
+    reveal::watch(i, &win);
     win.on_pointer_down(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Down)); });
     win.on_pointer_move(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Move)); });
     win.on_pointer_up(move |x, y| { with(|a| a.overlay_pointer(i, x, y, Phase::Up)); });

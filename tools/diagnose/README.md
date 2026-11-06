@@ -13,6 +13,13 @@
 4. 脚本提示时，自己从托盘图标截图 5 次，再回答两个问题。
 5. 把桌面上 `anshot-diagnose-<时间>` 文件夹里的 `anshot-diag.txt` 和 `rounds.txt` 发给我们。发送前可以先用记事本打开查看。
 
+## HDR 对照实验（0.5.2 起）
+同一台电脑上，先开着 HDR、再关掉 HDR（Win+Alt+B 切换），各运行一次：
+```
+powershell -ExecutionPolicy Bypass -File anshot-diagnose.ps1 -Rounds 10 -Groups default,nocloak,noscrim,pad -SkipTray
+```
+每组只改一个变量：`nocloak` 截图层不等首帧画完就显示（0.5.1 的行为）；`noscrim` 截图层不加暗色遮罩；`pad` 截图层比显示器高 1 像素。每组结束后，如果屏幕残留变暗，按 Win+Ctrl+Shift+B 恢复，并记下是哪一组。这些开关只在诊断打开时生效，平时使用不受影响。
+
 ## 记录与不记录
 - **记录：** 每次截图各阶段耗时；屏幕是否变黑（在内存中对缩小的采样计算亮度，不保存画面）；显示器数量、尺寸、缩放、HDR 状态、色深、显卡名称、Windows 版本。
 - **不记录：** 屏幕像素、窗口标题、文件路径、识别出的文字。
