@@ -4,7 +4,7 @@
 
 **Screenshot, annotate, redact, share on Windows — what you cover is really gone from the export.**
 
-> Version 0.5.1, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
+> Version 0.6.0, **not code-signed** (0.2.0 was the first public release). All pixel processing and export happen locally in Rust; the app makes no network requests, has no account and no telemetry.
 > "Anshot / 安截" is the name used since 2026-10. It has only been checked through public searches and has **not** been trademark-cleared ([naming research](docs/NAMING_RESEARCH.md), Chinese).
 
 Press **Ctrl+Shift+A** to capture, add arrows, text and step numbers, cover private parts with a solid block or a **safe mosaic**, then copy or save in one key. Covered areas are replaced by pixels that carry **no information from the original**, and the export is a freshly encoded PNG without source metadata. What the canvas shows is exactly what is exported.
@@ -21,14 +21,14 @@ From [Releases](https://github.com/2023violet/Anshot/releases):
 
 | File | What it is |
 |---|---|
-| `Anshot-0.5.1-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
-| `Anshot-0.5.1-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
+| `Anshot-0.6.0-win-x64-setup.exe` | Installer, per user, into `%LOCALAPPDATA%\Programs\Anshot`. **No administrator rights.** Adds a Start-menu shortcut and appears in "Apps & features" for uninstalling. |
+| `Anshot-0.6.0-win-x64.zip` | Portable: unzip and run `Anshot.exe` |
 | `SHA256SUMS.txt` / `release-metadata.json` | Checksums and build facts (commit, toolchain, an explicit "unsigned" statement) |
 
 **About "Windows protected your PC".** The app is not signed with a paid certificate, so SmartScreen may block the first start. Make sure the file comes from this repository's Releases and that its checksum matches, then choose "More info → Run anyway":
 
 ```powershell
-Get-FileHash .\Anshot-0.5.1-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
+Get-FileHash .\Anshot-0.6.0-win-x64-setup.exe -Algorithm SHA256   # compare with SHA256SUMS.txt
 ```
 
 **Upgrade.** Run the newer installer over the old one; it closes a running copy first.
@@ -56,6 +56,11 @@ Requires Windows 10 or 11, x64. **Windows only:** capture, the global hotkey, th
   - While the panel is open the canvas shows the Rust-rendered result and editing pauses. Switching it off restores the plain image; it takes no undo steps.
   - The capture's pixels are identical to the plain export except at the rounded corners, covers included, and the result is always opaque.
   - The window text stays in memory, is never saved in the settings, and is not read by the check before sharing.
+- **Step image (Ctrl+Shift+J or the toolbar button).** Lays several captures out as one image with numbers and captions, for how-tos and tickets.
+  - Add a step with "Add step" (Ctrl+J) on the capture toolbar, or Ctrl+J in the editor (covers and annotations included), or from history or an image file. With **burst** on, Enter on a selection adds it as a step without opening the editor.
+  - In the panel: reorder, one-line captions, edit or delete a step (undoable); vertical / horizontal / grid, spacing, background, numbers, captions, same width. The canvas shows a Rust-rendered preview. "Join and edit" opens a new image in the editor, ready to annotate, check, beautify and copy.
+  - Numbers and captions sit above each capture, never over it; unscaled steps keep their pixels exactly; the result is always opaque.
+  - **Steps live in memory only:** 20 at most, gone on exit; captions are never saved in the settings; history keeps only the delivered result. Captures that never went through the editor are marked "Unedited" so you can cover and check them after joining.
 - **Long screenshot.** Choose a region, press "Long screenshot" and scroll slowly; the app stitches the frames locally. Sticky headers and footers are detected; when only one pane of the area scrolls, only that pane is stitched; you're told when scrolling went too fast.
 - **Pin to desktop.** Keep a capture on top of all windows. Drag it, zoom with the wheel, set its opacity, and right-click to copy or save.
 - **Annotate.**
@@ -124,7 +129,7 @@ All machine checks were run by the development agent with real OS mouse and keyb
 
 Measured numbers (0.5.1, this Windows 10 machine with one monitor, agent-measured, MEASURED): installer and program sizes are on the release page; start-up 528–630 ms; hotkey to overlay 41 ms from the tray; opening a 6000×4000 image 806 ms, copying it 1165 ms, peak memory 593 MB; 0 network endpoints at runtime; 720 captures and copies in 1 hour without a crash or memory growth. Machine load differed between measuring days, so not every difference between versions is the program's. Beautifying a 4800×3200 capture takes about 0.5 s (render unit timing, release build).
 
-**Windows 11:** there are reports of a brief black screen and flicker when a capture starts; the cause is under investigation and not fixed. Outside the selection the capture overlay deliberately dims the screen; system brightness is not changed. To help diagnose it, see [`tools/diagnose`](tools/diagnose/README.md).
+**HDR (Windows 11):** on a Windows 11 24H2 PC with an AMD Radeon 780M, captures with HDR on went black for seconds and left the screen dim; with HDR off they did not (measured by the user). The mechanism is not known and it is **not fixed**. Since 0.6.0 the capture overlay appears only once drawn, the dimming fades in, and a notice appears once when HDR is on (it can be turned off). Win+Alt+B toggles HDR; Win+Ctrl+Shift+B restores a dim screen. Outside the selection the capture overlay deliberately dims the screen; system brightness is not changed. To help diagnose it, see [`tools/diagnose`](tools/diagnose/README.md).
 
 See the [QA report](ui-design/07_UI_QA_REPORT.md) (Chinese).
 

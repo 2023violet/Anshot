@@ -1,4 +1,4 @@
-# 安截 Anshot 0.5.2（草稿，未发布）
+# 安截 Anshot 0.5.2（未单独发布，并入 0.6.0）
 
 **截图层画好才出现；HDR 提示。** 所有处理仍在本机完成，程序不联网。
 
@@ -26,7 +26,7 @@
 
 ---
 
-# Anshot (安截) 0.5.2 (draft, not released)
+# Anshot (安截) 0.5.2 (not released on its own; shipped in 0.6.0)
 
 **The capture overlay appears only once drawn; an HDR notice.** Everything still happens locally; the app never connects to the network.
 

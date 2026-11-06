@@ -1,6 +1,15 @@
 # 更新日志 / Changelog
 
-## 0.5.2 — 未发布 / unreleased
+## 0.6.0 — 2026-11-06
+
+包含未单独发布的 0.5.2（见下）。/ Includes 0.5.2, which was not released on its own (below).
+
+### 新增 / Added
+- 步骤图（Ctrl+Shift+J 或工具栏）：把几张截图排成一张带编号和说明的图。截图工具条“加入步骤”（Ctrl+J）、编辑器 Ctrl+J（遮挡和标注已画进去）、历史记录和图片文件都能加入；步骤栏里可调顺序、写一行说明、编辑或删除某一步（可撤销），可选纵向 / 横向 / 网格、间距、背景、编号、说明、统一宽度，画布显示预览；“拼合并编辑”生成一张新图在编辑器里打开。编号和说明在每张截图上方，不压住截图；不缩放时每一步的像素原样保留；成品始终不透明，超过 2400 万像素时整体缩小或提示。/ Step image (Ctrl+Shift+J or the toolbar): several captures laid out as one image with numbers and captions. Add steps from the capture toolbar ("Add step", Ctrl+J), from the editor (Ctrl+J, covers and annotations included), from history or from an image file; reorder, caption, edit or delete (undoable) in the panel; vertical / horizontal / grid, spacing, background, numbers, captions, same width, with a preview on the canvas. "Join and edit" opens the new image in the editor. Numbers and captions sit above each capture, never over it; unscaled steps keep their pixels exactly; the result is always opaque and is scaled down or refused past 24 MP.
+- 连拍：打开后，选好区域按 Enter 直接加入步骤，不打开编辑器；从步骤栏或托盘开关，每次启动为关。/ Burst: Enter on a selection adds it as a step without opening the editor; switch it from the panel or the tray; off at every start.
+- 步骤只在内存里：最多 20 步、合计 1 亿像素，退出即清空；说明文字不写进设置；历史只保存交付出去的成品。没经过编辑器的截图标“未编辑”。/ Steps live in memory only: 20 steps and 100 MP at most, gone on exit; captions are never saved in the settings; history keeps only the delivered result. Captures that never went through the editor are marked "Unedited".
+
+## 0.5.2 — 未单独发布，并入 0.6.0 / not released on its own; shipped in 0.6.0
 
 ### 改进 / Improved
 - 截图层画好之后才出现在屏幕上：窗口先“隐身”渲染，第一帧画完（最迟 300 毫秒）才显示，不会露出还没画内容的窗口。/ The capture overlay appears only once it has drawn its picture: it renders cloaked and is shown after its first frame (300 ms at the latest).
