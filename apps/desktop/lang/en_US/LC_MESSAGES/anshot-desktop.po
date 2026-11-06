@@ -1338,3 +1338,12 @@ msgstr "Quitting clears the {} steps in the panel; they are kept in memory only.
 
 msgid "间距"
 msgstr "Spacing"
+
+msgid "拼合后的文件会超过 25 MB；可减少步骤或改用网格"
+msgstr "The joined file would exceed 25 MB; use fewer steps or a grid"
+
+msgid "步骤里的图片太多太大"
+msgstr "The steps hold too much image"
+
+msgid "这一步的图片超过 25 MB，无法加入"
+msgstr "This step's image is over 25 MB and cannot be added"

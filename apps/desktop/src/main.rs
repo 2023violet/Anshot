@@ -331,7 +331,7 @@ impl App {
     fn source_ready(&mut self, decoded: Decoded, name: Option<String>, then: Option<Delivery>) {
         self.ctl.opening = false;
         match decoded {
-            Err(e) => { self.show_editor(); self.toast("error", t("无法打开"), &e, None) }
+            Err(e) => { self.pending_step_edit = None; self.show_editor(); self.toast("error", t("无法打开"), &e, None) }
             Ok((candidate, preview)) => {
                 if self.ctl.has_unsaved_edits() {
                     self.ctl.cancel_drag();
@@ -347,6 +347,7 @@ impl App {
     }
     fn apply_source(&mut self, candidate: SourceCandidate, preview: RgbaImage, name: Option<String>, then: Option<Delivery>) {
         if let Err(e) = self.ctl.accept_source(candidate, name) {
+            self.pending_step_edit = None;
             self.show_editor();
             self.toast("error", t("无法打开"), &messages::intake(&e), None);
             return;
@@ -548,6 +549,8 @@ impl App {
         if self.ctl.has_unsaved_edits() || !self.steps.is_empty() {
             self.show_editor();
             self.ctl.cancel_drag();
+            // A replace prompt this overrides will not open its image: the step link goes too.
+            if matches!(self.pending, Some(Pending::Replace(..))) { self.pending_step_edit = None; }
             self.pending = Some(Pending::Quit);
             let dialog = if self.ctl.has_unsaved_edits() { "close" } else { "steps-quit" };
             if let Some(ui) = self.ui() { ui.set_dialog(dialog.into()); }
@@ -612,7 +615,12 @@ impl App {
                     // The document was replaced or closed while the worker ran.
                     if a.ctl.generation() == document {
                         match items {
-                            Ok(items) => a.ctl.review = Some(check::Review { document, items: check::without_dismissed(items, &covers), like: None, replace: false, delivered: None }),
+                            Ok(items) => {
+                                // The result opens the check panel: no other side panel stays open with it.
+                                a.frame_open = false;
+                                a.steps_open = false;
+                                a.ctl.review = Some(check::Review { document, items: check::without_dismissed(items, &covers), like: None, replace: false, delivered: None });
+                            }
                             Err(e) => a.toast("error", t("无法检查"), &e, None),
                         }
                     }
@@ -1391,11 +1399,18 @@ impl App {
         let Some(e) = self.ctl.editor.as_ref() else { return };
         let Some(src) = e.source_bytes().map(<[u8]>::to_vec) else { return };
         let scene = anshot_render::Scene { frame: None, ..e.scene() };
+        // An unedited step put back untouched keeps its "unedited" mark.
+        let raw = replace.and_then(|id| self.steps.get(id)).is_some_and(|s| s.data.raw) && !e.can_undo();
+        // The render in flight counts against the limit (a held Ctrl+J must not queue renders).
+        self.steps_adding += 1;
         std::thread::spawn(move || {
             let img = anshot_render::render_png(&src, &scene).ok().and_then(|png| anshot_core::decode_source(&png).ok());
-            let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
-                Some(img) => a.add_step(img, false, replace),
-                None => a.toast("error", t("无法加入步骤"), t("生成图片失败"), None),
+            let _ = slint::invoke_from_event_loop(move || { with(|a| {
+                a.steps_adding = a.steps_adding.saturating_sub(1);
+                match img {
+                    Some(img) => a.add_step(img, raw, replace),
+                    None => a.toast("error", t("无法加入步骤"), t("生成图片失败"), None),
+                }
             }); });
         });
     }
@@ -1416,17 +1431,21 @@ impl App {
     fn step_ready(&mut self, data: Result<steps::StepData, String>, replace: Option<u64>) {
         self.steps_adding = self.steps_adding.saturating_sub(1);
         let data = match data { Ok(d) => d, Err(e) => { self.toast("error", t("无法加入步骤"), &e, None); return; } };
+        let full = |a: &mut Self, f: steps::Full| match f {
+            steps::Full::Count => a.toast("warn", t("最多 20 步"), t("先拼合或删除一些步骤"), None),
+            steps::Full::Pixels => a.toast("warn", t("步骤里的图片太多太大"), t("先拼合或删除一些步骤"), None),
+        };
         match replace.filter(|id| self.steps.position(*id).is_some()) {
-            Some(id) => {
-                let n = self.steps.replace(id, data).unwrap_or(0);
-                self.toast("done", &tf("已更新第 {} 步", &[&n]), &tf("共 {} 步", &[&self.steps.len()]), None);
-            }
+            Some(id) => match self.steps.replace(id, data) {
+                Ok(n) => self.toast("done", &tf("已更新第 {} 步", &[&n]), &tf("共 {} 步", &[&self.steps.len()]), None),
+                Err(f) => full(self, f),
+            },
             None => match self.steps.add(data) {
                 Ok(n) => {
                     let action = (!self.steps_open).then(|| (t("打开步骤栏"), ToastAction::OpenSteps));
                     self.toast("done", &tf("已加入第 {} 步", &[&n]), &tf("共 {} 步", &[&self.steps.len()]), action);
                 }
-                Err(steps::Full) => self.toast("warn", t("最多 20 步"), t("先拼合或删除一些步骤"), None),
+                Err(f) => full(self, f),
             },
         }
         self.push_steps();
@@ -1436,6 +1455,8 @@ impl App {
     fn open_steps(&mut self, open: bool) {
         if open {
             if self.ctl.text_edit.is_some() { self.toast("warn", t("请先完成文字编辑"), t("按 Enter 完成或 Esc 取消"), None); return; }
+            // The running check opens its own panel when it ends.
+            if self.check_running { return; }
             self.frame_open = false;
             if self.ctl.review.is_some() { self.ctl.dismiss_review(); }
             self.ctl.cancel_drag();
@@ -1460,6 +1481,7 @@ impl App {
     }
     /// Open one step as a document; Ctrl+J then puts the result back in its place.
     fn edit_step(&mut self, id: u64) {
+        if self.ctl.opening { self.toast("warn", t("正在打开上一张图片"), t("请稍后再试"), None); return; }
         let (Some(i), Some(s)) = (self.steps.position(id), self.steps.get(id)) else { return };
         let png = s.data.png.to_vec();
         self.pending_step_edit = Some(id);
@@ -1473,15 +1495,18 @@ impl App {
         self.push_steps_state();
         let (input, style, n) = (self.steps.compose_input(), self.steps.style, self.steps.len());
         std::thread::spawn(move || {
-            let png = steps::compose(&input, &style).and_then(capture::encode_png);
+            let png = steps::compose(&input, &style).and_then(capture::encode_png).and_then(|png| {
+                if png.len() > anshot_core::MAX_INPUT_BYTES { Err("joined file too large".to_string()) } else { Ok(png) }
+            });
             let _ = slint::invoke_from_event_loop(move || {
                 let ok = with(|a| {
                     a.steps_busy = false;
                     a.push_steps_state();
                     match &png {
                         Ok(_) => { a.pending_step_edit = None; true }
+                        Err(e) if e.contains("file too large") => { a.toast("warn", t("图片太大，无法拼合"), t("拼合后的文件会超过 25 MB；可减少步骤或改用网格"), None); false }
                         Err(e) if e.contains("too large") => { a.toast("warn", t("图片太大，无法拼合"), t("拼合后会超过 2400 万像素；可减少步骤或改用网格"), None); false }
-                        Err(e) => { a.toast("error", t("无法拼合"), e, None); false }
+                        Err(_) => { a.toast("error", t("无法拼合"), t("生成图片失败"), None); false }
                     }
                 }).unwrap_or(false);
                 if let (true, Ok(png)) = (ok, png) { spawn_open(Ok(png), Some(tf("步骤图 {} 步.png", &[&n]))); }
@@ -1499,7 +1524,12 @@ impl App {
             "steps-compose" => { self.compose_steps(); return; }
             "steps-burst-on" => { self.set_burst(true); return; }
             "steps-burst-off" => { self.set_burst(false); return; }
-            "steps-undo" => { rows = self.steps.undo_remove().is_some(); }
+            "steps-undo" => {
+                // Steps still being added count too.
+                if self.steps.len() + self.steps_adding >= anshot_render::MAX_STEPS { self.toast("warn", t("最多 20 步"), t("先拼合或删除一些步骤"), None); }
+                else if self.steps.undo_remove().is_some() { rows = true; }
+                else if self.steps.can_undo() { self.toast("warn", t("步骤里的图片太多太大"), t("先拼合或删除一些步骤"), None); }
+            }
             "steps-clear" => { self.steps.clear(); self.editing_step = None; rows = true; }
             "steps-badges-on" => style.badges = true,
             "steps-badges-off" => style.badges = false,
@@ -1793,6 +1823,7 @@ fn spawn_open(bytes: Result<Vec<u8>, String>, name: Option<String>) { spawn_open
 fn spawn_open_then(bytes: Result<Vec<u8>, String>, name: Option<String>, then: Option<Delivery>) {
     let started = with(|a| {
         if a.ctl.opening {
+            a.pending_step_edit = None;
             if then.is_some() { a.show_editor(); }
             a.toast("warn", t("正在打开上一张图片"), t("请稍后再试"), None);
             return false;

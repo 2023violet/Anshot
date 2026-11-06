@@ -14,6 +14,8 @@ const THUMB: u32 = 128;
 const STANDIN: u32 = 800;
 /// Longest caption kept (characters).
 pub const CAPTION_MAX: usize = 120;
+/// All steps together hold at most this many pixels: joining decodes every step at once.
+pub const TOTAL_PIXELS: u64 = 100_000_000;
 
 /// A step ready to be added: built off the UI thread by `prepare`.
 #[derive(Clone)]
@@ -43,11 +45,13 @@ pub fn prepare(img: RgbaImage, raw: bool) -> Result<StepData, String> {
     let thumb = Arc::new(shrink(&img, THUMB));
     let standin = Arc::new(shrink(&img, STANDIN));
     let png: Arc<[u8]> = crate::capture::encode_png(img)?.into();
+    // A step must reopen through the same bounded intake as any image (edit, join).
+    if png.len() > anshot_core::MAX_INPUT_BYTES { return Err(crate::i18n::t("这一步的图片超过 25 MB，无法加入").into()); }
     Ok(StepData { png, size, raw, thumb, standin })
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Full;
+pub enum Full { Count, Pixels }
 
 #[derive(Default)]
 pub struct Steps {
@@ -68,17 +72,21 @@ impl Steps {
     pub fn can_undo(&self) -> bool { self.removed.is_some() }
 
     /// Append a step; returns its 1-based number.
+    pub fn pixels(&self) -> u64 { self.items.iter().map(|s| u64::from(s.data.size.0) * u64::from(s.data.size.1)).sum() }
     pub fn add(&mut self, data: StepData) -> Result<usize, Full> {
-        if self.items.len() >= MAX_STEPS { return Err(Full); }
+        if self.items.len() >= MAX_STEPS { return Err(Full::Count); }
+        if self.pixels() + u64::from(data.size.0) * u64::from(data.size.1) > TOTAL_PIXELS { return Err(Full::Pixels); }
         self.next_id += 1;
         self.items.push(Step { id: self.next_id, data, caption: String::new() });
         Ok(self.items.len())
     }
     /// New pixels for an existing step (its caption stays); returns its number.
-    pub fn replace(&mut self, id: u64, data: StepData) -> Option<usize> {
-        let i = self.position(id)?;
+    pub fn replace(&mut self, id: u64, data: StepData) -> Result<usize, Full> {
+        let Some(i) = self.position(id) else { return Err(Full::Count) };
+        let old = u64::from(self.items[i].data.size.0) * u64::from(self.items[i].data.size.1);
+        if self.pixels() - old + u64::from(data.size.0) * u64::from(data.size.1) > TOTAL_PIXELS { return Err(Full::Pixels); }
         self.items[i].data = data;
-        Some(i + 1)
+        Ok(i + 1)
     }
     /// Remove a step; returns the number it had. Only the latest removal can be undone.
     pub fn remove(&mut self, id: u64) -> Option<usize> {
@@ -89,6 +97,8 @@ impl Steps {
     /// Put the last removed step back where it was; returns its number.
     pub fn undo_remove(&mut self) -> Option<usize> {
         if self.items.len() >= MAX_STEPS { return None; }
+        let extra = self.removed.as_ref().map_or(0, |(_, s)| u64::from(s.data.size.0) * u64::from(s.data.size.1));
+        if self.pixels() + extra > TOTAL_PIXELS { return None; }
         let (i, s) = self.removed.take()?;
         let i = i.min(self.items.len());
         self.items.insert(i, s);
@@ -180,7 +190,7 @@ mod tests {
         assert_eq!(s.undo_remove(), Some(2));
         assert_eq!(s.undo_remove(), None);
         assert_eq!(s.position(ids[2]), Some(1));
-        assert_eq!(s.replace(ids[1], data(50, 40)), Some(3));
+        assert_eq!(s.replace(ids[1], data(50, 40)), Ok(3));
         assert_eq!(s.items()[2].data.size, (50, 40));
         s.clear();
         assert!(s.is_empty() && s.undo_remove().is_none());
@@ -190,8 +200,23 @@ mod tests {
     fn at_most_twenty_steps() {
         let mut s = Steps::default();
         for n in 1..=MAX_STEPS { assert_eq!(s.add(data(4, 4)), Ok(n)); }
-        assert_eq!(s.add(data(4, 4)), Err(Full));
+        assert_eq!(s.add(data(4, 4)), Err(Full::Count));
         assert_eq!(s.len(), MAX_STEPS);
+    }
+
+    #[test]
+    fn total_pixels_are_bounded() {
+        let mut s = Steps::default();
+        let big = |w| StepData { png: Arc::from(&[][..]), size: (w, 10_000), raw: false, thumb: Arc::new(RgbaImage::new(1, 1)), standin: Arc::new(RgbaImage::new(1, 1)) };
+        s.add(big(5_000)).unwrap();
+        s.add(big(4_000)).unwrap();
+        assert_eq!(s.add(big(2_000)), Err(Full::Pixels));
+        let id = s.items()[1].id;
+        assert_eq!(s.replace(id, big(6_000)), Err(Full::Pixels));
+        assert_eq!(s.replace(id, big(5_000)), Ok(2));
+        s.remove(id);
+        s.add(big(5_000)).unwrap();
+        assert_eq!(s.undo_remove(), None); // putting it back would pass the bound
     }
 
     #[test]
