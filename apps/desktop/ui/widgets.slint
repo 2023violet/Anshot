@@ -46,6 +46,7 @@ export component ToolButton inherits Rectangle {
     in property <bool> selected;
     in property <bool> enabled: true;
     in property <bool> secure-badge;
+    in property <int> count;
     callback clicked();
     width: Theme.control; height: Theme.control;
     border-radius: 6px;
@@ -70,6 +71,10 @@ export component ToolButton inherits Rectangle {
     }
     Icon { d: root.d; stroke: !enabled ? Theme.disabled : selected ? Theme.select-fg : Theme.body; }
     if secure-badge: Shield { x: 21px; y: 20px; width: 8px; height: 9px; fill: root.selected ? #5fd3a6 : Theme.secure; }
+    if count > 0: Rectangle {
+        x: root.width - 14px; y: 0px; width: max(14px, cl.preferred-width + 6px); height: 14px; border-radius: 7px; background: Theme.brand;
+        cl := Text { text: root.count; font-size: 9px; color: white; accessible-role: none; }
+    }
 }
 
 // kind: 0 secondary, 1 primary, 2 danger

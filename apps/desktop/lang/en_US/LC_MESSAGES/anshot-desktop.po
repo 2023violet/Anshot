@@ -1170,3 +1170,171 @@ msgstr "Show"
 
 msgid "不提示"
 msgstr "Don't show"
+
+msgid "{} / 20 步"
+msgstr "{} / 20 steps"
+
+msgid "上移"
+msgstr "Move up"
+
+msgid "下移"
+msgstr "Move down"
+
+msgid "从文件加入"
+msgstr "Add from file"
+
+msgid "先拼合或删除一些步骤"
+msgstr "Join or remove some steps first"
+
+msgid "共 {} 步"
+msgstr "{} steps in all"
+
+msgid "关闭连拍"
+msgstr "Turn off burst"
+
+msgid "加入步骤"
+msgstr "Add step"
+
+msgid "加入步骤 Ctrl+J"
+msgstr "Add step Ctrl+J"
+
+msgid "图片太大，无法拼合"
+msgstr "Image too large to join"
+
+msgid "已删除第 {} 步"
+msgstr "Step {} removed"
+
+msgid "已加入第 {} 步"
+msgstr "Added as step {}"
+
+msgid "已更新第 {} 步"
+msgstr "Step {} updated"
+
+msgid "截图时点“加入步骤”（Ctrl+J），或在编辑时按 Ctrl+J 加入当前图。"
+msgstr "Click “Add step” (Ctrl+J) when capturing, or press Ctrl+J while editing to add the current image."
+
+msgid "截图选好区域后按 Enter 直接加入步骤"
+msgstr "After selecting an area, press Enter to add it as a step"
+
+msgid "打开步骤栏"
+msgstr "Open steps"
+
+msgid "打开连拍"
+msgstr "Turn on burst"
+
+msgid "拼合后会超过 2400 万像素；可减少步骤或改用网格"
+msgstr "The joined image would exceed 24 megapixels; use fewer steps or a grid"
+
+msgid "拼合并编辑"
+msgstr "Join and edit"
+
+msgid "排列"
+msgstr "Layout"
+
+msgid "撤销"
+msgstr "Undo"
+
+msgid "撤销删除"
+msgstr "Undo remove"
+
+msgid "无法加入步骤"
+msgstr "Could not add step"
+
+msgid "无法拼合"
+msgstr "Could not join"
+
+msgid "更新这一步"
+msgstr "Update this step"
+
+msgid "最多 20 步"
+msgstr "At most 20 steps"
+
+msgid "未编辑"
+msgstr "Unedited"
+
+msgid "标“未编辑”的截图没有经过遮挡。拼合后可在编辑器里遮挡和检查。"
+msgstr "Captures marked “Unedited” have no redactions. After joining you can redact and check them in the editor."
+
+msgid "横向"
+msgstr "Across"
+
+msgid "正在编辑第 {} 步"
+msgstr "Editing step {}"
+
+msgid "步骤"
+msgstr "Step"
+
+msgid "步骤只在内存里，退出后清空；说明文字不会保存到设置里。"
+msgstr "Steps stay in memory and are gone when Anshot quits; captions are never saved to settings."
+
+msgid "步骤图"
+msgstr "Step image"
+
+msgid "步骤图 Ctrl+Shift+J"
+msgstr "Step image Ctrl+Shift+J"
+
+msgid "步骤图 {} 步.png"
+msgstr "Steps {}.png"
+
+msgid "步骤图还没拼合"
+msgstr "The steps are not joined yet"
+
+msgid "步骤图预览（{} 步）"
+msgstr "Step image preview ({} steps)"
+
+msgid "步骤图（{}）…"
+msgstr "Step image ({})…"
+
+msgid "浅"
+msgstr "Light"
+
+msgid "深"
+msgstr "Dark"
+
+msgid "清空"
+msgstr "Clear"
+
+msgid "第 {} 步"
+msgstr "Step {}"
+
+msgid "第 {} 步.png"
+msgstr "Step {}.png"
+
+msgid "第 {} 步的说明"
+msgstr "Caption of step {}"
+
+msgid "纵向"
+msgstr "Down"
+
+msgid "统一宽度"
+msgstr "Same width"
+
+msgid "编号"
+msgstr "Numbers"
+
+msgid "网格"
+msgstr "Grid"
+
+msgid "说明"
+msgstr "Captions"
+
+msgid "说明（可留空）"
+msgstr "Caption (optional)"
+
+msgid "还没有步骤"
+msgstr "No steps yet"
+
+msgid "连拍"
+msgstr "Burst"
+
+msgid "连拍已关闭"
+msgstr "Burst is off"
+
+msgid "连拍已打开"
+msgstr "Burst is on"
+
+msgid "退出后步骤栏里的 {} 步会清空，它们只在内存里。"
+msgstr "Quitting clears the {} steps in the panel; they are kept in memory only."
+
+msgid "间距"
+msgstr "Spacing"

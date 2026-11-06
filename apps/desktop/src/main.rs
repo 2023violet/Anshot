@@ -45,7 +45,7 @@ enum Pending { Replace(SourceCandidate, RgbaImage, Option<String>, Option<Delive
 enum AfterCopy { Stay, Close, Quit }
 
 #[derive(Clone, Copy)]
-enum ToastAction { Retry(Delivery), Review, MuteHdr }
+enum ToastAction { Retry(Delivery), Review, MuteHdr, OpenSteps, UndoStep }
 
 /// One image that left, with what is needed to check it, taken when it left: a later
 /// change (frame, crop, covers) must not move the area that is read.
@@ -131,6 +131,19 @@ struct App {
     framed_cache: RefCell<Option<((u64, anshot_editor::Stamp), Image)>>,
     /// The HDR notice was shown this run.
     hdr_noticed: bool,
+    /// Step image (ADR 0.6-STEPS): the steps (memory only), the panel, burst mode.
+    steps: steps::Steps,
+    steps_open: bool,
+    burst: bool,
+    /// Steps still being encoded on a worker (they count against the limit).
+    steps_adding: usize,
+    /// A step image is being joined.
+    steps_busy: bool,
+    steps_preview_gen: u64,
+    /// The document is this step: Ctrl+J puts it back in its place.
+    editing_step: Option<u64>,
+    /// The step being opened for editing (linked once it really opens).
+    pending_step_edit: Option<u64>,
 }
 
 struct LongShot {
@@ -174,6 +187,7 @@ impl App {
         ui.set_busy(match ctl.busy() { Some(Delivery::Copy) => "copy", Some(Delivery::Save) => "save", None => "" }.into());
         ui.set_can_deliver(ctl.can_deliver());
         self.push_check(&ui);
+        self.push_steps_state();
         ui.set_narrow(ctl.area().0 < 900.0);
         ui.set_tiny(ctl.area().0 < 720.0);
         let st = ctl.style;
@@ -338,6 +352,9 @@ impl App {
             return;
         }
         self.after_copy = AfterCopy::Stay;
+        // A new document is shown at once; it is a step being edited only when opened as one.
+        self.steps_open = false;
+        self.editing_step = self.pending_step_edit.take();
         let k = self.ctl.editor.as_ref().map_or(1.0, |e| preview.width() as f32 / e.dimensions().0 as f32);
         self.base = Some((preview, k));
         self.forget_frame();
@@ -458,6 +475,7 @@ impl App {
         }
         if is(Key::Escape) && self.ctl.review.is_some() && !self.ctl.dragging() && self.ctl.tool != Tool::Crop { self.check_command("check-close"); return true; }
         if is(Key::Escape) && self.frame_open { self.frame_command("frame"); return true; }
+        if is(Key::Escape) && self.steps_open { self.open_steps(false); return true; }
         if other { return false; } // Alt / Win combinations are not ours.
         if ctrl {
             // Some platforms deliver Ctrl+letter as a control character.
@@ -481,7 +499,7 @@ impl App {
             return true;
         }
         // The preview shows the framed result: nothing on the canvas can be edited there.
-        if self.frame_open { return false; }
+        if self.frame_open || self.steps_open { return false; }
         let step = if shift { 10 } else { 1 };
         if self.ctl.tool == Tool::Crop {
             if is(Key::Return) { self.ctl.confirm_crop(); self.refresh(); return true; }
@@ -516,7 +534,7 @@ impl App {
     // ---- window lifecycle ----
     /// Hide the editor (resident) or end the process. `discard` drops the document.
     fn close_editor(&mut self, discard: bool) {
-        if discard { self.ctl.close_document(); self.base = None; self.forget_frame(); self.refresh(); }
+        if discard { self.ctl.close_document(); self.base = None; self.forget_frame(); self.editing_step = None; self.refresh(); }
         if !self.resident { let _ = slint::quit_event_loop(); return; }
         if let Some(ui) = self.ui() { let _ = ui.hide(); }
     }
@@ -527,11 +545,12 @@ impl App {
         self.refresh();
     }
     fn request_quit(&mut self) {
-        if self.ctl.has_unsaved_edits() {
+        if self.ctl.has_unsaved_edits() || !self.steps.is_empty() {
             self.show_editor();
             self.ctl.cancel_drag();
             self.pending = Some(Pending::Quit);
-            if let Some(ui) = self.ui() { ui.set_dialog("close".into()); }
+            let dialog = if self.ctl.has_unsaved_edits() { "close" } else { "steps-quit" };
+            if let Some(ui) = self.ui() { ui.set_dialog(dialog.into()); }
         } else { let _ = slint::quit_event_loop(); }
     }
 
@@ -574,6 +593,7 @@ impl App {
     fn run_check(&mut self) {
         if self.check_running { return; }
         self.frame_open = false;
+        self.steps_open = false;
         let Some((source, scene)) = self.ctl.ocr_snapshot() else { return };
         let document = self.ctl.generation();
         let covers = self.ctl.covers_in_output();
@@ -759,6 +779,7 @@ impl App {
             "frame" => {
                 self.frame_open = !self.frame_open && self.ctl.editor.is_some();
                 if self.frame_open {
+                    self.steps_open = false;
                     if self.ctl.review.is_some() { self.ctl.dismiss_review(); }
                     self.ctl.cancel_drag();
                     self.ctl.deselect();
@@ -982,6 +1003,7 @@ impl App {
             }
             let win = self.overlay_pool[i].clone_strong();
             win.set_scrim(!diag::switch("ANSHOT_DIAG_NO_SCRIM"));
+            win.set_burst(self.burst);
             win.set_shot(to_image(&pixels));
             diag::mark("prepared", Some(format!("monitor{i}")));
             win.set_size_open(false);
@@ -1024,6 +1046,7 @@ impl App {
     fn overlay_action(&mut self, action: &str) {
         match action {
             "pin" => self.pin_selection(),
+            "step" => self.step_selection(),
             "ocr" => {
                 let Some(s) = self.session.as_ref() else { return };
                 diag::outcome("ocr");
@@ -1174,7 +1197,7 @@ impl App {
         self.end_capture();
         if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
     }
-    fn confirm_capture(&mut self) { self.finish_capture(None); }
+    fn confirm_capture(&mut self) { if self.burst { self.step_selection(); } else { self.finish_capture(None); } }
     /// Overlay "pin": the selected screen pixels become a pin at the same place.
     fn pin_selection(&mut self) {
         let Some(s) = self.session.as_ref() else { return };
@@ -1344,6 +1367,239 @@ impl App {
                 None => a.toast("error", t("无法钉图"), t("生成图片失败"), None),
             }); });
         });
+    }
+
+    // ---- step image (ADR 0.6-STEPS): memory only, never written to disk ----
+    /// Overlay "add step": the selected screen pixels, unedited, go to the step panel.
+    fn step_selection(&mut self) {
+        let Some(s) = self.session.as_ref() else { return };
+        diag::outcome("step");
+        let area = s.confirm_area();
+        let pixels = area.and_then(|r| s.crop(r));
+        if area.is_some() { self.last_region = area; }
+        self.end_capture();
+        if std::mem::take(&mut self.restore_editor) { self.show_editor(); }
+        if let Some(img) = pixels { self.add_step(img, true, None); }
+    }
+    /// Editor Ctrl+J: the document as it would be exported (no frame) becomes a step, or
+    /// replaces the step being edited.
+    fn step_document(&mut self) {
+        if self.ctl.editor.is_none() { return; }
+        if self.ctl.text_edit.is_some() { self.toast("warn", t("请先完成文字编辑"), t("按 Enter 完成或 Esc 取消"), None); return; }
+        let replace = self.editing_step.filter(|id| self.steps.position(*id).is_some());
+        if replace.is_none() && !self.step_room() { return; }
+        let Some(e) = self.ctl.editor.as_ref() else { return };
+        let Some(src) = e.source_bytes().map(<[u8]>::to_vec) else { return };
+        let scene = anshot_render::Scene { frame: None, ..e.scene() };
+        std::thread::spawn(move || {
+            let img = anshot_render::render_png(&src, &scene).ok().and_then(|png| anshot_core::decode_source(&png).ok());
+            let _ = slint::invoke_from_event_loop(move || { with(|a| match img {
+                Some(img) => a.add_step(img, false, replace),
+                None => a.toast("error", t("无法加入步骤"), t("生成图片失败"), None),
+            }); });
+        });
+    }
+    /// Room for one more step (counting those still being prepared); says so when full.
+    fn step_room(&mut self) -> bool {
+        if self.steps.len() + self.steps_adding < anshot_render::MAX_STEPS { return true; }
+        self.toast("warn", t("最多 20 步"), t("先拼合或删除一些步骤"), None);
+        false
+    }
+    fn add_step(&mut self, img: RgbaImage, raw: bool, replace: Option<u64>) {
+        if replace.is_none() && !self.step_room() { return; }
+        self.steps_adding += 1;
+        std::thread::spawn(move || {
+            let data = steps::prepare(img, raw);
+            let _ = slint::invoke_from_event_loop(move || { with(|a| a.step_ready(data, replace)); });
+        });
+    }
+    fn step_ready(&mut self, data: Result<steps::StepData, String>, replace: Option<u64>) {
+        self.steps_adding = self.steps_adding.saturating_sub(1);
+        let data = match data { Ok(d) => d, Err(e) => { self.toast("error", t("无法加入步骤"), &e, None); return; } };
+        match replace.filter(|id| self.steps.position(*id).is_some()) {
+            Some(id) => {
+                let n = self.steps.replace(id, data).unwrap_or(0);
+                self.toast("done", &tf("已更新第 {} 步", &[&n]), &tf("共 {} 步", &[&self.steps.len()]), None);
+            }
+            None => match self.steps.add(data) {
+                Ok(n) => {
+                    let action = (!self.steps_open).then(|| (t("打开步骤栏"), ToastAction::OpenSteps));
+                    self.toast("done", &tf("已加入第 {} 步", &[&n]), &tf("共 {} 步", &[&self.steps.len()]), action);
+                }
+                Err(steps::Full) => self.toast("warn", t("最多 20 步"), t("先拼合或删除一些步骤"), None),
+            },
+        }
+        self.push_steps();
+        self.request_steps_preview();
+        self.refresh();
+    }
+    fn open_steps(&mut self, open: bool) {
+        if open {
+            if self.ctl.text_edit.is_some() { self.toast("warn", t("请先完成文字编辑"), t("按 Enter 完成或 Esc 取消"), None); return; }
+            self.frame_open = false;
+            if self.ctl.review.is_some() { self.ctl.dismiss_review(); }
+            self.ctl.cancel_drag();
+        }
+        self.steps_open = open;
+        self.push_steps();
+        self.request_steps_preview();
+        if let Some(ui) = self.ui() { ui.invoke_focus_keys(); }
+    }
+    fn set_burst(&mut self, on: bool) {
+        if self.burst == on { return; }
+        self.burst = on;
+        if on {
+            self.toast("done", t("连拍已打开"), t("截图选好区域后按 Enter 直接加入步骤"), None);
+        } else if !self.steps.is_empty() {
+            self.show_editor();
+            self.open_steps(true);
+        } else {
+            self.toast("done", t("连拍已关闭"), "", None);
+        }
+        self.push_steps_state();
+    }
+    /// Open one step as a document; Ctrl+J then puts the result back in its place.
+    fn edit_step(&mut self, id: u64) {
+        let (Some(i), Some(s)) = (self.steps.position(id), self.steps.get(id)) else { return };
+        let png = s.data.png.to_vec();
+        self.pending_step_edit = Some(id);
+        let n = i + 1;
+        // Leave the state borrow before starting the shared intake pipeline.
+        slint::Timer::single_shot(Duration::ZERO, move || spawn_open(Ok(png), Some(tf("第 {} 步.png", &[&n]))));
+    }
+    fn compose_steps(&mut self) {
+        if self.steps.is_empty() || self.steps_busy { return; }
+        self.steps_busy = true;
+        self.push_steps_state();
+        let (input, style, n) = (self.steps.compose_input(), self.steps.style, self.steps.len());
+        std::thread::spawn(move || {
+            let png = steps::compose(&input, &style).and_then(capture::encode_png);
+            let _ = slint::invoke_from_event_loop(move || {
+                let ok = with(|a| {
+                    a.steps_busy = false;
+                    a.push_steps_state();
+                    match &png {
+                        Ok(_) => { a.pending_step_edit = None; true }
+                        Err(e) if e.contains("too large") => { a.toast("warn", t("图片太大，无法拼合"), t("拼合后会超过 2400 万像素；可减少步骤或改用网格"), None); false }
+                        Err(e) => { a.toast("error", t("无法拼合"), e, None); false }
+                    }
+                }).unwrap_or(false);
+                if let (true, Ok(png)) = (ok, png) { spawn_open(Ok(png), Some(tf("步骤图 {} 步.png", &[&n]))); }
+            });
+        });
+    }
+    fn steps_command(&mut self, c: &str) {
+        let id = |p: &str| c.strip_prefix(p).and_then(|v| v.parse::<u64>().ok());
+        let index = |p: &str| c.strip_prefix(p).and_then(|v| v.parse::<usize>().ok());
+        let mut style = self.steps.style;
+        let mut rows = false;
+        match c {
+            "steps" => { let open = !self.steps_open; self.open_steps(open); return; }
+            "step-add" => { self.step_document(); return; }
+            "steps-compose" => { self.compose_steps(); return; }
+            "steps-burst-on" => { self.set_burst(true); return; }
+            "steps-burst-off" => { self.set_burst(false); return; }
+            "steps-undo" => { rows = self.steps.undo_remove().is_some(); }
+            "steps-clear" => { self.steps.clear(); self.editing_step = None; rows = true; }
+            "steps-badges-on" => style.badges = true,
+            "steps-badges-off" => style.badges = false,
+            "steps-captions-on" => style.captions = true,
+            "steps-captions-off" => style.captions = false,
+            "steps-uniform-on" => style.uniform = true,
+            "steps-uniform-off" => style.uniform = false,
+            _ => {
+                if let Some(i) = id("steps-up-") { rows = self.steps.move_by(i, -1); }
+                else if let Some(i) = id("steps-down-") { rows = self.steps.move_by(i, 1); }
+                else if let Some(i) = id("steps-edit-") { self.edit_step(i); return; }
+                else if let Some(i) = id("steps-del-") {
+                    if let Some(n) = self.steps.remove(i) {
+                        if self.editing_step == Some(i) { self.editing_step = None; }
+                        self.toast("done", &tf("已删除第 {} 步", &[&n]), "", Some((t("撤销"), ToastAction::UndoStep)));
+                        rows = true;
+                    }
+                }
+                else if let Some(i) = index("steps-arr-") { style.arrangement = anshot_render::Arrangement::ALL[i.min(2)]; }
+                else if let Some(i) = index("steps-gap-") { style.gap = anshot_render::Gap::ALL[i.min(2)]; }
+                else if let Some(i) = index("steps-bg-") { style.backdrop = anshot_render::Backdrop::ALL[i.min(2)]; }
+                else { return; }
+            }
+        }
+        if style != self.steps.style {
+            self.steps.style = style;
+            self.settings.steps_style = style;
+            self.persist();
+        }
+        if rows { self.push_steps(); } else { self.push_steps_state(); }
+        self.request_steps_preview();
+        if let Some(ui) = self.ui() { ui.invoke_focus_keys(); }
+    }
+    fn step_caption_edited(&mut self, id: u64, text: &str) {
+        if self.steps.set_caption(id, text) { self.request_steps_preview(); }
+    }
+    /// Panel rows (thumbnails, captions). Rebuilt only when the steps change: rebuilding
+    /// while a caption is typed would reset its text box.
+    fn push_steps(&self) {
+        let Some(ui) = self.ui() else { return };
+        let rows: Vec<StepRow> = self.steps.items().iter().map(|s| StepRow {
+            id: s.id as i32, thumb: to_image(&s.data.thumb), caption: s.caption.as_str().into(), raw: s.data.raw,
+        }).collect();
+        ui.set_step_rows(ModelRc::new(VecModel::from(rows)));
+        self.push_steps_state();
+    }
+    fn push_steps_state(&self) {
+        if let Some(t) = self.tray.as_ref() { t.set_steps_count(self.steps.len() as i32); t.set_burst(self.burst); }
+        let Some(ui) = self.ui() else { return };
+        let s = self.steps.style;
+        ui.set_steps_open(self.steps_open);
+        ui.set_burst(self.burst);
+        ui.set_steps_arr(anshot_render::Arrangement::ALL.iter().position(|x| *x == s.arrangement).unwrap_or(0) as i32);
+        ui.set_steps_gap(anshot_render::Gap::ALL.iter().position(|x| *x == s.gap).unwrap_or(1) as i32);
+        ui.set_steps_bg(anshot_render::Backdrop::ALL.iter().position(|x| *x == s.backdrop).unwrap_or(0) as i32);
+        ui.set_steps_badges(s.badges);
+        ui.set_steps_captions(s.captions);
+        ui.set_steps_uniform(s.uniform);
+        ui.set_steps_busy(self.steps_busy);
+        ui.set_steps_can_undo(self.steps.can_undo());
+        ui.set_steps_any_raw(self.steps.any_raw());
+        ui.set_editing_step(self.editing_step.and_then(|id| self.steps.position(id)).map_or(0, |i| i as i32 + 1));
+    }
+    /// Canvas room left of the panel.
+    fn steps_room(&self) -> (f64, f64) {
+        let (aw, ah) = self.ctl.area();
+        (if aw > 700.0 { aw - 324.0 } else { aw }, ah)
+    }
+    /// Draw the joined image at the size it is shown, off the UI thread; only the newest
+    /// request is shown.
+    fn request_steps_preview(&mut self) {
+        self.steps_preview_gen += 1;
+        let hide = |a: &Self| if let Some(ui) = a.ui() { ui.set_steps_has_preview(false); };
+        if !self.steps_open || self.steps.is_empty() { hide(self); return; }
+        let generation = self.steps_preview_gen;
+        let style = self.steps.style;
+        let (sizes, captions) = self.steps.layout_input();
+        let captions: Vec<&str> = captions.iter().map(String::as_str).collect();
+        let Ok(layout) = anshot_render::steps_layout(&sizes, &captions, &style) else { hide(self); return };
+        let (aw, ah) = self.steps_room();
+        let (cw, ch) = (f64::from(layout.canvas.0), f64::from(layout.canvas.1));
+        let k = ((aw - 48.0) / cw).min((ah - 48.0) / ch).clamp(0.01, 1.0) as f32;
+        let input = self.steps.preview_input();
+        std::thread::spawn(move || {
+            let img = steps::preview(&input, &style, k).ok();
+            let _ = slint::invoke_from_event_loop(move || { with(|a| a.steps_preview_ready(generation, img)); });
+        });
+    }
+    fn steps_preview_ready(&mut self, generation: u64, img: Option<RgbaImage>) {
+        if generation != self.steps_preview_gen { return; }
+        let Some(ui) = self.ui() else { return };
+        let Some(img) = img else { ui.set_steps_has_preview(false); return };
+        let (aw, ah) = self.steps_room();
+        let (pw, ph) = (f64::from(img.width()), f64::from(img.height()));
+        ui.set_steps_x(((aw - pw) / 2.0).max(0.0) as f32);
+        ui.set_steps_y(((ah - ph) / 2.0).max(0.0) as f32);
+        ui.set_steps_w(pw as f32);
+        ui.set_steps_h(ph as f32);
+        ui.set_steps_preview(to_image(&img));
+        ui.set_steps_has_preview(true);
     }
 
     // ---- history ----
@@ -1518,6 +1774,8 @@ impl App {
         self.ctl.cancel_drag();
         match (self.pending.take(), choice) {
             (Some(Pending::Replace(c, p, n, then)), "discard") => self.apply_source(c, p, n, then),
+            // Not opened after all: the step stays unlinked.
+            (Some(Pending::Replace(..)), _) => { self.pending_step_edit = None; }
             (Some(Pending::Close), "discard") => self.close_editor(true),
             (Some(Pending::Quit), "discard") => { let _ = slint::quit_event_loop(); }
             // Set only once the copy really started; any refusal leaves the app open.
@@ -1589,6 +1847,17 @@ fn command(cmd: &str) {
     let in_about = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "about")).unwrap_or(false);
     let settings_cmd = cmd.starts_with("autocheck-") || cmd.starts_with("hotkey-") || cmd.starts_with("copy-") || cmd.starts_with("save-dir") || cmd.starts_with("autostart-") || cmd.starts_with("keep-") || cmd.starts_with("delay-") || cmd.starts_with("cursor-")
         || cmd.starts_with("days-") || cmd.starts_with("exit-") || cmd.starts_with("pad-") || cmd.starts_with("warn-") || cmd.starts_with("clip-") || cmd.starts_with("lang-") || cmd.starts_with("framedef-") || cmd.starts_with("hdrnote-");
+    // The panel's file picker blocks: run it outside the state borrow.
+    if cmd == "steps-file" && !with(|a| a.ui().is_some_and(|ui| ui.get_dialog() != "")).unwrap_or(true) {
+        if with(|a| a.step_room()).unwrap_or(false) {
+            if let Some(p) = picker(platform::pick_image) {
+                let img = platform::read_image_file(&p).and_then(|b| anshot_core::decode_source(&b).map_err(|m| messages::decode(&m)));
+                // A file may show anything: it is marked unedited, like a raw capture.
+                with(|a| match img { Ok(img) => a.add_step(img, true, None), Err(e) => a.toast("error", t("无法加入步骤"), &e, None) });
+            }
+        }
+        return;
+    }
     let in_history = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "history")).unwrap_or(false);
     if in_history && cmd.starts_with("history-") { history_command(cmd); return; }
     let in_picker = with(|a| a.ui().is_some_and(|ui| ui.get_dialog() == "color")).unwrap_or(false);
@@ -1663,6 +1932,7 @@ fn command(cmd: &str) {
                     "ocr" => a.ocr_document(),
                     "check" => a.run_check(),
                     c if c == "frame" || c.starts_with("frame-") => a.frame_command(c),
+                    c if c == "steps" || c == "step-add" || c.starts_with("steps-") => a.steps_command(c),
                     "framedef-on" => { a.settings.frame_default = true; a.persist(); a.push_settings(); }
                     "framedef-off" => { a.settings.frame_default = false; a.persist(); a.push_settings(); }
                     "hdrnote-on" => { a.settings.hdr_notice = true; a.persist(); a.push_settings(); }
@@ -1695,7 +1965,10 @@ fn command(cmd: &str) {
                     "save-dir-clear" => { a.settings.save_dir = None; a.persist(); }
                     "autostart-on" => a.set_autostart(true),
                     "autostart-off" => a.set_autostart(false),
-                    "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } Some(ToastAction::Review) => a.open_pending_review(), Some(ToastAction::MuteHdr) => { a.settings.hdr_notice = false; a.persist(); a.clear_toast(); } None => {} },
+                    "toast-action" => match a.toast_action { Some(ToastAction::Retry(k)) => { a.start(k); } Some(ToastAction::Review) => a.open_pending_review(), Some(ToastAction::MuteHdr) => { a.settings.hdr_notice = false; a.persist(); a.clear_toast(); }
+                        Some(ToastAction::OpenSteps) => { a.clear_toast(); a.show_editor(); a.open_steps(true); }
+                        Some(ToastAction::UndoStep) => { a.clear_toast(); a.steps_command("steps-undo"); }
+                        None => {} },
                     _ => {}
                 }
                 a.refresh();
@@ -1720,7 +1993,9 @@ fn main() -> Result<(), slint::PlatformError> {
         cursor_timer: slint::Timer::default(), last_cursor: None, last_region: None, notice_seq: 0,
         pins: Vec::new(), next_pin: 1, pin_drag: None, history_shown: Vec::new(), history_gen: 0, long: None, countdown: None, ocr_win: None, ocr_seq: 0, hidden_for_capture: Vec::new(), ocr_hidden: false, ocr_running: false, check_running: false, auto_check_running: false, auto_check_next: None, system_toast_seq: 0, replace_target: Cell::new(None),
         frame_open: false, frame_text: String::new(), framed_cache: RefCell::new(None), hdr_noticed: false,
+        steps: steps::Steps::default(), steps_open: false, burst: false, steps_adding: 0, steps_busy: false, steps_preview_gen: 0, editing_step: None, pending_step_edit: None,
     }));
+    with(|a| a.steps.style = a.settings.steps_style);
     // The first instance owns the tray and the global hotkey.
     if anshot_platform_windows::claim_single_instance() {
         let tray = Tray::new()?;
@@ -1732,6 +2007,8 @@ fn main() -> Result<(), slint::PlatformError> {
         tray.on_quit(|| { with(|a| a.request_quit()); });
         tray.on_settings(|| { with(|a| a.open_settings()); });
         tray.on_history(|| { with(|a| a.open_history()); });
+        tray.on_steps(|| { with(|a| { a.show_editor(); a.open_steps(true); }); });
+        tray.on_toggle_burst(|| { with(|a| { let on = !a.burst; a.set_burst(on); }); });
         with(|a| {
             a.resident = true;
             a.tray = Some(tray);
@@ -1755,7 +2032,7 @@ fn main() -> Result<(), slint::PlatformError> {
         a.refresh();
     }); });
     ui.on_pointer_up(|| { with(|a| { a.ctl.pointer_up(); a.refresh(); }); });
-    ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); }); });
+    ui.on_canvas_size(|w, h| { with(|a| { a.ctl.set_area(w.into(), h.into()); a.refresh(); if a.steps_open { a.request_steps_preview(); } }); });
     ui.on_command(|c| command(c.as_str()));
     ui.on_wheel(|dx, dy, x, y, ctrl, shift, alt| {
         with(|a| {
@@ -1793,6 +2070,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_text_cancel(|| { with(|a| { a.ctl.cancel_text(); a.refresh(); if let Some(ui) = a.ui() { ui.invoke_focus_keys(); } }); });
     ui.on_replace_commit(|text| { with(|a| a.replace_selected(text.as_str())); });
     ui.on_frame_text_edited(|text| { with(|a| a.frame_text_edited(text.as_str())); });
+    ui.on_step_caption_edited(|id, text| { with(|a| a.step_caption_edited(id as u64, text.as_str())); });
     ui.on_dialog_choice(|c| { with(|a| a.dialog_choice(c.as_str())); });
     ui.on_picker_hsv(|h, s, v| { with(|a| a.set_picker(h, s, v)); });
     ui.on_picker_hex_edited(|t| { with(|a| if let Some(c) = color::parse_hex(t.as_str()) { let (h, s, v) = color::rgb_to_hsv(c); a.set_picker(h, s, v); }); });
@@ -1810,6 +2088,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 Some(',') => { command("settings"); return true; }
                 Some('h') => { command("history"); return true; }
                 Some('t') => { command("pin"); return true; }
+                Some('j') if shift => { command("steps"); return true; }
+                Some('j') => { command("step-add"); return true; }
                 _ => {}
             }
         }
@@ -1822,6 +2102,11 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.pending = Some(Pending::Close);
                 a.refresh();
                 if let Some(ui) = a.ui() { ui.set_dialog("close".into()); }
+                CloseRequestResponse::KeepWindowShown
+            } else if !a.resident && !a.steps.is_empty() {
+                // A second instance ends with its window: say that the steps go with it.
+                a.pending = Some(Pending::Quit);
+                if let Some(ui) = a.ui() { ui.set_dialog("steps-quit".into()); }
                 CloseRequestResponse::KeepWindowShown
             } else {
                 if !a.resident { let _ = slint::quit_event_loop(); }
@@ -1930,7 +2215,7 @@ fn history_command(cmd: &str) {
         with(|a| { if let Some(h) = a.history() { h.clear(); } a.open_history(); });
         return;
     }
-    let (entry, h) = match ["history-open-", "history-copy-", "history-pin-", "history-delete-"].iter().find_map(|p| index(p).map(|i| (*p, i))) {
+    let (entry, h) = match ["history-open-", "history-copy-", "history-pin-", "history-step-", "history-delete-"].iter().find_map(|p| index(p).map(|i| (*p, i))) {
         Some((p, i)) => (with(|a| a.history_entry(i)).flatten().map(|e| (p, e)), with(|a| a.history()).flatten()),
         None => return,
     };
@@ -1944,6 +2229,11 @@ fn history_command(cmd: &str) {
                 "history-copy-" => {
                     let result = anshot_core::decode_source(&bytes).and_then(|img| { let d = img.dimensions(); capture::encode_png(img).and_then(|png| platform::write_clipboard(&png, d)) });
                     with(|a| match result { Ok(()) => a.toast("done", t("已复制到剪贴板"), t("来自截图历史"), None), Err(err) => a.toast("error", t("复制失败"), &err, None) });
+                }
+                // History holds delivered images: their redactions are already in the pixels.
+                "history-step-" => {
+                    let img = anshot_core::decode_source(&bytes);
+                    with(|a| match img { Ok(img) => a.add_step(img, false, None), Err(_) => a.toast("error", t("无法加入步骤"), t("历史文件已损坏"), None) });
                 }
                 _ => {
                     let img = anshot_core::decode_source(&bytes);

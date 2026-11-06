@@ -16,6 +16,10 @@ export component Tray inherits SystemTrayIcon {
     callback settings();
     callback history();
     callback quit();
+    in property <int> steps-count;
+    in property <bool> burst;
+    callback steps();
+    callback toggle-burst();
     clicked => { root.capture(); }
     Menu {
         MenuItem { title: @tr("截图 ({})", root.hotkey-label); activated => { root.capture(); } }
@@ -23,6 +27,8 @@ export component Tray inherits SystemTrayIcon {
         MenuItem { title: @tr("打开图片…"); activated => { root.open-image(); } }
         MenuItem { title: @tr("显示编辑窗口"); activated => { root.show-editor(); } }
         MenuItem { title: @tr("截图历史…"); activated => { root.history(); } }
+        MenuItem { title: @tr("步骤图（{}）…", root.steps-count); activated => { root.steps(); } }
+        MenuItem { title: root.burst ? @tr("关闭连拍") : @tr("打开连拍"); activated => { root.toggle-burst(); } }
         MenuSeparator { }
         MenuItem { title: @tr("设置…"); activated => { root.settings(); } }
         MenuItem { title: @tr("关于"); activated => { root.about(); } }

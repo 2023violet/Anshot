@@ -30,6 +30,8 @@ export component CaptureOverlay inherits Window {
     in property <bool> show-toolbar;
     // A region from an earlier capture this run can be put back with R.
     in property <bool> has-last;
+    // Burst mode (ADR 0.6-STEPS): Enter / double-click add the selection as a step.
+    in property <bool> burst;
     // A short message shown in the hint bar instead of the usual hint ("已复制颜色 …").
     in property <string> notice;
     // The toolbar's size panel (ratios and an exact W × H) is open.
@@ -46,7 +48,7 @@ export component CaptureOverlay inherits Window {
     callback pointer-up(length, length);
     callback confirm();
     callback cancel();
-    callback action(string); // "copy" | "save" | "edit" | "pin" | "cancel" | "long" | "repeat" | "color" | "ratio:W:H" | "size:WxH"
+    callback action(string); // "copy" | "save" | "edit" | "pin" | "step" | "cancel" | "long" | "repeat" | "color" | "ratio:W:H" | "size:WxH"
 
     forward-focus: keys;
     keys := FocusScope {
@@ -57,6 +59,7 @@ export component CaptureOverlay inherits Window {
             if root.has-selection && e.modifiers.control && (e.text == "c" || e.text == "C" || e.text == "\u{3}") { root.action("copy"); return accept; }
             if root.has-selection && e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "\u{13}") { root.action("save"); return accept; }
             if root.has-selection && e.modifiers.control && (e.text == "t" || e.text == "T" || e.text == "\u{14}") { root.action("pin"); return accept; }
+            if root.has-selection && e.modifiers.control && (e.text == "j" || e.text == "J" || e.text == "\u{a}") { root.action("step"); return accept; }
             // R: the last region again; Shift+C: copy the colour under the pointer.
             if root.has-last && !e.modifiers.control && (e.text == "r" || e.text == "R") { root.action("repeat"); return accept; }
             if e.modifiers.shift && !e.modifiers.control && (e.text == "C" || e.text == "c") { root.action("color"); return accept; }
@@ -116,7 +119,8 @@ export component CaptureOverlay inherits Window {
                 VerticalLayout { alignment: center; ActionButton { label: @tr("长截图"); key: ""; kind: 0; clicked => { root.action("long"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: @tr("识别文字"); key: ""; kind: 0; clicked => { root.action("ocr"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: @tr("钉图"); key: "Ctrl T"; kind: 0; clicked => { root.action("pin"); } } }
-                VerticalLayout { alignment: center; ActionButton { label: @tr("编辑"); key: "Enter"; kind: 0; clicked => { root.action("edit"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("加入步骤"); key: root.burst ? "Enter" : "Ctrl J"; kind: root.burst ? 1 : 0; clicked => { root.action("step"); } } }
+                VerticalLayout { alignment: center; ActionButton { label: @tr("编辑"); key: root.burst ? "" : "Enter"; kind: 0; clicked => { root.action("edit"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: @tr("保存"); key: "Ctrl S"; kind: 0; clicked => { root.action("save"); } } }
                 VerticalLayout { alignment: center; ActionButton { label: @tr("复制"); key: "Ctrl C"; kind: 1; clicked => { root.action("copy"); } } }
             }

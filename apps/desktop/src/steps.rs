@@ -65,6 +65,7 @@ impl Steps {
     pub fn position(&self, id: u64) -> Option<usize> { self.items.iter().position(|s| s.id == id) }
     pub fn get(&self, id: u64) -> Option<&Step> { self.items.iter().find(|s| s.id == id) }
     pub fn any_raw(&self) -> bool { self.items.iter().any(|s| s.data.raw) }
+    pub fn can_undo(&self) -> bool { self.removed.is_some() }
 
     /// Append a step; returns its 1-based number.
     pub fn add(&mut self, data: StepData) -> Result<usize, Full> {
