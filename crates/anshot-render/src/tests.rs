@@ -433,6 +433,41 @@ fn golden_scene_v5_digest_is_frozen() {
 /// Frozen 2026-11-02 after visual review.
 const GOLDEN_SCENE_V5: u64 = 0x0cb1_1d49_a23f_9748;
 
+/// Frozen render golden for the 0.6 step image (tests/golden/render/scene-v6.png): three
+/// steps in a grid with number badges and Chinese captions, one of them the v1 scene.
+#[test]
+fn golden_scene_v6_digest_is_frozen() {
+    let mut a = source(320, 240, 57);
+    render_into(&mut a, &golden_scene(), 1.0);
+    let (b, c) = (source(240, 180, 101), source(200, 260, 9));
+    let pieces = [
+        StepPiece { image: &a, size: (320, 240), caption: "打开设置，找到账号页" },
+        StepPiece { image: &b, size: (240, 180), caption: "点“导出”" },
+        StepPiece { image: &c, size: (200, 260), caption: "" },
+    ];
+    let style = StepsStyle { arrangement: Arrangement::Grid, backdrop: Backdrop::Light, ..StepsStyle::default() };
+    let img = render_steps(&pieces, &style).unwrap();
+    if std::env::var_os("ANSHOT_WRITE_RENDER_GOLDEN_V6").is_some() {
+        img.save(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/golden/render/scene-v6.png")).unwrap();
+        println!("DIGEST_V6={:#018x}", digest(&img));
+    }
+    assert_eq!(digest(&img), GOLDEN_SCENE_V6, "render output changed; review and re-freeze deliberately");
+}
+
+/// Frozen 2026-11-06 after visual review.
+const GOLDEN_SCENE_V6: u64 = 0x8c7a_8b94_92a5_866c;
+
+/// Timing only (run with --release --ignored): ten 1080p steps.
+#[test]
+#[ignore]
+fn steps_timing_ten() {
+    let src = source(1920, 1080, 3);
+    let pieces: Vec<StepPiece> = (0..10).map(|_| StepPiece { image: &src, size: (1920, 1080), caption: "步骤说明" }).collect();
+    let t = std::time::Instant::now();
+    let img = render_steps(&pieces, &StepsStyle::default()).unwrap();
+    println!("steps 10x1080p -> {:?} in {:?}", img.dimensions(), t.elapsed());
+}
+
 /// Timing only (run with --release --ignored): framing a large export.
 #[test]
 #[ignore]

@@ -4,9 +4,12 @@
 //! no source information) -> annotations (anti-aliased, on top) -> crop.
 //! Every coordinate is in source pixels; `scale` maps them onto a preview.
 //! An optional frame (`frame.rs`) goes around the cropped export last.
+//! Step images (`steps.rs`) lay several finished exports out as one new image.
 #![forbid(unsafe_code)]
 
 mod frame;
+mod steps;
+pub use steps::{grid_columns, render_steps, render_steps_preview, steps_layout, Arrangement, Backdrop, Gap, Placed, StepPiece, StepsLayout, StepsStyle, MAX_STEPS};
 pub use frame::{auto_colors, fit_text, frame_layout, render_framed, render_framed_preview, Background, Chrome, Frame, Layout, Ratio, Step, PRESETS};
 
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
